@@ -10,6 +10,7 @@ import { advancePlace } from './place-value.mjs';
 import { progressPage, bookingResult } from './place-views.mjs';
 
 const files={'/style.css':'text/css; charset=utf-8','/mark.svg':'image/svg+xml','/study.svg':'image/svg+xml','/app.webmanifest':'application/manifest+json','/icon-192.png':'image/png','/icon-512.png':'image/png'};
+files['/depth.css']='text/css; charset=utf-8';
 files['/lesson-client.js']='text/javascript; charset=utf-8';
 files['/lesson.css']='text/css; charset=utf-8';
 files['/place-client.js']='text/javascript; charset=utf-8';

@@ -13,7 +13,7 @@ test('الدخول والجولة وحدود صلاحية النموذج عبر 
   const get=(path,cookie='')=>fetch(origin+path,{headers:{cookie},redirect:'manual'});
   const post=(path,data,source=origin,cookie='')=>fetch(origin+path,{method:'POST',headers:{origin:source,cookie},body:new URLSearchParams(data),redirect:'manual'});
   const landing=await get('/');
-  assert.match(await landing.text(),/خطوة/);
+  assert.match(await landing.text(),/احتراف التدريس/);
   assert.equal(landing.headers.get('referrer-policy'),'strict-origin');
   assert.equal((await get('/app')).status,303);
   assert.equal((await post('/tour',{},'https://other.example')).status,403);

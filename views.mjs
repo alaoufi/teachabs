@@ -1,3 +1,4 @@
+import {sectionIcon} from './section-icons.mjs';
 import { randomUUID } from 'node:crypto';
 import { subjects, grades, duration } from './store.mjs';
 export const e = v => String(v??'').replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
@@ -22,7 +23,7 @@ const role=u=>u.role==='teacher'?'المعلم':'ولي الأمر';
 export function page(title,body,u=null) {
   const nav=u?`${link('/app','لوحتي','navlink')} ${link('/bookings','الحجوزات','navlink')} ${post('/logout',btn('خروج','quiet'),'inline')}`:`${link('/lesson/teacher','مدخل المعلم','navlink')} ${link('/login','تسجيل الدخول','navlink')} ${link('/register','إنشاء حساب','small-btn')}`;
   const banner=u?.scope?`<aside class="demo"><div><strong>جولة توضيحية</strong> <span>· بيانات ومواعيد معزولة عن الحجوزات الفعلية</span></div>${post('/tour/switch',btn(u.role==='parent'?'عرض حساب المعلم':'عرض حساب ولي الأمر','switch'),'inline')}</aside>`:'';
-  return `<!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#155c4d"><link rel="icon" href="/mark.svg"><link rel="manifest" href="/app.webmanifest"><link rel="apple-touch-icon" href="/icon-192.png"><link rel="stylesheet" href="/style.css"><title>${e(title)} | خطوة</title></head><body><header><nav><a class="brand" href="${u?'/app':'/'}"><img alt="" src="/mark.svg"><span>خطوة<small>للتعليم الفردي</small></span></a><div class="nav-actions"><a class="navlink" href="/demo">أقسام التجربة</a>${nav}</div></nav></header><main>${banner}${body}</main><footer><div><b>خطوة</b> للتعليم الفردي</div><span>${u?'مساحة '+role(u):'المرحلة الابتدائية'} &nbsp;·&nbsp; بتوقيت الرياض</span></footer></body></html>`;
+  return `<!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#155c4d"><link rel="icon" href="/mark.svg"><link rel="manifest" href="/app.webmanifest"><link rel="apple-touch-icon" href="/icon-192.png"><link rel="stylesheet" href="/style.css"><link rel="stylesheet" href="/depth.css"><title>${e(title)} | احتراف التدريس</title></head><body><header><nav><a class="brand" href="${u?'/app':'/'}"><img alt="" src="/mark.svg"><span>احتراف التدريس<small>للتعليم الفردي</small></span></a><div class="nav-actions"><a class="navlink" href="/demo">أقسام التجربة</a>${nav}</div></nav></header><main>${banner}${body}</main><footer><div><b>احتراف التدريس</b> للتعليم الفردي</div><span>${u?'مساحة '+role(u):'المرحلة الابتدائية'} &nbsp;·&nbsp; بتوقيت الرياض</span></footer></body></html>`;
 }
 export function landing(){
   return `<section class="hero"><div class="hero-copy">${kicker('مساحة التعلّم الفردي')}<h1>حصة لطفلك،<br><em>بخطوة منك.</em></h1><p>اختر المادة والمعلم والموعد المناسب لطفلك، وتابع حجوزات أبنائك في مكان واحد.</p><div class="actions">${link('/register','ابدأ بحساب ولي أمر ←')}${post('/tour',btn('استكشف الجولة التوضيحية','outline'))}${link('/lesson','دخول الحصة','textlink')}</div><small>الصف الأول إلى السادس الابتدائي</small></div><figure><img src="/study.svg" alt="رسم لكتاب مفتوح وقلم"><figcaption><span class="dot"></span> حصص فردية عن بُعد</figcaption></figure></section>
@@ -38,7 +39,7 @@ export function auth(kind,code='',error='',values={}) {
   const fields=(register?field('اسم ولي الأمر',input('name','autocomplete="name" maxlength="60" value="'+e(values.name)+'"')):'')+
     (!activate?field('البريد الإلكتروني',input('email','type="email" dir="ltr" autocomplete="username" maxlength="180" value="'+e(values.email)+'"')):hidden('code',code))+
     field(register||activate?'كلمة المرور · ١٠ أحرف على الأقل':'كلمة المرور',input('password','type="password" maxlength="128" autocomplete="'+(kind==='login'?'current-password':'new-password')+'"'+(kind==='login'?'':' minlength="10"')));
-  return `<section class="narrow">${heading('مساحة الحساب',title,activate?'اختر كلمة مرور لدخولك لاحقًا بالبريد المسجل في الدعوة.':'يمكنك العودة إلى حسابك بالبريد وكلمة المرور.')}<div class="panel">${error?'<p role="alert" class="error">'+e(error)+'</p>':''}${post('/'+kind,fields+btn(title),'form')}<div class="below">${link(register?'/login':'/register',register?'لدي حساب بالفعل':'إنشاء حساب ولي أمر','textlink')}</div></div></section>`;
+  return `<section class="narrow auth-welcome">${sectionIcon('teacher')}<p class="welcome-greeting">أهلًا بك في احتراف التدريس</p>${heading('مساحة الحساب',title,activate?'اختر كلمة مرور لدخولك لاحقًا بالبريد المسجل في الدعوة.':'يمكنك العودة إلى حسابك بالبريد وكلمة المرور.')}<div class="panel">${error?'<p role="alert" class="error">'+e(error)+'</p>':''}${post('/'+kind,fields+btn(title),'form')}<div class="below">${link(register?'/login':'/register',register?'لدي حساب بالفعل':'إنشاء حساب ولي أمر','textlink')}</div></div></section>`;
 }
 const childInfo=c=>'الصف '+grades[c.grade]+' · المنهج السعودي · '+lng(c.language);
 function bookingRow(b) {
@@ -48,7 +49,7 @@ export function home(u,s) {
   const all=s.bookings(u.id);
   const upcoming=all.filter(b=>b.status==='confirmed'&&b.start>Date.now()).sort((a,b)=>a.start-b.start);
   const next=`<div class="sectitle"><h2>الحجز القادم</h2>${link('/bookings','كل الحجوزات ←','textlink')}</div>${upcoming.length?bookingRow(upcoming[0]):empty('لا يوجد حجز قادم',u.role==='parent'?'اختر طفلًا ثم مادة للعثور على الموعد المناسب.':'ستظهر هنا أول حصة تؤكدها الأسرة من مواعيدك.')}`;
-  const top=link('/lesson','دخول الحصة','textlink')+heading('لوحة '+role(u),'أهلًا، '+e(u.name),u.role==='parent'?'ابدأ باختيار الطفل الذي تريد الحجز له.':'انشر مواعيدك وتابع الحجوزات المؤكدة للأسر.');
+  const top=sectionIcon(u.role)+link('/lesson','دخول الحصة','textlink')+heading('لوحة '+role(u),'أهلًا، '+e(u.name),u.role==='parent'?'ابدأ باختيار الطفل الذي تريد الحجز له.':'انشر مواعيدك وتابع الحجوزات المؤكدة للأسر.');
   if(u.role==='teacher') {
     const slots=s.schedule(u.id);
     return top+next+`<div class="sectitle"><h2>مواعيدي المتاحة والمحجوزة</h2>${link('/teacher/new','+ إضافة موعد')}</div>${slots.length?slots.map(v=>`<div class="row"><div><strong>${e(subjects[v.subject])} · ${date(v.start)}</strong><small>${spanTime(v.start,v.minutes)} · ${aNum(v.minutes)} دقيقة</small></div>${v.booked?'<span class="tag">محجوز</span>':post('/teacher/withdraw',hidden('id',v.id)+btn('سحب الموعد','quiet'))}</div>`).join(''):empty('لم تُضف أي مواعيد','حدّد مادة ووقتًا قبل فتح حجزك الأول.')}`;
@@ -71,7 +72,7 @@ export function teacherList(c,subject,rows) {
     link('/subjects?child='+c.id,'العودة إلى المواد','textlink back');
 }
 export function review(c,offer) {
-  return steps(3)+`<section class="narrow">${heading('الخطوة الأخيرة','مراجعة الحجز','لن يُحجز الموعد إلا بعد الضغط على زر التأكيد.')}<div class="panel">${details([['الطفل',c.name+' · الصف '+grades[c.grade]],['المادة والمعلم',subjects[offer.subject]+' · '+offer.teacherName],['الموعد',date(offer.start)+' · '+spanTime(offer.start,offer.minutes)],['المدة',aNum(offer.minutes)+' دقيقة · بتوقيت الرياض'],['التحصيل','دون رسوم أو خصم رصيد']])}${post('/book',hidden('child',c.id)+hidden('slot',offer.id)+hidden('subject',offer.subject)+hidden('key',randomUUID())+btn('تأكيد الموعد التجريبي'),'form')}${link('/offers?child='+c.id+'&subject='+offer.subject,'تغيير الموعد','textlink back')}</div></section>`;
+  return steps(3)+`<section class="narrow">${heading('الاحتراف التدريس الأخيرة','مراجعة الحجز','لن يُحجز الموعد إلا بعد الضغط على زر التأكيد.')}<div class="panel">${details([['الطفل',c.name+' · الصف '+grades[c.grade]],['المادة والمعلم',subjects[offer.subject]+' · '+offer.teacherName],['الموعد',date(offer.start)+' · '+spanTime(offer.start,offer.minutes)],['المدة',aNum(offer.minutes)+' دقيقة · بتوقيت الرياض'],['التحصيل','دون رسوم أو خصم رصيد']])}${post('/book',hidden('child',c.id)+hidden('slot',offer.id)+hidden('subject',offer.subject)+hidden('key',randomUUID())+btn('تأكيد الموعد التجريبي'),'form')}${link('/offers?child='+c.id+'&subject='+offer.subject,'تغيير الموعد','textlink back')}</div></section>`;
 }
 function details(entries){return '<dl>'+entries.map(([l,v])=>`<div><dt>${e(l)}</dt><dd>${e(v)}</dd></div>`).join('')+'</dl>';}
 export function bookingsList(rows){return heading('سجل المواعيد','الحجوزات')+(rows.length?rows.map(bookingRow).join(''):empty('لا توجد حجوزات بعد','يمكنك بدء الرحلة من لوحتك.'))+link('/app','العودة إلى لوحتي','textlink back');}
@@ -86,5 +87,5 @@ export function slotForm(u){
   return `<section class="narrow">${heading('جدول المعلم','إتاحة موعد للحجز','عند نشر هذا الموعد تستطيع أسرة مطابقة لشروط اعتمادك تأكيده مباشرة.')}<div class="panel">${post('/teacher/slots',field('المادة','<select name="subject">'+u.subjects.map(k=>opt(k,subjects[k])).join('')+'</select>')+field('التاريخ والوقت بتوقيت الرياض',input('start','type="datetime-local"'))+field('المدة','<select name="minutes">'+[...new Set(u.grades.map(duration))].map(n=>opt(n,aNum(n)+' دقيقة')).join('')+'</select>')+field('ملاحظات للأسرة (اختياري)','<textarea name="instructions" maxlength="350" placeholder="مثل تجهيز كتاب الرياضيات قبل دخول الفصل."></textarea>')+btn('نشر الموعد للحجز'),'form')}</div></section>`;
 }
 export function errorPage(message,back='/app'){
-  return `<section class="narrow">${heading('مراجعة الطلب','تعذّر إكمال الخطوة',e(message))}${link(back,'العودة والمتابعة')}</section>`;
+  return `<section class="narrow">${heading('مراجعة الطلب','تعذّر إكمال الاحتراف التدريس',e(message))}${link(back,'العودة والمتابعة')}</section>`;
 }

@@ -1,0 +1,23 @@
+:root{--depth-shadow:0 9px 0 #dce5db,0 18px 32px #173f3410}
+body{background:radial-gradient(ellipse at 100% 0,#e4f0e6 0,transparent 42%),var(--paper)}
+.brand{font-size:21px;line-height:1.3;max-width:260px}.brand small{letter-spacing:0}
+.panel,.child-card,.subject-card{box-shadow:0 4px 0 #e0e6d9,0 10px 22px #193e3008;border-color:#d1ddce}
+.welcome-panel{position:relative;background:linear-gradient(130deg,#e5f0e3,#fffdf5);border:1px solid #cadbc6;border-radius:28px;box-shadow:var(--depth-shadow);padding:clamp(24px,4vw,44px);margin-bottom:76px}
+.welcome-panel h1{font-size:clamp(28px,4vw,44px);margin:12px 0;line-height:1.35}.welcome-panel p{max-width:720px}
+.role-grid{gap:78px 28px;grid-template-columns:repeat(3,minmax(0,1fr));align-items:stretch;margin-bottom:38px}
+.role-card{position:relative;padding:64px 24px 24px;border-radius:25px;box-shadow:var(--depth-shadow);display:flex;flex-direction:column;align-items:flex-start;min-width:0;background:linear-gradient(150deg,#fffefb,#f4f8f0)}
+.section-icon{display:block;width:112px;height:120px;flex:none;pointer-events:none}
+.section-icon svg{display:block;width:100%;height:100%;overflow:visible}
+.role-card>.section-icon{position:absolute;top:-66px;inset-inline-start:22px;transform:rotate(-5deg)}
+.role-card:nth-child(even)>.section-icon{transform:rotate(5deg)}
+.role-card h2{font-size:24px;line-height:1.4;margin:0 0 12px}.role-card p{font-size:16px;line-height:1.8;margin:0 0 20px;overflow-wrap:anywhere}
+.role-card form{margin-top:auto;width:100%}.role-card .btn{width:100%;text-align:center;white-space:normal}.role-card>.btn{margin-top:auto}
+.role-card .eyebrow{line-height:1.7;white-space:normal}.role-card .textlink{display:inline-block;line-height:1.7;margin-top:14px}
+.role-card:focus-within{border-color:#347760;box-shadow:0 8px 0 #c3d8c6,0 15px 28px #173f3418}
+.auth-welcome{padding-top:8px}.auth-welcome>.section-icon{margin:0 auto -8px;transform:rotate(-5deg)}
+.welcome-greeting{text-align:center;color:#155c4d;font-weight:700;font-size:20px;margin:0 0 20px}
+.auth-welcome>.panel{border-radius:24px;box-shadow:var(--depth-shadow)}
+.demo-hub>p{line-height:2.2}.section-head h1{overflow-wrap:anywhere}
+@media(max-width:900px){.role-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:560px){.role-grid{grid-template-columns:1fr;gap:78px}.role-card{padding:64px 22px 24px}.welcome-panel{padding:24px;margin-bottom:78px}.brand{font-size:19px}.welcome-panel h1{font-size:30px}}
+@media(prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important;scroll-behavior:auto!important}}
