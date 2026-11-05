@@ -34,9 +34,10 @@ export function attachProfessionalBoard(seat,signals,send,client,lessonSubject,g
  const relevantFiles=(elements,files)=>Object.fromEntries(elements.filter(e=>e.type==='image'&&!e.isDeleted&&files[e.fileId]).map(e=>[e.fileId,files[e.fileId]]));
  const scene=()=>{const elements=api.getSceneElementsIncludingDeleted();return {elements,files:relevantFiles(elements,api.getFiles())};};
  const signature=s=>JSON.stringify({elements:s.elements,files:s.files});
- let baseline='';
+ let baseline='',appliedLesson=null;
  const mode=()=>api?.updateScene({appState:{viewModeEnabled:!ready||conflict||!editable()}});
  function apply(s,{resetHistory=false}={}){
+  if(s&&appliedLesson!==s.activeLesson&&(appliedLesson?.startsWith('original-book-')||s.activeLesson?.startsWith('original-book-')))resetHistory=true;
   // Replies to permission/timer/lesson commands can arrive after preparation
   // starts. Update server metadata, never replace a private canvas with them.
   if(!s||(remote&&s.rev<remote.rev))return false;
@@ -50,7 +51,7 @@ export function attachProfessionalBoard(seat,signals,send,client,lessonSubject,g
   // cannot reappear through a later Undo/Redo or enter an outgoing snapshot.
   if(resetHistory)api.resetScene({resetLoadingState:true});
   api.addFiles(Object.values(current.files));api.updateScene({elements:current.elements,appState:{...(resetHistory?{scrollX:previous.scrollX,scrollY:previous.scrollY,zoom:previous.zoom,currentItemFontFamily:2,selectedElementIds:{},selectedGroupIds:{},editingGroupId:null}:{}),viewModeEnabled:!ready||conflict||!editable()},captureUpdate:CaptureUpdateAction.NEVER});
-  baseline=signature(scene());initialized=true;applying=false;refresh(s);return true;
+  appliedLesson=s.activeLesson;baseline=signature(scene());initialized=true;applying=false;refresh(s);return true;
  }
  async function save(){
   if(!latest||saving||!ready||conflict)return;
@@ -110,7 +111,7 @@ export function attachProfessionalBoard(seat,signals,send,client,lessonSubject,g
   const input=useRef();notify=setStatus;refresh=setState;
   const available=state?.resources||[];
   const selectedLesson=choices.find(l=>l.id===state?.activeLesson);
-  const changeLesson=async id=>{if(!id||latest||saving||conflict||preparation)return;try{const s=await send('board',{op:'lesson',rev:remote.rev,lessonId:id});if(apply(s))focus(s.elements);}catch(e){notify(e.message);}};
+  const changeLesson=async id=>{if(!id||latest||saving||conflict||preparation)return;const resetHistory=id.startsWith('original-book-')||remote.activeLesson?.startsWith('original-book-');try{const s=await send('board',{op:'lesson',rev:remote.rev,lessonId:id});if(apply(s,{resetHistory}))focus(s.elements);}catch(e){notify(e.message);}};
   const addAid=a=>{if(!ready||conflict||!api||!editable())return;if(seat==='teacher'&&!startPreparation()){notify('انتظر حفظ العمل قبل تجهيز وسيلة جديدة.');return;}const position=nextPosition();const elements=a.kind==='library'?libraryElements(a.elements,position.x,position.y,Math.min(520,api.getAppState().width*0.8),280):convertToExcalidrawElements(a.kind==='digestion'?digestionElements(position.x,position.y,api.getAppState().width*0.75):a.kind==='protractor'?protractorElements(position.x,position.y,'protractor-'+crypto.randomUUID()):a.kind==='ruler'?rulerElements(position.x,position.y,'ruler-'+crypto.randomUUID()):[{type:'text',...position,text:wrapAidText(a.title+'\n'+a.text+'\n'+a.explanation),fontSize:24,fontFamily:2}],{regenerateIds:false});api.updateScene({elements:[...api.getSceneElements(),...elements],appState:selectionState(elements),captureUpdate:CaptureUpdateAction.IMMEDIATELY});api.setActiveTool({type:'selection'});focus(elements);if(['ruler','protractor'].includes(a.kind))notify(a.explanation);};
   const adjustRuler=change=>{if(!ready||conflict||!editable())return;api.updateScene({elements:transformRuler(api.getSceneElements(),change),captureUpdate:CaptureUpdateAction.IMMEDIATELY});};
   const adjustAngle=delta=>{if(!ready||conflict||!editable())return;const elements=api.getSceneElements(),reading=protractorReading(elements);if(reading)api.updateScene({elements:setProtractorAngle(elements,reading.degrees+delta),captureUpdate:CaptureUpdateAction.IMMEDIATELY});};
