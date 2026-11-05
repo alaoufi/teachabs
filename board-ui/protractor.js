@@ -5,7 +5,10 @@ export function protractorElements(x,y,id){
  for(let d=0;d<=180;d+=10){const a=d*Math.PI/180,px=cx+180*Math.cos(a),py=cy-180*Math.sin(a);items.push({...c,type:'line',x:px,y:py,width:1,height:1,points:[[0,0],[-(d%30===0?16:9)*Math.cos(a),(d%30===0?16:9)*Math.sin(a)]]});if(d<180){const b=(d+10)*Math.PI/180;items.push({...c,type:'line',x:px,y:py,width:1,height:1,points:[[0,0],[cx+180*Math.cos(b)-px,cy-180*Math.sin(b)-py]]});}if(d%30===0)items.push({...c,type:'text',x:cx+145*Math.cos(a)-12,y:cy-145*Math.sin(a)-10,text:String(d),fontSize:16,fontFamily:2});}
  items.push({...c,id:'base-'+id,type:'line',x:cx,y:cy,width:170,height:0,points:[[0,0],[170,0]],strokeWidth:3});
  items.push({...c,id:'ray-'+id,type:'line',x:cx-85,y:cy-85,width:170,height:0,angle:-Math.PI/2,points:[[0,0],[170,0]],strokeWidth:3,strokeColor:'#c44920'});
- items.push({...c,id:'reading-'+id,type:'text',x:x+130,y:y+225,text:'90° — زاوية تعليمية',fontSize:18,fontFamily:2});return items;
+ items.push({...c,id:'reading-'+id,type:'text',x:x+130,y:y+225,text:'90° — زاوية تعليمية',fontSize:18,fontFamily:2});
+ // Excalidraw scales lines by their stored bounds. Use the actual point bounds,
+ // not placeholder 1×1 boxes, or group resize collapses ticks and arc segments.
+ return items.map(e=>{if(e.type!=='line')return e;const xs=e.points.map(p=>p[0]),ys=e.points.map(p=>p[1]),left=Math.min(...xs),top=Math.min(...ys);return {...e,x:e.x+left,y:e.y+top,width:Math.max(...xs)-left,height:Math.max(...ys)-top,points:e.points.map(([px,py])=>[px-left,py-top])};});
 }
 export function protractorReading(elements){
  const ray=[...elements].reverse().find(e=>!e.isDeleted&&e.id.startsWith('ray-protractor-'));if(!ray)return null;const group=ray.id.slice(4),base=elements.find(e=>e.id==='base-'+group&&!e.isDeleted);if(!base)return null;
