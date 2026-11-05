@@ -173,7 +173,7 @@ export function openStore(path) {
     const scope=randomUUID(),p=randomUUID(),t=randomUUID();
     transaction(()=>{
       run("INSERT INTO users(id,role,name,scope) VALUES(?,'parent','ولي الأمر',?)",p,scope);
-      run("INSERT INTO users(id,role,name,scope,subjects,grades,language) VALUES(?,'teacher','سارة العتيبي',?,'[\"math\",\"science\"]','[1,2,3,4,5,6]','ar')",t,scope);
+      run("INSERT INTO users(id,role,name,scope,subjects,grades,language) VALUES(?,'teacher','سارة أحمد',?,'[\"math\",\"science\"]','[1,2,3,4,5,6]','ar')",t,scope);
     });
     const ch=child(p,{name:'نورة',grade:4,curriculum:'sa',language:'ar'});
     const day=new Date();day.setUTCHours(13,0,0,0);
