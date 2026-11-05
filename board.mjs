@@ -1,3 +1,4 @@
+import {changeClassTimer} from './class-timer.mjs';
 import {changeLivePages} from './live-pages.mjs';
 import {allowedLessons} from './lesson-catalog.mjs';
 import { UserError } from './store.mjs';
@@ -7,6 +8,7 @@ export function changeBoard(current,seat,command,context={}){
  const state=current||emptyBoard();
  need(['teacher','student'].includes(seat),'مقعد غير مصرح.',403);
  need(command&&Number.isInteger(command.rev)&&command.rev===state.rev,'تغيّرت السبورة. صدّر عملك المحلي قبل تحميل نسخة الخادم.',409);
+ if(command.op?.startsWith('timer-'))return {...state,rev:state.rev+1,classTimer:changeClassTimer(state.classTimer,seat,command)};
  if(command.op?.startsWith('pages-'))return changeLivePages(state,seat,command,context.savedInstance);
  if(command.op==='lesson'){
   need(!state.pageSession,'Close the saved lesson before changing subject',409);
