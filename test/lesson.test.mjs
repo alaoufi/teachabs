@@ -22,6 +22,7 @@ test('الدرس متاح لطرفي الحجز فقط وفي وقت الحصة 
   const get=(url,c)=>fetch(base+url,{headers:{cookie:c},redirect:'manual',signal:abort.signal});
   assert.equal((await get(path,owner)).status,200);
   assert.equal((await get(path,teacher)).status,200);
+  assert.match(await (await get(path,teacher)).text(),/data-subject="math"/);
   assert.equal((await get(path,stranger)).status,404);
   assert.equal((await get('/lesson/'+later,owner)).status,403);
   assert.equal((await get(path+'?seat=teacher',owner)).status,403);

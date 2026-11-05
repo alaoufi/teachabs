@@ -1,4 +1,4 @@
-export const aids=[
+const catalog=[
  {id:'number-line',subject:'رياضيات',title:'خط الأعداد ٠–١٠',explanation:'ضع الأعداد على الخط. اشرح الجمع بالحركة يمينًا والطرح بالحركة يسارًا.',text:'٠    ١    ٢    ٣    ٤    ٥    ٦    ٧    ٨    ٩    ١٠\n←────────────────────────────→'},
  {id:'fraction',subject:'رياضيات',title:'الجزء والكل',explanation:'قسّم مستطيلًا إلى أربعة أجزاء متساوية ولون جزءًا. ناقش: ١/٤ + ١/٤ = ١/٢.',text:'الكسور: أجزاء متساوية من كل واحد\n١/٤ + ١/٤ = ٢/٤ = ١/٢'},
  {id:'water',subject:'علوم',title:'دورة الماء',explanation:'يتبخر الماء ثم يتكاثف بخاره في السحب ويهطل مطرًا. أضف الأسهم والعناصر بالرسم.',text:'الشمس → تبخر الماء → تكاثف في السحب → هطول → تجمع الماء'},
@@ -7,3 +7,7 @@ export const aids=[
  {id:'islamic',subject:'الدراسات الإسلامية',title:'آداب الحوار',explanation:'ناقش الإنصات للمتحدث، والكلمة الطيبة، واحترام الآخرين. يذكر الطالب مثالًا من حياته دون بيانات شخصية.',text:'آداب الحوار\nالإنصات • الكلام الطيب • احترام الآخرين'}
 ];
 // Original starter teaching material created for this project. No third-party media.
+
+const subjectKeys={'number-line':'math',fraction:'math',water:'science',sentence:'arabic',english:'english',islamic:'islamic'};
+export const aids=catalog.map(a=>({...a,subjectKey:subjectKeys[a.id]}));
+export function aidsForSubject(key){return aids.filter(a=>a.subjectKey===key);}

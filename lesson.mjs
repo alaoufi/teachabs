@@ -29,7 +29,7 @@ function lobby(user, teacherEntry=false) {
 function classroom({seat, booking, preview}) {
   const name = seat === 'teacher' ? 'المعلم' : 'الطالب';
   const back = preview ? '/lesson' : '/booking/' + booking.id;
-  return `<link rel="stylesheet" href="/lesson.css?v=place2"><section id="classroom" data-seat="${seat}">
+  return `<link rel="stylesheet" href="/lesson.css?v=place2"><section id="classroom" data-seat="${seat}" data-subject="${preview?'preview':e(booking.subject)}">
     <div class="lesson-head"><div><div class="eyebrow"><i></i>${preview?'تجربة محلية بمقعدين':'الحصة الفردية'}</div>
     <h1>${preview?'الفصل التجريبي':'حصة '+e(subjects[booking.subject])}</h1>
     <p>${preview?'أنت في مقعد '+name:e(booking.childName)+' مع '+e(booking.teacherName)+' · مقعد '+name} · التسجيل متوقف</p></div>

@@ -22,3 +22,5 @@ Export JSON regularly. The envelope identifies format and version; elements rema
 Render's free SQLite storage is ephemeral. This change does not make it durable. Do not redeploy the existing trial until its current database is safely backed up or the owner confirms all existing data is disposable synthetic data. Use synthetic data only. Do not publish database files, backups, environment files or credentials.
 
 Rollback baseline: deployed `bb0c11159f08528f3f73e57feab295d44eb5dd78`, local tag `rollback-005-before-board`. Backup 005 retains the deployed source, latest previous local source, Git bundles and a consistent private local SQLite backup. The Render database is not included. No automatic backup deletion is configured. Roll back deployment with a normal revert, never a force push; preserve the database before redeployment.
+
+The owner subsequently confirmed that the Render trial has no data to retain and authorized publishing the integrated browser demo. This does not provide durable storage. Browser demo hub: /demo. Role-specific assistance remains a proposal in ASSISTANCE-DESIGN.md, not an AI feature.

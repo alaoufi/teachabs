@@ -1,3 +1,4 @@
+import { demoHub } from './demo.mjs';
 import http from 'node:http';
 import { readFile } from 'node:fs/promises';
 import { pathToFileURL } from 'node:url';
@@ -55,6 +56,7 @@ export function createApp(store,{origin=process.env.APP_ORIGIN}={}) {
       const uid=store.resolve(cookie);u=uid?store.user(uid):null;
       if(lessons.matches(route))return await lessons.handle({req,res,url,u,cookie,base,html,redirect,fields,limit});
       if(req.method==='GET'){
+        if(route==='/demo')return html('شاشات التجربة',demoHub(u,q.role));
         if(/^\/board-assets\/[A-Za-z0-9_./-]+$/.test(route)&&!route.includes('..')){
           const ext=route.split('.').pop();const type={js:'text/javascript',css:'text/css',woff2:'font/woff2',png:'image/png'}[ext];if(!type)throw new UserError('Not found',404);
           const asset=await readFile(new URL('./public'+route,import.meta.url));res.writeHead(200,{'Content-Type':type,'Cache-Control':'no-cache'});return res.end(asset);
@@ -93,6 +95,13 @@ export function createApp(store,{origin=process.env.APP_ORIGIN}={}) {
       }else if(req.method==='POST'){
         if(req.headers.origin!==base)throw new UserError('تعذّر التحقق من مصدر الطلب. افتح التطبيق مجددًا.',403);
         data=await fields(req);
+        if(route==='/demo/start'){
+          if(!['parent','teacher'].includes(data.role))throw new UserError('اختر تجربة متاحة.');
+          if(u && !u.scope)throw new UserError('سجّل الخروج من الحساب الفعلي قبل بدء تجربة.',409);
+          limit(req,'demo',15);
+          if(u)return enter(u.role===data.role?u.id:store.switchTour(u.id));
+          const tour=store.tour();return enter(tour[data.role]);
+        }
         if(['/login','/register','/activate','/tour'].includes(route))limit(req,route,route==='/login'?25:15);
         if(route==='/tour')return enter(store.tour().parent);
         if(route==='/register')return enter(store.parent(data.name,data.email,data.password));

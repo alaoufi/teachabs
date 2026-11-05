@@ -3,10 +3,11 @@ import{MathPanel}from'./MathPanel.jsx';
 import{createRoot}from'react-dom/client';
 import{Excalidraw,MainMenu,convertToExcalidrawElements,exportToBlob}from'@excalidraw/excalidraw';
 import'@excalidraw/excalidraw/index.css';
-import{aids}from'./aids.js';
+import{aids,aidsForSubject}from'./aids.js';
 import'./board.css';
 
-export function attachProfessionalBoard(seat,signals,send,client){
+export function attachProfessionalBoard(seat,signals,send,client,lessonSubject){
+ const available=lessonSubject==='preview'?aids:aidsForSubject(lessonSubject);
  let resolveInitial,initialized=false;
  const initialData=new Promise(resolve=>{resolveInitial=resolve;});
  let api,remote,ready=false,applying=false,saving=false,latest=null,timer,conflict=false;
@@ -52,7 +53,7 @@ export function attachProfessionalBoard(seat,signals,send,client){
  signals.addEventListener('closed',()=>{ready=false;notify('انتهى إذن الحصة.');mode();});
  function download(data,name,type){const url=URL.createObjectURL(new Blob([data],{type}));const a=document.createElement('a');a.href=url;a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(url),10000);}
  function App(){
-  const [status,setStatus]=useState('جارٍ فتح السبورة…'),[state,setState]=useState(null),[subject,setSubject]=useState('رياضيات');
+  const [status,setStatus]=useState('جارٍ فتح السبورة…'),[state,setState]=useState(null),[subject,setSubject]=useState(available[0]?.subject||'');
   const input=useRef();notify=setStatus;refresh=setState;
   const addAid=a=>{if(!ready||conflict||!api)return;const elements=convertToExcalidrawElements([{type:'text',...nextPosition(),text:a.title+'\n'+a.text+'\n'+a.explanation,fontSize:24,fontFamily:2}]);api.updateScene({elements:[...api.getSceneElements(),...elements]});};
   const toggle=async()=>{try{const s=await send('board',{op:'permission',rev:remote.rev,allow:!remote.studentDraw});remote=s;apply(s);}catch(e){notify(e.message);}};
@@ -65,8 +66,8 @@ export function attachProfessionalBoard(seat,signals,send,client){
     <input ref={input} type="file" accept=".json,.excalidraw" hidden onChange={async e=>{try{const f=e.target.files[0];if(f.size>2000000)throw Error();const s=JSON.parse(await f.text());if(!Array.isArray(s.elements)||s.elements.length>1000||s.elements.some(x=>!['rectangle','diamond','ellipse','arrow','line','freedraw','text','image'].includes(x.type)))throw Error();for(const f of Object.values(s.files||{})){if(typeof f.dataURL!=='string'||f.dataURL.length>700000||!/^data:image\/(png|jpeg|webp);base64,/.test(f.dataURL))throw Error();}s.elements=s.elements.map(x=>({...x,link:null}));api.addFiles(Object.values(s.files||{}));api.updateScene({elements:s.elements});}catch{notify('ملف غير صالح أو أكبر من الحد.');}e.target.value='';}}/>
    </div>
    <details className="aid-library"><summary>مكتبة وسائل الشرح — نماذج أولية وليست جميع التخصصات</summary>
-    <label>التخصص <select value={subject} onChange={e=>setSubject(e.target.value)}>{[...new Set(aids.map(a=>a.subject))].map(s=><option key={s}>{s}</option>)}</select></label>
-    {aids.filter(a=>a.subject===subject).map(a=><button key={a.id} disabled={!ready||conflict||(seat!=='teacher'&&!state?.studentDraw)} onClick={()=>addAid(a)}>{a.title} +</button>)}
+    {!available.length&&<p>لا تتوفر وسائل مراجعة لهذا التخصص بعد.</p>}<label>التخصص <select disabled={lessonSubject!=='preview'} value={subject} onChange={e=>setSubject(e.target.value)}>{[...new Set(available.map(a=>a.subject))].map(s=><option key={s}>{s}</option>)}</select></label>
+    {available.filter(a=>a.subject===subject).map(a=><button key={a.id} disabled={!ready||conflict||(seat!=='teacher'&&!state?.studentDraw)} onClick={()=>addAid(a)}>{a.title} +</button>)}
     <p>محتوى أصلي للمشروع. يضاف إلى السبورة ويتزامن للطرفين؛ يمكن تعديله. صورك تُخزن على خدمة التجربة؛ استخدم مواد وهمية فقط.</p>
    </details>
    <MathPanel enabled={ready&&!conflict&&(seat==='teacher'||state?.studentDraw)} notify={notify} insert={(dataURL,width,height)=>{const id=crypto.randomUUID();api.addFiles([{id,dataURL,mimeType:'image/png',created:Date.now()}]);api.updateScene({elements:[...api.getSceneElements(),...convertToExcalidrawElements([{type:'image',...nextPosition(),width,height,fileId:id,status:'saved'}])]});}}/>

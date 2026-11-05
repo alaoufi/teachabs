@@ -1,0 +1,33 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { openStore } from '../store.mjs';
+import { createApp } from '../server.mjs';
+
+test('demo hub names unavailable roles honestly and does not create a session on GET', async t => {
+  const store=openStore(':memory:'), app=createApp(store);
+  await new Promise(r=>app.listen(0,'127.0.0.1',r));
+  t.after(async()=>{app.closeAllConnections();await new Promise(r=>app.close(r));store.close();});
+  const base='http://127.0.0.1:'+app.address().port;
+  const response=await fetch(base+'/demo');
+  assert.equal(response.status,200);
+  assert.equal(response.headers.get('set-cookie'),null);
+  const html=await response.text();
+  for(const label of ['ولي الأمر','المعلم','الطالب','السبورة','الإدارة','غير متاحة','مؤقت']) assert.ok(html.includes(label),label);
+  const post=(role,origin=base,cookie='')=>fetch(base+'/demo/start',{method:'POST',headers:{origin,cookie},body:new URLSearchParams({role}),redirect:'manual'});
+  assert.equal((await post('teacher','https://other.example')).status,403);
+  assert.equal((await post('admin')).status,400);
+  const parent=await post('parent');
+  assert.equal(parent.status,303);
+  const parentCookie=parent.headers.get('set-cookie').split(';')[0];
+  const parentHtml=await (await fetch(base+'/app',{headers:{cookie:parentCookie}})).text();
+  assert.ok(parentHtml.includes('جولة توضيحية'));
+  const teacher=await post('teacher',base,parentCookie);
+  const teacherCookie=teacher.headers.get('set-cookie').split(';')[0];
+  assert.equal(store.user(store.resolve(teacherCookie.slice(3))).role,'teacher');
+  assert.equal(store.resolve(parentCookie.slice(3)),undefined);
+  assert.equal(store.user(store.resolve(teacherCookie.slice(3))).scope.length,36);
+  const real=store.parent('Test parent','private@example.test','test-password-123');
+  const realKey=store.session(real);
+  assert.equal((await post('teacher',base,'ks='+realKey)).status,409);
+  assert.equal(store.resolve(realKey),real);
+});

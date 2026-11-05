@@ -11,6 +11,7 @@ const tracks={audio:null,video:null};
 const controls={audio:$('mic'),video:$('cam')};
 const pendingDevices=new Set();
 let present=false, ended=false, connection=null, pair=null;
+let mediaEpoch=0;
 const status=text=>{$('status').textContent=text;};
 const hint=text=>{$('hint').textContent=text;};
 
@@ -22,7 +23,7 @@ async function send(kind,payload,generation=''){
   if(response.headers.get('content-type')?.startsWith('application/json'))return response.json();
 }
 const placeConnected=attachPlaceBoard(seat,signals,send);
-attachProfessionalBoard(seat,signals,send,client);
+attachProfessionalBoard(seat,signals,send,client,$('classroom').dataset.subject);
 function resetPeer(){
   if(connection){connection.onconnectionstatechange=null;connection.ontrack=null;connection.close();}
   connection=null;pair=null;$('remote').srcObject=null;$('play').hidden=true;
@@ -34,6 +35,7 @@ function controlState(kind){
   controls[kind].disabled=!present || pendingDevices.has(kind);
 }
 function stopDevices(){
+  mediaEpoch++;
   for(const kind of ['audio','video']){
     tracks[kind]?.stop();tracks[kind]=null;controlState(kind);
   }
@@ -46,8 +48,12 @@ function closeLesson(message){
 }
 window.addEventListener('pagehide',()=>closeLesson('غادرت الحصة.'));
 window.addEventListener('pageshow',ev=>{if(ev.persisted && ended)location.reload();});
+document.addEventListener('khatwa-pause',stopDevices);
+document.addEventListener('visibilitychange',()=>{if(document.hidden)stopDevices();});
 function sender(pc,kind){return pc?.getTransceivers().find(t=>t.receiver.track.kind===kind)?.sender;}
 async function toggle(kind){
+  const epoch=mediaEpoch;
+  if(document.hidden)return;
   if(pendingDevices.has(kind))return;
   pendingDevices.add(kind);
   const button=controls[kind];button.disabled=true;
@@ -59,7 +65,7 @@ async function toggle(kind){
       if(!navigator.mediaDevices?.getUserMedia) throw new Error('unavailable');
       const stream=await navigator.mediaDevices.getUserMedia({[kind]:true});
       const track=stream.getTracks()[0];
-      if(!present || ended){track.stop();return;}
+      if(!present || ended || document.hidden || epoch!==mediaEpoch){track.stop();return;}
       tracks[kind]=track;
       track.onended=()=>{
         if(tracks[kind]!==track)return;
