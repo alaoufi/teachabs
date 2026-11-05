@@ -10,7 +10,8 @@
     "start": "node server.mjs",
     "test": "node --test test/*.test.mjs",
     "invite": "node invite.mjs",
-    "build:board": "node build-board.mjs"
+    "build:board": "node build-board.mjs",
+    "admin:bootstrap": "node admin-bootstrap.mjs"
   },
   "dependencies": {
     "@excalidraw/excalidraw": "0.18.1",

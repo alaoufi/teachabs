@@ -1,3 +1,4 @@
+import {adminService} from './admin-service.mjs';
 import {registrationDashboard,registrationAdmin} from './registration-views.mjs';
 import {serveAsset} from './asset-response.mjs';
 import {replayAdmin,replayList} from './replay-views.mjs';
@@ -17,6 +18,7 @@ const files={'/style.css':'text/css; charset=utf-8','/mark.svg':'image/svg+xml',
 files['/board-loader.js']='text/javascript; charset=utf-8';
 files['/saved-viewer.js']='text/javascript; charset=utf-8';
 files['/depth.css']='text/css; charset=utf-8';
+files['/admin.css']='text/css; charset=utf-8';
 files['/lesson-client.js']='text/javascript; charset=utf-8';
 files['/lesson.css']='text/css; charset=utf-8';
 files['/place-client.js']='text/javascript; charset=utf-8';
@@ -29,6 +31,7 @@ async function fields(req){
 
 export function createApp(store,{origin=process.env.APP_ORIGIN}={}) {
   const lessons=lessonService(store);
+  const administration=adminService(store);
   const limits=new Map();
   function limit(req,key,max){
     const now=Date.now();
@@ -61,6 +64,7 @@ export function createApp(store,{origin=process.env.APP_ORIGIN}={}) {
       const url=new URL(req.url,base);
       route=url.pathname;const q=Object.fromEntries(url.searchParams);
       const uid=store.resolve(cookie);u=uid?store.user(uid):null;
+      if(administration.matches(route)&&!['/admin/registration-agents','/admin/registration/permissions','/admin/replays','/admin/replays/grant'].includes(route))return await administration.handle({req,url,u,base,html,redirect,fields,limit,enter});
       if(lessons.matches(route))return await lessons.handle({req,res,url,u,cookie,base,html,redirect,fields,limit});
       if(req.method==='GET'){
         if(route==='/demo')return html('شاشات التجربة',demoHub(u,q.role));
@@ -76,8 +80,9 @@ export function createApp(store,{origin=process.env.APP_ORIGIN}={}) {
         if(['/login','/register','/activate'].includes(route))return html('الحساب',ui.auth(route.slice(1),q.code||''));
         if(!u)return redirect('/login');
         if(route==='/registration'||(route==='/app'&&u.role==='registration_agent')){role('registration_agent');return html('وكيل التسجيل',registrationDashboard(store.registration.dashboard(uid)));}
-        if(route==='/admin/registration'){role('admin');return html('صلاحيات التسجيل',registrationAdmin(store.registration.agents(uid)));}
-        if(route==='/admin/replays'||(route==='/app'&&u.role==='admin')){role('admin');return html('إذن إعادة الدرس',replayAdmin(store.replays.list(uid)));}
+        if(route==='/admin/registration-agents'){role('admin');return html('صلاحيات التسجيل',registrationAdmin(store.registration.agents(uid)));}
+        if(route==='/app'&&u.role==='admin')return redirect('/admin');
+        if(route==='/admin/replays'){role('admin');return html('إذن إعادة الدرس',replayAdmin(store.replays.list(uid)));}
         if(route==='/replays'){role('parent');return html('مراجعة الدروس',replayList(store.replays.available(uid)));}
         if(route==='/replay'){
           role('parent');const template=store.replays.read(uid,q.id,q.child),index=Number(q.page||0);if(!Number.isInteger(index)||index<0||index>=template.pages.length)throw new UserError('صفحة غير متاحة',404);
@@ -119,10 +124,11 @@ export function createApp(store,{origin=process.env.APP_ORIGIN}={}) {
         if(req.headers.origin!==base)throw new UserError('تعذّر التحقق من مصدر الطلب. افتح التطبيق مجددًا.',403);
         data=await fields(req);
         if(route==='/demo/start'){
-          if(!['parent','teacher'].includes(data.role))throw new UserError('اختر تجربة متاحة.');
+          if(!['parent','teacher','admin'].includes(data.role))throw new UserError('اختر تجربة متاحة.');
           if(u && !u.scope)throw new UserError('سجّل الخروج من الحساب الفعلي قبل بدء تجربة.',409);
           limit(req,'demo',15);
-          if(u)return enter(u.role===data.role?u.id:store.switchTour(u.id));
+          if(data.role==='admin')return enter(store.admin.demo().supervisor);
+          if(u&&['parent','teacher'].includes(u.role))return enter(u.role===data.role?u.id:store.switchTour(u.id));
           const tour=store.tour();return enter(tour[data.role]);
         }
         if(['/login','/register','/activate','/tour'].includes(route))limit(req,route,route==='/login'?25:15);
@@ -131,7 +137,7 @@ export function createApp(store,{origin=process.env.APP_ORIGIN}={}) {
         if(route==='/login')return enter(store.login(data.email,data.password));
         if(route==='/activate'){const id=store.activate(data.code,data.password);return store.registration.active(id)?enter(id):html('بانتظار التفعيل','<section class="panel"><h1>تم إعداد كلمة المرور</h1><p>الحساب بانتظار تفعيل وكيل التسجيل. بعد التفعيل يمكنك تسجيل الدخول.</p><a href="/login">تسجيل الدخول</a></section>');}
         if(!u)return redirect('/login');
-        if(route==='/admin/registration'){role('admin');store.registration.setPermissions(uid,data.agent,{register_parent:data.register_parent==='on',register_child:data.register_child==='on',manage_status:data.manage_status==='on'},Number(data.rev));return redirect('/admin/registration');}
+        if(route==='/admin/registration-agents'){role('admin');store.registration.setPermissions(uid,data.agent,{register_parent:data.register_parent==='on',register_child:data.register_child==='on',manage_status:data.manage_status==='on'},Number(data.rev));return redirect('/admin/registration-agents');}
         if(route==='/registration/parent'){role('registration_agent');const result=store.registration.addParent(uid,data);return html('رابط إعداد الحساب','<section class="panel"><h1>تم تسجيل ولي الأمر</h1><p>الحساب بانتظار التفعيل. رابط إعداد كلمة المرور خاص وصالح 24 ساعة ويستخدم مرة واحدة. لم يُرسل تلقائيًا.</p><a href="/activate?code='+ui.e(result.activationToken)+'">إعداد كلمة المرور</a><p><a href="/registration">العودة للتسجيل</a></p></section>');}
         if(route==='/registration/child'){role('registration_agent');store.registration.addChild(uid,{...data,grade:Number(data.grade)});return redirect('/registration');}
         if(route==='/registration/status'){role('registration_agent');store.registration.setStatus(uid,data);return redirect('/registration');}
