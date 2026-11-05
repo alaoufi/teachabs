@@ -1,4 +1,6 @@
-const visibleBoard=state=>{const {lessonScenes,...visible}=state;return visible;};
+import {allowedLessons} from './lesson-catalog.mjs';
+import {aids} from './board-ui/aids.js';
+const visibleBoard=(state,context)=>{const {lessonScenes,...visible}=state;const lesson=allowedLessons(context).find(l=>l.id===state.activeLesson);return {...visible,resources:aids.filter(a=>lesson?.aidIds.includes(a.id))};};
 import { changeBoard, emptyBoard } from './board.mjs';
 import { randomBytes, randomUUID, createHash } from 'node:crypto';
 import { subjects, UserError } from './store.mjs';
@@ -77,7 +79,7 @@ export function lessonService(store) {
     detach(room,seat,peer);
     peer.res.end();
   }
-  function subscribe(key,seat,client,res,canStay,math,preview) {
+  function subscribe(key,seat,client,res,canStay,math,preview,context) {
     let room = rooms.get(key);
     if (room?.peers[seat]) {
       close(room,seat,'فُتح مقعدك في نافذة أخرى.');
@@ -93,7 +95,7 @@ export function lessonService(store) {
     room.peers[seat]=peer;
     res.on('close',()=>detach(room,seat,peer));
     output(peer,'snapshot',room.strokes);
-    output(peer,'boardstate',{state:visibleBoard(store.readBoard(key)||emptyBoard()),sender:null});
+    output(peer,'boardstate',{state:visibleBoard(store.readBoard(key)||emptyBoard(),context),sender:null});
     if(math){
       const state=(preview?room.place:store.placeActivity(key))??initialPlace();
       output(peer,'place',visiblePlace(state,seat));
@@ -115,7 +117,7 @@ export function lessonService(store) {
     try { payload=JSON.parse(data.payload); } catch { throw new UserError('رسالة غير صالحة.'); }
     if(data.kind==='board'){
       const next=changeBoard(store.readBoard(key),seat,payload,context);store.writeBoard(key,next);
-      for(const peer of Object.values(room.peers))output(peer,'boardstate',{state:visibleBoard(next),sender:data.client});return visibleBoard(next);
+      for(const peer of Object.values(room.peers))output(peer,'boardstate',{state:visibleBoard(next,context),sender:data.client});return visibleBoard(next,context);
     }
     if(data.kind==='place'){
       requireState(math,'هذا النشاط لحصة الرياضيات فقط.',403);
@@ -163,7 +165,7 @@ export function lessonService(store) {
         requireState(state?.phase==='graded','اعتمد النتيجة أولًا من مقعد المعلم في الفصل التجريبي.',403);
         return html('نتيجة ولي الأمر التجريبية','<section class="narrow panel"><div class="eyebrow">معاينة ولي الأمر · بيانات التجربة فقط</div>'+resultCard(state)+'</section>');
       }
-      const match=path.match(/^\/lesson\/(preview|[\da-f-]{36})(?:\/(events|send))?$/i);
+      const match=path.match(/^\/lesson\/(preview|[\da-f-]{36})(?:\/(events|send|clear))?$/i);
       requireState(match,'الفصل غير متاح.',404);
       const [,id,action]=match, preview=id==='preview';
       let key,seat,booking;
@@ -178,10 +180,19 @@ export function lessonService(store) {
         booking=store.bookings(u.id,id)[0];
         requireState(booking,'الحجز غير متاح.',404);
         requireState(booking.status==='confirmed','هذا الحجز ملغى.',403);
-        requireState(isOpen(booking),'يفتح الفصل قبل الموعد بعشر دقائق ويغلق بانتهاء وقت الحصة.',403);
+        requireState(action==='clear'||isOpen(booking),'يفتح الفصل قبل الموعد بعشر دقائق ويغلق بانتهاء وقت الحصة.',403);
         seat=u.role==='teacher'?'teacher':'student';
         requireState(!requestedSeat || requestedSeat===seat,'لا يمكنك دخول مقعد الطرف الآخر.',403);
         key=id;
+      }
+      if(action==='clear'&&req.method==='POST'){
+        requireState(seat==='teacher','مسح الدرس للمعلم فقط.',403);
+        const data=await fields(req);let payload;try{payload=JSON.parse(data.payload);}catch{throw new UserError('طلب غير صالح.');}
+        requireState(payload.op==='clear','طلب غير صالح.');
+        const context={preview,subject:booking?.subject,grade:booking?.grade};
+        const next=changeBoard(store.readBoard(key),seat,payload,context);store.writeBoard(key,next);
+        for(const peer of Object.values(rooms.get(key)?.peers||{}))output(peer,'boardstate',{state:visibleBoard(next,context),sender:data.client});
+        res.writeHead(200,{'Content-Type':'application/json'});return res.end(JSON.stringify(visibleBoard(next,context)));
       }
       if (!action && req.method==='GET'){
         res.setHeader('Content-Security-Policy',"default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self' data:; img-src 'self' data: blob:; connect-src 'self'; media-src 'self' blob:; frame-ancestors 'none'; base-uri 'none'; form-action 'self'; object-src 'none'");
@@ -191,7 +202,7 @@ export function lessonService(store) {
         const client=url.searchParams.get('client')||'';
         requireState(idPattern.test(client),'معرّف اتصال غير صالح.');
         return subscribe(key,seat,client,res,()=>preview ||
-          (store.resolve(cookie)===u.id && isOpen(store.bookings(u.id,id)[0])),preview||booking.subject==='math',preview);
+          (store.resolve(cookie)===u.id && isOpen(store.bookings(u.id,id)[0])),preview||booking.subject==='math',preview,{preview,subject:booking?.subject,grade:booking?.grade});
       }
       if(action==='send' && req.method==='POST'){
         const data=await fields(req);

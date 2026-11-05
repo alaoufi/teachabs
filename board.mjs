@@ -14,7 +14,11 @@ export function changeBoard(current,seat,command,context={}){
   const next={...state,...target,activeLesson:command.lessonId,lessonScenes:archive,studentDraw:false,rev:state.rev+1};
   need(JSON.stringify(next).length<=2000000,'تجاوزت مساحة حفظ الدروس الحد المسموح.');return next;
  }
- if(['scene','draft','publish','hide'].includes(command.op)&&state.activeLesson)need(command.lessonId===state.activeLesson,'تغير الدرس؛ احتفظ بعملك وأعد التحميل.',409);
+ if(['scene','draft','publish','hide','clear'].includes(command.op)&&state.activeLesson)need(command.lessonId===state.activeLesson,'تغير الدرس؛ احتفظ بعملك وأعد التحميل.',409);
+ if(command.op==='clear'){
+  need(seat==='teacher'&&command.confirm===true,'مسح الدرس يحتاج موافقة المعلم.',403);
+  return {...state,rev:state.rev+1,elements:[],files:{},studentDraft:null,publishedStudent:null,studentDraw:false};
+ }
  if(command.op==='draft'){
   need(seat==='student'&&state.studentDraw,'كتابة المسودة تحتاج إذن المعلم.',403);
   const checked=changeBoard(emptyBoard(),'teacher',{...command,op:'scene',rev:0});

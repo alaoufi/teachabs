@@ -16,7 +16,7 @@ const status=text=>{$('status').textContent=text;};
 const hint=text=>{$('hint').textContent=text;};
 
 async function send(kind,payload,generation=''){
-  const response=await fetch(path+'/send?'+params,{
+  const response=await fetch(path+(kind==='board'&&payload.op==='clear'?'/clear?':'/send?')+params,{
     method:'POST',redirect:'error',body:new URLSearchParams({client,kind,payload:JSON.stringify(payload),pair:generation})
   });
   if(!response.ok)throw new Error(response.status===409?'تغيّرت اللوحة. راجعها قبل إعادة المحاولة.':'تعذّر إرسال التحديث. تحقّق من الاتصال أو أعد فتح الفصل.');

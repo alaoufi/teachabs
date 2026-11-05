@@ -5,19 +5,20 @@ import{createRoot}from'react-dom/client';
 import{Excalidraw,MainMenu,convertToExcalidrawElements,exportToBlob}from'@excalidraw/excalidraw';
 import'@excalidraw/excalidraw/index.css';
 import{fitDimensions,wrapAidText}from'./fit.js';
-import{aids,aidsForSubject}from'./aids.js';
+
 import'./board.css';
 
 export function attachProfessionalBoard(seat,signals,send,client,lessonSubject,grade){
  const choices=allowedLessons({preview:lessonSubject==='preview',subject:lessonSubject,grade});
- const available=lessonSubject==='preview'?aids:aidsForSubject(lessonSubject);
+
  let resolveInitial,initialized=false;
  const initialData=new Promise(resolve=>{resolveInitial=resolve;});
  let view='shared';
  const editable=()=>seat==='teacher'?view==='shared':view==='draft'&&remote?.studentDraw;
  const viewed=s=>view==='draft'?(s.studentDraft||{elements:[],files:{}}):view==='published'?(s.publishedStudent||{elements:[],files:{}}):s;
  let api,remote,ready=false,applying=false,saving=false,latest=null,timer,conflict=false;
- let notify=()=>{},refresh=()=>{};
+ let notify=()=>{},refresh=()=>{},openExit=()=>{};
+ if(seat==='teacher')document.getElementById('leave').addEventListener('click',e=>{e.preventDefault();openExit();});
  const nextPosition=()=>({x:80,y:Math.max(40,...api.getSceneElements().filter(e=>!e.isDeleted).map(e=>e.y+e.height))+40});
  const focus=elements=>requestAnimationFrame(()=>api.scrollToContent(elements,{fitToViewport:true,viewportZoomFactor:0.8,animate:false}));
  const relevantFiles=(elements,files)=>Object.fromEntries(elements.filter(e=>e.type==='image'&&!e.isDeleted&&files[e.fileId]).map(e=>[e.fileId,files[e.fileId]]));
@@ -59,20 +60,24 @@ export function attachProfessionalBoard(seat,signals,send,client,lessonSubject,g
   remote=state;apply(state);notify('متصل • الحفظ مؤقت؛ احتفظ بتصدير محلي');
  });
  signals.addEventListener('error',()=>{ready=false;notify('انقطع الاتصال. لا تُغلق الصفحة إذا لديك عمل غير محفوظ.');mode();});
- signals.addEventListener('closed',()=>{ready=false;notify('انتهى إذن الحصة.');mode();});
+ signals.addEventListener('closed',()=>{if(seat==='teacher')openExit();ready=false;notify('انتهى إذن الحصة.');mode();});
  function download(data,name,type){const url=URL.createObjectURL(new Blob([data],{type}));const a=document.createElement('a');a.href=url;a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(url),10000);}
  function App(){
-  const [status,setStatus]=useState('جارٍ فتح السبورة…'),[state,setState]=useState(null),[subject,setSubject]=useState(available[0]?.subject||'');
+  const [status,setStatus]=useState('جارٍ فتح السبورة…'),[state,setState]=useState(null),[subject,setSubject]=useState('');
   const [viewState,setViewState]=useState('shared');
   const selectView=value=>{if(latest||saving){notify('انتظر حفظ العمل أو صدّره قبل تغيير العرض.');return;}view=value;setViewState(value);apply(remote);};
   const moderate=async op=>{try{const next=await send('board',{op,rev:remote.rev,lessonId:remote.activeLesson});apply(next);notify(op==='publish'?'نُشرت نسخة المشاركة المعتمدة.':'حُجبت المشاركة المعتمدة.');}catch(e){notify(e.message);}};
+  const [exiting,setExiting]=useState(false);openExit=()=>setExiting(true);
+  const leave=()=>{location.href=document.getElementById('leave').href;};
+  const clearAndLeave=async()=>{try{const next=await send('board',{op:'clear',confirm:true,rev:remote.rev,lessonId:remote.activeLesson});latest=null;clearTimeout(timer);apply(next);leave();}catch(e){notify('لم يُمسح العمل: '+e.message);}};
   const input=useRef();notify=setStatus;refresh=setState;
+  const available=state?.resources||[];
   const selectedLesson=choices.find(l=>l.id===state?.activeLesson);
   const changeLesson=async id=>{if(!id||latest||saving||conflict)return;try{const s=await send('board',{op:'lesson',rev:remote.rev,lessonId:id});apply(s);focus(s.elements);}catch(e){notify(e.message);}};
   const addAid=a=>{if(!ready||conflict||!api||!editable())return;const elements=convertToExcalidrawElements([{type:'text',...nextPosition(),text:wrapAidText(a.title+'\n'+a.text+'\n'+a.explanation),fontSize:24,fontFamily:2}]);api.updateScene({elements:[...api.getSceneElements(),...elements]});focus(elements);};
   const toggle=async()=>{try{const s=await send('board',{op:'permission',rev:remote.rev,allow:!remote.studentDraw});remote=s;apply(s);}catch(e){notify(e.message);}};
   return <div className="teaching-board" dir="rtl">
-   <div className="board-bar"><label>مساحة العمل <select aria-label="مساحة العمل" value={viewState} disabled={!ready||saving||!!latest||conflict} onChange={e=>selectView(e.target.value)}><option value="shared">سبورة المعلم المشتركة</option><option value="draft">مسودة الطالب الخاصة بالطالب والمعلم</option><option value="published">مشاركة الطالب المعتمدة</option></select></label>{seat==='teacher'&&<><button disabled={!ready||saving||!!latest||conflict||!state?.studentDraft} onClick={()=>moderate('publish')}>نشر نسخة من مسودة الطالب</button><button disabled={!ready||saving||!!latest||conflict||!state?.publishedStudent} onClick={()=>moderate('hide')}>حجب المشاركة المعتمدة</button></>}<button onClick={()=>api&&focus(api.getSceneElements())}>إظهار السبورة كاملة</button><strong>سبورة الشرح</strong><span role="status" id="board-status">{status}</span>
+   {exiting&&<section role="dialog" aria-modal="false" aria-label="مغادرة الحصة" className="panel"><h3>هل تريد مسح أعمال الدرس الحالي قبل المغادرة؟</h3><p>يشمل سبورة المعلم ومسودة الطالب والنسخة المنشورة لهذا الدرس فقط. الدروس الأخرى وسجلات الطلاب تبقى محفوظة. يمكنك التصدير أولًا.</p><button onClick={()=>download(JSON.stringify(remote),'current-lesson-backup.json','application/json')}>تصدير أعمال الدرس بصيغة JSON</button><button onClick={leave}>مغادرة مع الاحتفاظ بالعمل</button><button disabled={saving||!!latest||conflict||!remote} onClick={clearAndLeave}>أوافق: مسح هذا الدرس والمغادرة</button><button onClick={()=>setExiting(false)}>إلغاء</button></section>}<div className="board-bar"><label>مساحة العمل <select aria-label="مساحة العمل" value={viewState} disabled={!ready||saving||!!latest||conflict} onChange={e=>selectView(e.target.value)}><option value="shared">سبورة المعلم المشتركة</option><option value="draft">مسودة الطالب الخاصة بالطالب والمعلم</option><option value="published">مشاركة الطالب المعتمدة</option></select></label>{seat==='teacher'&&<><button disabled={!ready||saving||!!latest||conflict||!state?.studentDraft} onClick={()=>moderate('publish')}>نشر نسخة من مسودة الطالب</button><button disabled={!ready||saving||!!latest||conflict||!state?.publishedStudent} onClick={()=>moderate('hide')}>حجب المشاركة المعتمدة</button></>}<button onClick={()=>api&&focus(api.getSceneElements())}>إظهار السبورة كاملة</button><strong>سبورة الشرح</strong><span role="status" id="board-status">{status}</span>
     <button onClick={()=>download(JSON.stringify({format:'khatwa-board',version:1,engine:'excalidraw',...scene()}),'lesson-board.json','application/json')}>تصدير قابل للاستعادة</button>
     <button onClick={async()=>{try{const s=scene();const blob=await exportToBlob({...s,appState:{exportBackground:true},mimeType:'image/png'});download(blob,'lesson-board.png','image/png');}catch(e){notify('تعذّر تصدير الصورة؛ استخدم ملف الاستعادة.');}}}>صورة PNG</button>
     <button onClick={()=>{if(latest&&!window.confirm('قد تفقد العمل غير المحفوظ. هل صدّرت نسخة وتريد تحميل آخر حفظ؟'))return;location.reload();}}>تحميل آخر حفظ</button>
