@@ -1,3 +1,4 @@
+import {registrationDashboard,registrationAdmin} from './registration-views.mjs';
 import { adminService } from './admin-service.mjs';
 import {serveAsset} from './asset-response.mjs';
 import { demoHub } from './demo.mjs';
@@ -60,7 +61,7 @@ export function createApp(store,{origin=process.env.APP_ORIGIN}={}) {
       const url=new URL(req.url,base);
       route=url.pathname;const q=Object.fromEntries(url.searchParams);
       const uid=store.resolve(cookie);u=uid?store.user(uid):null;
-      if(administration.matches(route))return await administration.handle({req,url,u,base,html,redirect,fields,limit,enter});
+      if(administration.matches(route)&&route!=='/admin/registration-agents')return await administration.handle({req,url,u,base,html,redirect,fields,limit,enter});
       if(lessons.matches(route))return await lessons.handle({req,res,url,u,cookie,base,html,redirect,fields,limit});
       if(req.method==='GET'){
         if(route==='/demo')return html('شاشات التجربة',demoHub(u,q.role));
@@ -75,6 +76,8 @@ export function createApp(store,{origin=process.env.APP_ORIGIN}={}) {
         if(route==='/')return u?redirect('/app'):html('التعليم الفردي',ui.landing());
         if(['/login','/register','/activate'].includes(route))return html('الحساب',ui.auth(route.slice(1),q.code||''));
         if(!u)return redirect('/login');
+                if(route==='/registration'||(route==='/app'&&u.role==='registration_agent')){role('registration_agent');return html('وكيل التسجيل',registrationDashboard(store.registration.dashboard(uid)));}
+        if(route==='/admin/registration-agents'){role('admin');return html('صلاحيات التسجيل',registrationAdmin(store.registration.agents(uid)));}
         if(route==='/app'&&u.role==='admin')return redirect('/admin');
         if(route==='/app')return html('لوحتي',ui.home(u,store));
         if(route==='/bookings')return html('الحجوزات',ui.bookingsList(store.bookings(uid)));
@@ -115,7 +118,11 @@ export function createApp(store,{origin=process.env.APP_ORIGIN}={}) {
         if(route==='/tour')return enter(store.tour().parent);
         if(route==='/register')return enter(store.parent(data.name,data.email,data.password));
         if(route==='/login')return enter(store.login(data.email,data.password));
-        if(route==='/activate')return enter(store.activate(data.code,data.password));
+                if(route==='/activate'){const id=store.activate(data.code,data.password);return store.registration.active(id)?enter(id):html('بانتظار التفعيل','<section class="panel"><h1>تم إعداد كلمة المرور</h1><p>الحساب بانتظار تفعيل وكيل التسجيل. بعد التفعيل يمكنك تسجيل الدخول.</p><a href="/login">تسجيل الدخول</a></section>');}
+        if(route==='/admin/registration-agents'){role('admin');store.registration.setPermissions(uid,data.agent,{register_parent:data.register_parent==='on',register_child:data.register_child==='on',manage_status:data.manage_status==='on'},Number(data.rev));return redirect('/admin/registration-agents');}
+        if(route==='/registration/parent'){role('registration_agent');const result=store.registration.addParent(uid,data);return html('رابط إعداد الحساب','<section class="panel"><h1>تم تسجيل ولي الأمر</h1><p>الحساب بانتظار التفعيل. رابط إعداد كلمة المرور خاص وصالح 24 ساعة ويستخدم مرة واحدة. لم يُرسل تلقائيًا.</p><a href="/activate?code='+ui.e(result.activationToken)+'">إعداد كلمة المرور</a><p><a href="/registration">العودة للتسجيل</a></p></section>');}
+        if(route==='/registration/child'){role('registration_agent');store.registration.addChild(uid,{...data,grade:Number(data.grade)});return redirect('/registration');}
+        if(route==='/registration/status'){role('registration_agent');store.registration.setStatus(uid,data);return redirect('/registration');}
         if(!u)return redirect('/login');
         if(route==='/logout'){store.logout(cookie);setCookie('',0);return redirect('/');}
         const gradePath=route.match(/^\/booking\/([\da-f-]{36})\/grade$/i);

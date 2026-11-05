@@ -1,4 +1,5 @@
-import { createAdminStore } from './admin-model.mjs';
+import {createAdminStore} from './admin-model.mjs';
+import {registrationService} from './registration.mjs';
 import { DatabaseSync } from 'node:sqlite';
 import { randomBytes, randomUUID, createHash, scryptSync, timingSafeEqual } from 'node:crypto';
 
@@ -35,6 +36,7 @@ export function openStore(path) {
     CREATE UNIQUE INDEX IF NOT EXISTS single_slot ON bookings(slot) WHERE status='confirmed';
     CREATE INDEX IF NOT EXISTS slot_schedule ON slots(teacher,start);
     CREATE INDEX IF NOT EXISTS child_schedule ON bookings(child,status);`);
+  const registration=registrationService(db,{authorizeAdmin:id=>admin.requireAccess(id,'supervisor')});
   const one=(sql,...args)=>db.prepare(sql).get(...args);
   const all=(sql,...args)=>db.prepare(sql).all(...args);
   const run=(sql,...args)=>db.prepare(sql).run(...args);
@@ -81,8 +83,8 @@ export function openStore(path) {
     return transaction(()=>{
       const row=one('SELECT user FROM invites WHERE token=? AND expires>?',hash(String(token)),Date.now());
       check(row,'انتهت الدعوة أو استُخدمت من قبل.');
-      const membership=one('SELECT active FROM admin_members WHERE user=?',row.user);
-      check(!membership||membership.active===1,'هذا الحساب موقوف. تواصل مع المشرف العام.',403);
+      check(one('SELECT status FROM account_status WHERE user=?',row.user)?.status!=='suspended','الحساب موقوف.',403);
+      check(adminActive(row.user),'Account suspended',403);
       run('UPDATE users SET pass=? WHERE id=?',passwordHash(password),row.user);
       run('DELETE FROM invites WHERE token=?',hash(token));
       return row.user;
@@ -94,9 +96,7 @@ export function openStore(path) {
     const u=one('SELECT id,pass FROM users WHERE email=?',email);
     const [salt,digest]=(u?.pass||('unknown:'+ '0'.repeat(128))).split(':');
     const ok=timingSafeEqual(scryptSync(password,salt,64),Buffer.from(digest,'hex'));
-    check(ok && u?.pass,'تحقق من البريد وكلمة المرور.',403);
-    const membership=one('SELECT active FROM admin_members WHERE user=?',u.id);
-    check(!membership||membership.active===1,'هذا الحساب موقوف. تواصل مع المشرف العام.',403);
+    check(ok && u?.pass && registration.active(u.id)&&adminActive(u.id),'تحقق من البريد وكلمة المرور.',403);
     return u.id;
   }
   function child(parentId,{name,grade,curriculum,language}) {
@@ -107,7 +107,9 @@ export function openStore(path) {
     return id;
   }
   function ownedChild(owner,id) {
+    check(registration.active(owner),'الحساب غير مفعل أو موقوف.',403);
     const c=one('SELECT * FROM children WHERE id=? AND parent=?',id,owner);
+    check(!c||one('SELECT status FROM child_status WHERE child=?',id)?.status!=='suspended','ملف الطالب موقوف.',403);
     check(c,'ملف الطفل غير متاح.',404);return c;
   }
   function slot(teacherId,{subject,minutes,start,instructions}) {
@@ -155,7 +157,7 @@ export function openStore(path) {
     });
   }
   function bookings(id,bookingId=null) {
-    return all(`SELECT b.id,b.status,b.cancelled_by,s.start,s.minutes,s.instructions,s.subject,u.name teacherName,c.name childName,c.grade,c.language
+    return all(`SELECT b.id,b.status,b.cancelled_by,s.start,s.minutes,s.instructions,s.subject,u.name teacherName,c.name childName,c.grade,c.language,COALESCE((SELECT status FROM child_status WHERE child=c.id),'active') childStatus,COALESCE((SELECT status FROM account_status WHERE user=b.parent),'active') parentStatus
       FROM bookings b JOIN slots s ON s.id=b.slot JOIN users u ON u.id=s.teacher JOIN children c ON c.id=b.child
       WHERE (b.parent=? OR s.teacher=?) AND (? IS NULL OR b.id=?) ORDER BY s.start DESC,b.rowid DESC`,id,id,bookingId,bookingId);
   }
@@ -215,13 +217,14 @@ export function openStore(path) {
   const readBoard=id=>{const r=one('SELECT state FROM lesson_boards WHERE id=?',id);return r?JSON.parse(r.state):null;};
   const writeBoard=(id,state)=>run('INSERT INTO lesson_boards VALUES(?,?,?) ON CONFLICT(id) DO UPDATE SET state=excluded.state,updated=excluded.updated',id,JSON.stringify(state),Date.now());
   const admin=createAdminStore({db,one,all,run,transaction,user,UserError,subjects,grades,duration,validEmail,secret,hash,tour});
-  return {admin,readBoard,writeBoard,close:()=>db.close(),user,parent,invite,activate,login,child,ownedChild,slot,offers,book,bookings,cancel,withdraw,tour,
+  const adminActive=id=>{const m=one('SELECT active FROM admin_members WHERE user=?',id);return !m||m.active===1;};
+  return {admin,registration,readBoard,writeBoard,close:()=>db.close(),user,parent,invite,activate,login,child,ownedChild,slot,offers,book,bookings,cancel,withdraw,tour,
     placeActivity,changePlace,childResults,
     children:id=>all('SELECT * FROM children WHERE parent=? ORDER BY rowid',id),
     schedule:id=>all(`SELECT s.*,EXISTS(SELECT 1 FROM bookings b WHERE b.slot=s.id AND b.status='confirmed') booked FROM slots s WHERE teacher=? AND active=1 AND start>? ORDER BY start`,id,Date.now()),
     switchTour:id=>{const u=user(id);check(u.scope&&['parent','teacher'].includes(u.role),'هذه الميزة لجولة الأسرة والمعلم فقط.',403);return one('SELECT id FROM users WHERE scope=? AND role=?',u.scope,u.role==='parent'?'teacher':'parent').id;},
-    session:id=>{const key=secret();run('DELETE FROM sessions WHERE expires<=?',Date.now());run('INSERT INTO sessions VALUES(?,?,?)',hash(key),id,Date.now()+7*86400000);return key;},
-    resolve:key=>key && one('SELECT user FROM sessions WHERE token=? AND expires>?',hash(key),Date.now())?.user,
+    session:id=>{check(registration.active(id)&&adminActive(id),'الحساب غير مفعل أو موقوف.',403);const key=secret();run('DELETE FROM sessions WHERE expires<=?',Date.now());run('INSERT INTO sessions VALUES(?,?,?)',hash(key),id,Date.now()+7*86400000);return key;},
+    resolve:key=>{const id=key&&one('SELECT user FROM sessions WHERE token=? AND expires>?',hash(key),Date.now())?.user;return id&&registration.active(id)&&adminActive(id)?id:undefined;},
     logout:key=>{if(key)run('DELETE FROM sessions WHERE token=?',hash(key));}
   };
 }

@@ -9,7 +9,7 @@ import { advancePlace, initialPlace, visiblePlace } from './place-value.mjs';
 import { placeBoard, resultCard } from './place-views.mjs';
 
 const EARLY_ENTRY = 10 * 60_000;
-const isOpen = row => row?.status==='confirmed' && Date.now()>=row.start-EARLY_ENTRY &&
+const isOpen = row => row?.status==='confirmed' && row.childStatus!=='suspended' && row.parentStatus!=='suspended' && Date.now()>=row.start-EARLY_ENTRY &&
   Date.now()<row.start+row.minutes*60_000;
 const requireState = (ok, message, status=400) => { if (!ok) throw new UserError(message,status); };
 const opposite = role => role === 'teacher' ? 'student' : 'teacher';

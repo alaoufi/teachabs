@@ -1,0 +1,7 @@
+# Registration agent — isolated local foundation
+
+Based on local development 2e69658, not the live release branch. 37 tests pass. Agent permissions are assigned by an existing same-scope admin: parent registration, child profile registration, and status management. No default admin/agent account or password, no email sending, no production account creation. Only synthetic fixture accounts were used.
+
+Parents are created pending with one-use 24h password-setup token (hashed in DB). Activation by agent is separate from password setup. Suspended parent login/session resolution is denied and sessions removed. Child profiles have active/suspended state; suspension prevents offers/booking/lesson entry and replay reads. Active lesson checks revalidate on heartbeat, so closure is not instantaneous. Existing records default active. No records are deleted.
+
+Agent sees/manages only parents it registered and their children; teacher/admin accounts cannot be targeted. Admin scope/role checks and revision-checked permissions, transactional audit, same-origin POST checks apply. No independent student login, full admin provisioning or agent invitation UI is implemented. New tables are additive; code rollback does not remove tables. SQLite remains temporary on Render. Registration UI has not yet received browser visual verification. Work was saved when user reprioritized board release; do not deploy this branch as a board update.
