@@ -1,3 +1,4 @@
+import {replayPermissions} from './replay-permissions.mjs';
 import {savedLessonLibrary} from './saved-lessons.mjs';
 import { DatabaseSync } from 'node:sqlite';
 import { randomBytes, randomUUID, createHash, scryptSync, timingSafeEqual } from 'node:crypto';
@@ -206,11 +207,12 @@ export function openStore(path) {
   db.exec('CREATE TABLE IF NOT EXISTS lesson_boards(id TEXT PRIMARY KEY,state TEXT NOT NULL,updated INTEGER NOT NULL)');
   const readBoard=id=>{const r=one('SELECT state FROM lesson_boards WHERE id=?',id);return r?JSON.parse(r.state):null;};
   const writeBoard=(id,state)=>run('INSERT INTO lesson_boards VALUES(?,?,?) ON CONFLICT(id) DO UPDATE SET state=excluded.state,updated=excluded.updated',id,JSON.stringify(state),Date.now());
-  return {savedLessons:savedLessonLibrary(db),readBoard,writeBoard,close:()=>db.close(),user,parent,invite,activate,login,child,ownedChild,slot,offers,book,bookings,cancel,withdraw,tour,
+  const savedLessons=savedLessonLibrary(db),replays=replayPermissions(db);
+  return {savedLessons,replays,readBoard,writeBoard,close:()=>db.close(),user,parent,invite,activate,login,child,ownedChild,slot,offers,book,bookings,cancel,withdraw,tour,
     placeActivity,changePlace,childResults,
     children:id=>all('SELECT * FROM children WHERE parent=? ORDER BY rowid',id),
     schedule:id=>all(`SELECT s.*,EXISTS(SELECT 1 FROM bookings b WHERE b.slot=s.id AND b.status='confirmed') booked FROM slots s WHERE teacher=? AND active=1 AND start>? ORDER BY start`,id,Date.now()),
-    switchTour:id=>{const u=user(id);check(u.scope,'هذه الميزة للجولة فقط.',403);return one('SELECT id FROM users WHERE scope=? AND id<>?',u.scope,id).id;},
+    switchTour:id=>{const u=user(id);check(u.scope&&['teacher','parent'].includes(u.role),'هذه الميزة للجولة فقط.',403);return one("SELECT id FROM users WHERE scope=? AND id<>? AND role IN ('teacher','parent')",u.scope,id).id;},
     session:id=>{const key=secret();run('DELETE FROM sessions WHERE expires<=?',Date.now());run('INSERT INTO sessions VALUES(?,?,?)',hash(key),id,Date.now()+7*86400000);return key;},
     resolve:key=>key && one('SELECT user FROM sessions WHERE token=? AND expires>?',hash(key),Date.now())?.user,
     logout:key=>{if(key)run('DELETE FROM sessions WHERE token=?',hash(key));}

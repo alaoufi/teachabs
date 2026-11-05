@@ -1,3 +1,4 @@
+import {replayAdmin,replayList} from './replay-views.mjs';
 import {libraryHome,templatePage} from './library-views.mjs';
 import { demoHub } from './demo.mjs';
 import http from 'node:http';
@@ -71,6 +72,13 @@ export function createApp(store,{origin=process.env.APP_ORIGIN}={}) {
         if(route==='/')return u?redirect('/app'):html('التعليم الفردي',ui.landing());
         if(['/login','/register','/activate'].includes(route))return html('الحساب',ui.auth(route.slice(1),q.code||''));
         if(!u)return redirect('/login');
+        if(route==='/admin/replays'||(route==='/app'&&u.role==='admin')){role('admin');return html('إذن إعادة الدرس',replayAdmin(store.replays.list(uid)));}
+        if(route==='/replays'){role('parent');return html('مراجعة الدروس',replayList(store.replays.available(uid)));}
+        if(route==='/replay'){
+          role('parent');const template=store.replays.read(uid,q.id,q.child),index=Number(q.page||0);if(!Number.isInteger(index)||index<0||index>=template.pages.length)throw new UserError('صفحة غير متاحة',404);
+          res.setHeader('Content-Security-Policy',"default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self' data:; img-src 'self' data: blob:; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'; object-src 'none'; form-action 'self'");
+          const body=templatePage(template,q.id,index).replaceAll('/lesson-library/template?id=', '/replay?child='+encodeURIComponent(q.child)+'&id=').replaceAll('href="/lesson-library"','href="/replays"');return html('إعادة الدرس بإذن الإدارة',body);
+        }
         if(route.startsWith('/lesson-library')){
           role('teacher');const library=store.savedLessons;
           if(route==='/lesson-library')return html('مكتبة دروسي',libraryHome(library.listTemplates(uid),store.bookings(uid)));
@@ -118,6 +126,7 @@ export function createApp(store,{origin=process.env.APP_ORIGIN}={}) {
         if(route==='/login')return enter(store.login(data.email,data.password));
         if(route==='/activate')return enter(store.activate(data.code,data.password));
         if(!u)return redirect('/login');
+        if(route==='/admin/replays'){role('admin');if(!['allow','deny'].includes(data.decision))throw new UserError('قرار غير صالح');const days=Number(data.days);if(data.decision==='allow'&&(!Number.isInteger(days)||days<1||days>30))throw new UserError('المدة من يوم إلى 30 يومًا');store.replays.decide(uid,data.instance,{enabled:data.decision==='allow',expires:Date.now()+days*86400000,rev:Number(data.rev)});return redirect('/admin/replays');}
         if(route==='/lesson-library/new-instance'){role('teacher');const instance=store.savedLessons.instantiate(uid,data.template,data.booking);return redirect('/lesson-library/instance?id='+instance.id);}
         if(route==='/lesson-library/page'){role('teacher');store.savedLessons.navigate(uid,data.id,Number(data.rev),Number(data.page));return redirect('/lesson-library/instance?id='+data.id);}
         if(route==='/lesson-library/save'){role('teacher');const id=store.savedLessons.fromBooking(uid,data.booking,data.title,data.base||null);return redirect('/lesson-library/template?id='+id);}
