@@ -28,7 +28,7 @@ export function replayPermissions(db){
  }
  function read(parent,id,child){
   const grant=one(`SELECT g.*,b.status FROM replay_grants g JOIN saved_lesson_instances i ON i.id=g.instance JOIN bookings b ON b.id=i.booking JOIN children c ON c.id=g.child JOIN users u ON u.id=c.parent WHERE g.instance=? AND c.id=? AND c.parent=? AND u.role='parent'`,id,child,parent);
-  need(grant&&grant.enabled===1&&grant.expires>Date.now()&&grant.status==='confirmed','Replay unavailable');
+  need(grant&&one('SELECT status FROM child_status WHERE child=?',child)?.status!=='suspended'&&grant.enabled===1&&grant.expires>Date.now()&&grant.status==='confirmed','Replay unavailable');
   return JSON.parse(grant.snapshot);
  }
  function list(admin){

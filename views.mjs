@@ -19,10 +19,10 @@ const opt=(v,t)=>`<option value="${e(v)}">${e(t)}</option>`;
 const field=(label,control)=>`<label>${label}${control}</label>`;
 const input=(name,attrs)=>`<input name="${name}" ${attrs} required>`;
 const steps=(current)=>`<ol class="steps">${['الطفل','المادة','المعلم والموعد','التأكيد'].map((x,i)=>`<li class="${i<=current?'on':''}"><b>${aNum(i+1)}</b> ${x}</li>`).join('')}</ol>`;
-const role=u=>u.role==='admin'?'الإدارة':u.role==='teacher'?'المعلم':'ولي الأمر';
+const role=u=>u.role==='registration_agent'?'وكيل التسجيل':u.role==='admin'?'الإدارة':u.role==='teacher'?'المعلم':'ولي الأمر';
 export function page(title,body,u=null) {
-  const nav=u?`${link('/app','لوحتي','navlink')} ${link('/bookings','الحجوزات','navlink')} ${post('/logout',btn('خروج','quiet'),'inline')}`:`${link('/lesson/teacher','مدخل المعلم','navlink')} ${link('/login','تسجيل الدخول','navlink')} ${link('/register','إنشاء حساب','small-btn')}`;
-  const banner=u?.scope&&u.role!=='admin'?`<aside class="demo"><div><strong>جولة توضيحية</strong> <span>· بيانات ومواعيد معزولة عن الحجوزات الفعلية</span></div>${post('/tour/switch',btn(u.role==='parent'?'عرض حساب المعلم':'عرض حساب ولي الأمر','switch'),'inline')}</aside>`:'';
+  const nav=u?.role==='admin'?`${link('/app','الإدارة','navlink')} ${link('/admin/registration','وكلاء التسجيل','navlink')} ${post('/logout',btn('خروج','quiet'),'inline')}`:u?`${link('/app','لوحتي','navlink')} ${link('/bookings','الحجوزات','navlink')} ${post('/logout',btn('خروج','quiet'),'inline')}`:`${link('/lesson/teacher','مدخل المعلم','navlink')} ${link('/login','تسجيل الدخول','navlink')} ${link('/register','إنشاء حساب','small-btn')}`;
+  const banner=u?.scope&&['teacher','parent'].includes(u.role)?`<aside class="demo"><div><strong>جولة توضيحية</strong> <span>· بيانات ومواعيد معزولة عن الحجوزات الفعلية</span></div>${post('/tour/switch',btn(u.role==='parent'?'عرض حساب المعلم':'عرض حساب ولي الأمر','switch'),'inline')}</aside>`:'';
   return `<!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#155c4d"><link rel="icon" href="/mark.svg"><link rel="manifest" href="/app.webmanifest"><link rel="apple-touch-icon" href="/icon-192.png"><link rel="stylesheet" href="/style.css"><link rel="stylesheet" href="/depth.css"><title>${e(title)} | احتراف التدريس</title></head><body><header><nav><a class="brand" href="${u?'/app':'/'}"><img alt="" src="/mark.svg"><span>احتراف التدريس<small>للتعليم الفردي</small></span></a><div class="nav-actions"><a class="navlink" href="/demo">أقسام التجربة</a>${nav}</div></nav></header><main>${banner}${body}</main><footer><div><b>احتراف التدريس</b> للتعليم الفردي</div><span>${u?'مساحة '+role(u):'المرحلة الابتدائية'} &nbsp;·&nbsp; بتوقيت الرياض</span></footer></body></html>`;
 }
 export function landing(){
@@ -35,7 +35,7 @@ export function landing(){
 }
 export function auth(kind,code='',error='',values={}) {
   const register=kind==='register',activate=kind==='activate';
-  const title=register?'إنشاء حساب ولي أمر':activate?'تفعيل حساب المعلم':'تسجيل الدخول';
+  const title=register?'إنشاء حساب ولي أمر':activate?'تفعيل الحساب':'تسجيل الدخول';
   const fields=(register?field('اسم ولي الأمر',input('name','autocomplete="name" maxlength="60" value="'+e(values.name)+'"')):'')+
     (!activate?field('البريد الإلكتروني',input('email','type="email" dir="ltr" autocomplete="username" maxlength="180" value="'+e(values.email)+'"')):hidden('code',code))+
     field(register||activate?'كلمة المرور · ١٠ أحرف على الأقل':'كلمة المرور',input('password','type="password" maxlength="128" autocomplete="'+(kind==='login'?'current-password':'new-password')+'"'+(kind==='login'?'':' minlength="10"')));

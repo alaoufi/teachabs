@@ -1,3 +1,4 @@
+import {registrationDashboard,registrationAdmin} from './registration-views.mjs';
 import {serveAsset} from './asset-response.mjs';
 import {replayAdmin,replayList} from './replay-views.mjs';
 import {libraryHome,templatePage} from './library-views.mjs';
@@ -74,6 +75,8 @@ export function createApp(store,{origin=process.env.APP_ORIGIN}={}) {
         if(route==='/')return u?redirect('/app'):html('التعليم الفردي',ui.landing());
         if(['/login','/register','/activate'].includes(route))return html('الحساب',ui.auth(route.slice(1),q.code||''));
         if(!u)return redirect('/login');
+        if(route==='/registration'||(route==='/app'&&u.role==='registration_agent')){role('registration_agent');return html('وكيل التسجيل',registrationDashboard(store.registration.dashboard(uid)));}
+        if(route==='/admin/registration'){role('admin');return html('صلاحيات التسجيل',registrationAdmin(store.registration.agents(uid)));}
         if(route==='/admin/replays'||(route==='/app'&&u.role==='admin')){role('admin');return html('إذن إعادة الدرس',replayAdmin(store.replays.list(uid)));}
         if(route==='/replays'){role('parent');return html('مراجعة الدروس',replayList(store.replays.available(uid)));}
         if(route==='/replay'){
@@ -126,8 +129,12 @@ export function createApp(store,{origin=process.env.APP_ORIGIN}={}) {
         if(route==='/tour')return enter(store.tour().parent);
         if(route==='/register')return enter(store.parent(data.name,data.email,data.password));
         if(route==='/login')return enter(store.login(data.email,data.password));
-        if(route==='/activate')return enter(store.activate(data.code,data.password));
+        if(route==='/activate'){const id=store.activate(data.code,data.password);return store.registration.active(id)?enter(id):html('بانتظار التفعيل','<section class="panel"><h1>تم إعداد كلمة المرور</h1><p>الحساب بانتظار تفعيل وكيل التسجيل. بعد التفعيل يمكنك تسجيل الدخول.</p><a href="/login">تسجيل الدخول</a></section>');}
         if(!u)return redirect('/login');
+        if(route==='/admin/registration'){role('admin');store.registration.setPermissions(uid,data.agent,{register_parent:data.register_parent==='on',register_child:data.register_child==='on',manage_status:data.manage_status==='on'},Number(data.rev));return redirect('/admin/registration');}
+        if(route==='/registration/parent'){role('registration_agent');const result=store.registration.addParent(uid,data);return html('رابط إعداد الحساب','<section class="panel"><h1>تم تسجيل ولي الأمر</h1><p>الحساب بانتظار التفعيل. رابط إعداد كلمة المرور خاص وصالح 24 ساعة ويستخدم مرة واحدة. لم يُرسل تلقائيًا.</p><a href="/activate?code='+ui.e(result.activationToken)+'">إعداد كلمة المرور</a><p><a href="/registration">العودة للتسجيل</a></p></section>');}
+        if(route==='/registration/child'){role('registration_agent');store.registration.addChild(uid,{...data,grade:Number(data.grade)});return redirect('/registration');}
+        if(route==='/registration/status'){role('registration_agent');store.registration.setStatus(uid,data);return redirect('/registration');}
         if(route==='/admin/replays'){role('admin');if(!['allow','deny'].includes(data.decision))throw new UserError('قرار غير صالح');const days=Number(data.days);if(data.decision==='allow'&&(!Number.isInteger(days)||days<1||days>30))throw new UserError('المدة من يوم إلى 30 يومًا');store.replays.decide(uid,data.instance,{enabled:data.decision==='allow',expires:Date.now()+days*86400000,rev:Number(data.rev)});return redirect('/admin/replays');}
         if(route==='/lesson-library/new-instance'){role('teacher');const instance=store.savedLessons.instantiate(uid,data.template,data.booking);return redirect('/lesson-library/instance?id='+instance.id);}
         if(route==='/lesson-library/page'){role('teacher');store.savedLessons.navigate(uid,data.id,Number(data.rev),Number(data.page));return redirect('/lesson-library/instance?id='+data.id);}
