@@ -1,0 +1,7 @@
+# Microphone preferences — limited mitigation
+
+The existing getUserMedia audio:true request did not prove browser processing was disabled. This change explicitly prefers echoCancellation=true and noiseSuppression=true. autoGainControl=false is preferred to avoid automatically amplifying quiet/distant sound; quiet speakers may need a closer microphone or manual input-level adjustment. All constraints use ideal, not exact, so unsupported processing should not prevent microphone access. Video requests and device stop/reconnect lifecycle are unchanged.
+
+This is not voice isolation, speaker recognition, or a guarantee against room noise. Actual processing depends on browser, OS and device. Use headphones and a close microphone for a real comparison. Before declaring improvement, test two physical devices across the intended network and inspect the active track's getSettings() for the three processing flags; missing flags mean unknown. Compare near speech, distant speech, speaker echo and quiet speech. No physical two-device audio test was performed here, and no audio quality result is claimed.
+
+The lifecycle unit test checks the exact requested preferences, unchanged video constraints, stopping active tracks and rejecting late permission results. No student recordings or external processing services are used. Pre-audio code checkpoint: 473a28c, backup 004 Git bundle verified locally. Roll back this isolated commit if device-specific regressions appear.
