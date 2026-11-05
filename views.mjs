@@ -49,7 +49,7 @@ export function home(u,s) {
   const all=s.bookings(u.id);
   const upcoming=all.filter(b=>b.status==='confirmed'&&b.start>Date.now()).sort((a,b)=>a.start-b.start);
   const next=`<div class="sectitle"><h2>الحجز القادم</h2>${link('/bookings','كل الحجوزات ←','textlink')}</div>${upcoming.length?bookingRow(upcoming[0]):empty('لا يوجد حجز قادم',u.role==='parent'?'اختر طفلًا ثم مادة للعثور على الموعد المناسب.':'ستظهر هنا أول حصة تؤكدها الأسرة من مواعيدك.')}`;
-  const top=sectionIcon(u.role)+link('/lesson','دخول الحصة','textlink')+heading('لوحة '+role(u),'أهلًا، '+e(u.name),u.role==='parent'?'ابدأ باختيار الطفل الذي تريد الحجز له.':'انشر مواعيدك وتابع الحجوزات المؤكدة للأسر.');
+  const top=(u.role==='teacher'?link('/lesson-library','مكتبة دروسي المحفوظة','outline'):'')+sectionIcon(u.role)+link('/lesson','دخول الحصة','textlink')+heading('لوحة '+role(u),'أهلًا، '+e(u.name),u.role==='parent'?'ابدأ باختيار الطفل الذي تريد الحجز له.':'انشر مواعيدك وتابع الحجوزات المؤكدة للأسر.');
   if(u.role==='teacher') {
     const slots=s.schedule(u.id);
     return top+next+`<div class="sectitle"><h2>مواعيدي المتاحة والمحجوزة</h2>${link('/teacher/new','+ إضافة موعد')}</div>${slots.length?slots.map(v=>`<div class="row"><div><strong>${e(subjects[v.subject])} · ${date(v.start)}</strong><small>${spanTime(v.start,v.minutes)} · ${aNum(v.minutes)} دقيقة</small></div>${v.booked?'<span class="tag">محجوز</span>':post('/teacher/withdraw',hidden('id',v.id)+btn('سحب الموعد','quiet'))}</div>`).join(''):empty('لم تُضف أي مواعيد','حدّد مادة ووقتًا قبل فتح حجزك الأول.')}`;

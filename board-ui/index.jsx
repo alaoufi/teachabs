@@ -104,3 +104,5 @@ export function attachProfessionalBoard(seat,signals,send,client,lessonSubject,g
  }
  createRoot(document.getElementById('board-pro')).render(<App/>);
 }
+
+export function attachSavedLessonViewer(root,scene){createRoot(root).render(<Excalidraw initialData={scene} viewModeEnabled={true} langCode="ar-SA" excalidrawAPI={api=>setTimeout(()=>api.scrollToContent(scene.elements,{fitToViewport:true,viewportZoomFactor:0.8,animate:false}),100)} onLinkOpen={(element,event)=>event.preventDefault()} validateEmbeddable={()=>false} UIOptions={{canvasActions:{loadScene:false,saveToActiveFile:false,export:false,toggleTheme:false},tools:{image:false}}}><MainMenu /></Excalidraw>);}

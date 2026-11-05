@@ -1,3 +1,4 @@
+import {libraryHome,templatePage} from './library-views.mjs';
 import { demoHub } from './demo.mjs';
 import http from 'node:http';
 import { readFile } from 'node:fs/promises';
@@ -10,6 +11,7 @@ import { advancePlace } from './place-value.mjs';
 import { progressPage, bookingResult } from './place-views.mjs';
 
 const files={'/style.css':'text/css; charset=utf-8','/mark.svg':'image/svg+xml','/study.svg':'image/svg+xml','/app.webmanifest':'application/manifest+json','/icon-192.png':'image/png','/icon-512.png':'image/png'};
+files['/saved-viewer.js']='text/javascript; charset=utf-8';
 files['/depth.css']='text/css; charset=utf-8';
 files['/lesson-client.js']='text/javascript; charset=utf-8';
 files['/lesson.css']='text/css; charset=utf-8';
@@ -69,6 +71,13 @@ export function createApp(store,{origin=process.env.APP_ORIGIN}={}) {
         if(route==='/')return u?redirect('/app'):html('التعليم الفردي',ui.landing());
         if(['/login','/register','/activate'].includes(route))return html('الحساب',ui.auth(route.slice(1),q.code||''));
         if(!u)return redirect('/login');
+        if(route.startsWith('/lesson-library')){
+          role('teacher');const library=store.savedLessons;
+          if(route==='/lesson-library')return html('مكتبة دروسي',libraryHome(library.listTemplates(uid),store.bookings(uid)));
+          if(route==='/lesson-library/export'){const data=library.exportTemplate(uid,q.id);res.writeHead(200,{'Content-Type':'application/json','Content-Disposition':'attachment; filename="teacher-lesson.json"'});return res.end(JSON.stringify(data));}
+          if(route==='/lesson-library/template'||route==='/lesson-library/instance'){const instance=route.endsWith('/instance');const template=instance?library.readInstance(uid,q.id):library.readTemplate(uid,q.id),index=instance?template.pageIndex:Number(q.page||0);if(!Number.isInteger(index)||index<0||index>=template.pages.length)throw new UserError('صفحة غير متاحة.',404);res.setHeader('Content-Security-Policy',"default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self' data:; img-src 'self' data: blob:; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'; object-src 'none'; form-action 'self'");return html('صفحات الدرس',templatePage(template,q.id,index,instance?'instance':'template',template.rev||0));}
+          throw new UserError('صفحة غير متاحة.',404);
+        }
         if(route==='/app')return html('لوحتي',ui.home(u,store));
         if(route==='/bookings')return html('الحجوزات',ui.bookingsList(store.bookings(uid)));
         if(route==='/progress'){
@@ -109,6 +118,9 @@ export function createApp(store,{origin=process.env.APP_ORIGIN}={}) {
         if(route==='/login')return enter(store.login(data.email,data.password));
         if(route==='/activate')return enter(store.activate(data.code,data.password));
         if(!u)return redirect('/login');
+        if(route==='/lesson-library/new-instance'){role('teacher');const instance=store.savedLessons.instantiate(uid,data.template,data.booking);return redirect('/lesson-library/instance?id='+instance.id);}
+        if(route==='/lesson-library/page'){role('teacher');store.savedLessons.navigate(uid,data.id,Number(data.rev),Number(data.page));return redirect('/lesson-library/instance?id='+data.id);}
+        if(route==='/lesson-library/save'){role('teacher');const id=store.savedLessons.fromBooking(uid,data.booking,data.title,data.base||null);return redirect('/lesson-library/template?id='+id);}
         if(route==='/logout'){store.logout(cookie);setCookie('',0);return redirect('/');}
         const gradePath=route.match(/^\/booking\/([\da-f-]{36})\/grade$/i);
         if(gradePath){

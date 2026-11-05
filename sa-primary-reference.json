@@ -1,0 +1,166 @@
+{
+  "jurisdiction": "SA",
+  "stage": "primary",
+  "referenceEdition": 5,
+  "referenceYear": null,
+  "targetEdition": 6,
+  "targetYear": 1448,
+  "currentEditionVerified": false,
+  "verification": "Reference map supplied by parent research; sixth-edition original not directly verified. Not a lesson inventory.",
+  "sources": [
+    "https://moe.gov.sa/ar/education/general-education/study-plans",
+    "https://sites.moe.gov.sa/Taif/news/news-1592/"
+  ],
+  "terms": {
+    "count": 2,
+    "announcementSchoolYear": "1447/1448",
+    "source": "https://sites.moe.gov.sa/Taif/news/news-1592/"
+  },
+  "subjects": [
+    {
+      "id": "islamic",
+      "title": "القرآن الكريم والدراسات الإسلامية",
+      "grades": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6
+      ],
+      "status": "reference-only",
+      "units": [],
+      "lessons": []
+    },
+    {
+      "id": "arabic",
+      "title": "اللغة العربية",
+      "grades": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6
+      ],
+      "status": "reference-only",
+      "units": [],
+      "lessons": []
+    },
+    {
+      "id": "math",
+      "title": "الرياضيات",
+      "grades": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6
+      ],
+      "status": "reference-only",
+      "units": [],
+      "lessons": []
+    },
+    {
+      "id": "science",
+      "title": "العلوم",
+      "grades": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6
+      ],
+      "status": "reference-only",
+      "units": [],
+      "lessons": []
+    },
+    {
+      "id": "english",
+      "title": "اللغة الإنجليزية",
+      "grades": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6
+      ],
+      "status": "reference-only",
+      "units": [],
+      "lessons": []
+    },
+    {
+      "id": "art",
+      "title": "التربية الفنية",
+      "grades": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6
+      ],
+      "status": "reference-only",
+      "units": [],
+      "lessons": []
+    },
+    {
+      "id": "physical",
+      "title": "التربية البدنية والدفاع عن النفس",
+      "grades": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6
+      ],
+      "status": "reference-only",
+      "units": [],
+      "lessons": []
+    },
+    {
+      "id": "life",
+      "title": "المهارات الحياتية والأسرية",
+      "grades": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6
+      ],
+      "status": "reference-only",
+      "units": [],
+      "lessons": []
+    },
+    {
+      "id": "social",
+      "title": "الدراسات الاجتماعية",
+      "grades": [
+        4,
+        5,
+        6
+      ],
+      "status": "reference-only",
+      "units": [],
+      "lessons": []
+    },
+    {
+      "id": "digital",
+      "title": "المهارات الرقمية",
+      "grades": [
+        4,
+        5,
+        6
+      ],
+      "status": "reference-only",
+      "units": [],
+      "lessons": []
+    }
+  ],
+  "studentPublicationEnabled": false
+}
