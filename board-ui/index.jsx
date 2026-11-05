@@ -1,3 +1,4 @@
+import {digestionElements} from './digestion-elements.js';
 import {libraryElements} from './library-elements.js';
 import {rulerElements,transformRuler} from './ruler.js';
 import {protractorElements,protractorReading,setProtractorAngle} from './protractor.js';
@@ -27,7 +28,7 @@ export function attachProfessionalBoard(seat,signals,send,client,lessonSubject,g
  let preparation=null;
  if(seat==='teacher')document.getElementById('leave').addEventListener('click',e=>{e.preventDefault();openExit();});
  const nextPosition=()=>({x:80,y:Math.max(40,...api.getSceneElements().filter(e=>!e.isDeleted).map(e=>e.y+e.height))+40});
- const focus=elements=>requestAnimationFrame(()=>api.scrollToContent(elements,{fitToViewport:true,viewportZoomFactor:0.8,animate:false}));
+ const focus=elements=>requestAnimationFrame(()=>api.scrollToContent(elements,{fitToViewport:true,viewportZoomFactor:0.62,animate:false}));
  const relevantFiles=(elements,files)=>Object.fromEntries(elements.filter(e=>e.type==='image'&&!e.isDeleted&&files[e.fileId]).map(e=>[e.fileId,files[e.fileId]]));
  const scene=()=>{const elements=api.getSceneElementsIncludingDeleted();return {elements,files:relevantFiles(elements,api.getFiles())};};
  const signature=s=>JSON.stringify({elements:s.elements,files:s.files});
@@ -108,7 +109,7 @@ export function attachProfessionalBoard(seat,signals,send,client,lessonSubject,g
   const available=state?.resources||[];
   const selectedLesson=choices.find(l=>l.id===state?.activeLesson);
   const changeLesson=async id=>{if(!id||latest||saving||conflict||preparation)return;try{const s=await send('board',{op:'lesson',rev:remote.rev,lessonId:id});if(apply(s))focus(s.elements);}catch(e){notify(e.message);}};
-  const addAid=a=>{if(!ready||conflict||!api||!editable())return;if(seat==='teacher'&&!startPreparation()){notify('انتظر حفظ العمل قبل تجهيز وسيلة جديدة.');return;}const position=nextPosition();const elements=a.kind==='library'?libraryElements(a.elements,position.x,position.y,Math.min(520,api.getAppState().width*0.8),280):convertToExcalidrawElements(a.kind==='protractor'?protractorElements(position.x,position.y,'protractor-'+crypto.randomUUID()):a.kind==='ruler'?rulerElements(position.x,position.y,'ruler-'+crypto.randomUUID()):[{type:'text',...position,text:wrapAidText(a.title+'\n'+a.text+'\n'+a.explanation),fontSize:24,fontFamily:2}],{regenerateIds:false});api.updateScene({elements:[...api.getSceneElements(),...elements],appState:selectionState(elements),captureUpdate:CaptureUpdateAction.IMMEDIATELY});api.setActiveTool({type:'selection'});focus(elements);if(['ruler','protractor'].includes(a.kind))notify(a.explanation);};
+  const addAid=a=>{if(!ready||conflict||!api||!editable())return;if(seat==='teacher'&&!startPreparation()){notify('انتظر حفظ العمل قبل تجهيز وسيلة جديدة.');return;}const position=nextPosition();const elements=a.kind==='library'?libraryElements(a.elements,position.x,position.y,Math.min(520,api.getAppState().width*0.8),280):convertToExcalidrawElements(a.kind==='digestion'?digestionElements(position.x,position.y,api.getAppState().width*0.75):a.kind==='protractor'?protractorElements(position.x,position.y,'protractor-'+crypto.randomUUID()):a.kind==='ruler'?rulerElements(position.x,position.y,'ruler-'+crypto.randomUUID()):[{type:'text',...position,text:wrapAidText(a.title+'\n'+a.text+'\n'+a.explanation),fontSize:24,fontFamily:2}],{regenerateIds:false});api.updateScene({elements:[...api.getSceneElements(),...elements],appState:selectionState(elements),captureUpdate:CaptureUpdateAction.IMMEDIATELY});api.setActiveTool({type:'selection'});focus(elements);if(['ruler','protractor'].includes(a.kind))notify(a.explanation);};
   const adjustRuler=change=>{if(!ready||conflict||!editable())return;api.updateScene({elements:transformRuler(api.getSceneElements(),change),captureUpdate:CaptureUpdateAction.IMMEDIATELY});};
   const adjustAngle=delta=>{if(!ready||conflict||!editable())return;const elements=api.getSceneElements(),reading=protractorReading(elements);if(reading)api.updateScene({elements:setProtractorAngle(elements,reading.degrees+delta),captureUpdate:CaptureUpdateAction.IMMEDIATELY});};
   const toggle=async()=>{try{const s=await send('board',{op:'permission',rev:remote.rev,allow:!remote.studentDraw});apply(s);}catch(e){notify(e.message);}};
@@ -156,4 +157,6 @@ export function attachProfessionalBoard(seat,signals,send,client,lessonSubject,g
  }
  createRoot(document.getElementById('board-pro')).render(<App/>);
 }
+
+
 
