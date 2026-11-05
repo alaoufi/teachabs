@@ -12,12 +12,24 @@ export function changeBoard(current,seat,command,context={}){
  if(command.op==='model3d')return changeModel3d(state,seat,command,context);
  if(command.op?.startsWith('timer-'))return {...state,rev:state.rev+1,classTimer:changeClassTimer(state.classTimer,seat,command)};
  if(command.op?.startsWith('pages-'))return changeLivePages(state,seat,command,context.savedInstance);
+ if(['restore','restore-undo'].includes(command.op)){
+  need(seat==='teacher'&&command.confirm===true,'Teacher confirmation required',403);
+  need((command.lessonId||null)===(state.activeLesson||null),'Lesson changed',409);
+  const history=structuredClone(state.recoveryPoints||[]);
+  need(history.length<(command.op==='restore'?9:10),'Recovery history is full; export the board before continuing');
+  let target;
+  if(command.op==='restore')target=changeBoard(emptyBoard(),'teacher',{op:'scene',rev:0,elements:command.elements,files:command.files});
+  else {const point=history.findLast(p=>!p.used);need(point,'No previous restore available',409);target=point;point.used=true;}
+  history.push({elements:structuredClone(state.elements),files:structuredClone(state.files),created:Date.now(),used:command.op==='restore-undo'});
+  const next={...state,elements:structuredClone(target.elements),files:structuredClone(target.files),recoveryPoints:history,rev:state.rev+1};
+  need(JSON.stringify(next).length<=2000000,'Recovery exceeds board capacity');return next;
+ }
  if(command.op==='lesson'){
   need(!state.pageSession,'Close the saved lesson before changing subject',409);
   need(seat==='teacher','تغيير الدرس للمعلم فقط.',403);
   need(allowedLessons(context).some(l=>l.id===command.lessonId),'الدرس غير متاح لهذه المادة والصف.',403);
-  const archive={...(state.lessonScenes||{}),[state.activeLesson||'unassigned']:{elements:state.elements,files:state.files,studentDraft:state.studentDraft||null,publishedStudent:state.publishedStudent||null,model3d:state.model3d||null}};
-  const target=archive[command.lessonId]||{elements:[],files:{},studentDraft:null,publishedStudent:null,model3d:null};
+  const archive={...(state.lessonScenes||{}),[state.activeLesson||'unassigned']:{elements:state.elements,files:state.files,studentDraft:state.studentDraft||null,publishedStudent:state.publishedStudent||null,model3d:state.model3d||null,recoveryPoints:state.recoveryPoints||[]}};
+  const target=archive[command.lessonId]||{elements:[],files:{},studentDraft:null,publishedStudent:null,model3d:null,recoveryPoints:[]};
   const next={...state,...target,activeLesson:command.lessonId,lessonScenes:archive,studentDraw:false,rev:state.rev+1};
   need(JSON.stringify(next).length<=2000000,'تجاوزت مساحة حفظ الدروس الحد المسموح.');return next;
  }

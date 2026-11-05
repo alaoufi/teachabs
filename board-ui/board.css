@@ -2,3 +2,8 @@
 .math-panel{padding:12px;background:#f1f5fa}.math-panel p{font-size:13px}.equation-preview{background:white;color:#111;padding:16px;display:inline-block;max-width:100%;overflow:auto}.teaching-board button{border:1px solid #bdd3c6;border-radius:9px;background:#fff;color:#164f40;cursor:pointer}.teaching-board button:disabled{opacity:.5}
 
 #saved-lesson-viewer{height:70vh;min-height:420px;margin-block:20px}
+
+.board-bar button { white-space: normal; overflow-wrap: anywhere; max-width: 100%; min-width: 0; }
+
+.board-bar > label { min-width: 0; max-width: 100%; }
+.board-bar select { min-width: 0; width: 100%; max-width: 100%; }

@@ -1,0 +1,18 @@
+import test from 'node:test';import assert from 'node:assert/strict';import {openStore} from '../store.mjs';import {createApp} from '../server.mjs';import {changeBoard,emptyBoard} from '../board.mjs';
+const element=id=>({id,type:'text',text:id,x:0,y:0,width:100,height:30,angle:0});
+test('recovery HTTP authorization, SSE synchronization and reconnect hide recovery snapshots',async t=>{
+ const store=openStore(':memory:'),app=createApp(store);await new Promise(r=>app.listen(0,'127.0.0.1',r));t.after(()=>{app.closeAllConnections();app.close();store.close();});const base='http://127.0.0.1:'+app.address().port,g=store.tour(),other=store.tour(),cookie='ks='+store.session(g.teacher),parent='ks='+store.session(g.parent);
+ const slot=store.slot(g.teacher,{subject:'math',minutes:45,start:Date.now()+60000,instructions:'Synthetic'}),booking=store.book(g.parent,g.child,slot,'pages');const lib=store.savedLessons,template=lib.createTemplate(g.teacher,{subject:'math',grade:4,title:'Synthetic',pages:[{elements:[element('one')],files:{}},{elements:[element('two')],files:{}}]}),instance=lib.instantiate(g.teacher,template,booking);
+ assert.throws(()=>lib.forLiveBooking(other.teacher,instance.id,booking),e=>e.status===404);assert.throws(()=>lib.forLiveBooking(g.teacher,instance.id,'other'),e=>e.status===403);
+ const client='aa45b5de-9404-4909-829b-4fddda2b1017',student='bb45b5de-9404-4909-829b-4fddda2b1017';const connect=(c,token)=>fetch(base+'/lesson/'+booking+'/events?client='+c,{headers:{cookie:token}});const tr=(await connect(client,cookie)).body.getReader(),sr=(await connect(student,parent)).body.getReader();await tr.read();await sr.read();
+ const send=(token,c,p)=>fetch(base+'/lesson/'+booking+'/send',{method:'POST',headers:{cookie:token,origin:base},body:new URLSearchParams({client:c,kind:'board',payload:JSON.stringify(p)})});
+ let r=await send(cookie,client,{op:'pages-start',rev:0,instanceId:instance.id});assert.equal(r.status,200);let s=await r.json();assert.equal(s.savedPages.count,2);assert.equal(s.pageSession,undefined);assert.equal(s.savedPageArchives,undefined);assert.deepEqual(s.resources,[]);
+ assert.equal((await send(parent,student,{op:'restore',rev:s.rev,confirm:true,elements:[element('forbidden')],files:{}})).status,403);
+ r=await send(cookie,client,{op:'restore',rev:s.rev,confirm:true,elements:[element('restored')],files:{}});assert.equal(r.status,200);s=await r.json();assert.equal(s.canUndoRestore,true);assert.equal(s.recoveryPoints,undefined);
+ let synced='';while(!synced.includes('restored'))synced+=new TextDecoder().decode((await sr.read()).value);assert.ok(!synced.includes('recoveryPoints'));
+ assert.equal((await send(cookie,client,{op:'restore-undo',rev:s.rev-1,confirm:true})).status,409);
+ r=await send(cookie,client,{op:'restore-undo',rev:s.rev,confirm:true});assert.equal(r.status,200);s=await r.json();assert.equal(s.elements[0].text,'one');assert.equal(s.canUndoRestore,false);
+
+ assert.equal((await send(parent,student,{op:'pages-go',rev:s.rev,instanceId:instance.id,page:1})).status,403);
+ r=await send(cookie,client,{op:'pages-go',rev:s.rev,instanceId:instance.id,page:1});s=await r.json();assert.equal(s.elements[0].text,'two');let received='';while(!received.includes('two'))received+=new TextDecoder().decode((await sr.read()).value);assert.ok(received.includes('boardstate'));await sr.cancel();const again=(await connect(student,parent)).body.getReader();let snapshot='';while(!snapshot.includes('event: boardstate')){const chunk=await again.read();if(chunk.done)break;snapshot+=new TextDecoder().decode(chunk.value);}assert.ok(snapshot.includes('two'),snapshot);assert.ok(!snapshot.includes('pageSession'));await again.cancel();await tr.cancel();
+});

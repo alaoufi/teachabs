@@ -5,7 +5,7 @@ import {allowedLessons} from '../lesson-catalog.mjs';
 import React,{useState,useRef} from 'react';
 
 import{createRoot}from'react-dom/client';
-import{Excalidraw,MainMenu,CaptureUpdateAction,convertToExcalidrawElements,exportToBlob}from'@excalidraw/excalidraw';
+import{Excalidraw,MainMenu,CaptureUpdateAction,convertToExcalidrawElements,restoreElements,exportToBlob}from'@excalidraw/excalidraw';
 import'@excalidraw/excalidraw/index.css';
 import{fitDimensions,wrapAidText}from'./fit.js';
 
@@ -28,7 +28,7 @@ export function attachProfessionalBoard(seat,signals,send,client,lessonSubject,g
  const scene=()=>{const elements=api.getSceneElementsIncludingDeleted();return {elements,files:relevantFiles(elements,api.getFiles())};};
  const signature=s=>JSON.stringify({elements:s.elements,files:s.files});
  let baseline='';
- const mode=()=>api?.updateScene({appState:{viewModeEnabled:!ready||conflict||!editable()}});
+ const mode=()=>api?.updateScene({appState:{viewModeEnabled:!ready||saving||conflict||!editable()}});
  function apply(s){
   if(!api)return;applying=true;remote=s;
   const current=viewed(s);api.addFiles(Object.values(current.files));api.updateScene({elements:current.elements,appState:{viewModeEnabled:!ready||!editable()}});
@@ -69,6 +69,7 @@ export function attachProfessionalBoard(seat,signals,send,client,lessonSubject,g
   const [status,setStatus]=useState('جارٍ فتح السبورة…'),[state,setState]=useState(null),[subject,setSubject]=useState('');
   const [viewState,setViewState]=useState('shared');
   const selectView=value=>{if(latest||saving){notify('انتظر حفظ العمل أو صدّره قبل تغيير العرض.');return;}view=value;setViewState(value);apply(remote);};
+  const restoreScene=async(op,data={},rev=remote.rev)=>{if(seat!=='teacher'||!ready||saving||latest||conflict||!editable())return; saving=true;mode();try{const next=await send('board',{op,rev,confirm:true,lessonId:remote.activeLesson,elements:data.elements,files:data.files});apply(next);focus(next.elements);notify('تمت الاستعادة وحفظ نقطة الرجوع');}catch(err){notify(err.message);}finally{saving=false;mode();}};
   const moderate=async op=>{try{const next=await send('board',{op,rev:remote.rev,lessonId:remote.activeLesson});apply(next);notify(op==='publish'?'نُشرت نسخة المشاركة المعتمدة.':'حُجبت المشاركة المعتمدة.');}catch(e){notify(e.message);}};
   const [exiting,setExiting]=useState(false);openExit=()=>setExiting(true);
   const leave=()=>{location.href=document.getElementById('leave').href;};
@@ -94,7 +95,8 @@ export function attachProfessionalBoard(seat,signals,send,client,lessonSubject,g
     <button onClick={async()=>{try{const s=scene();const blob=await exportToBlob({...s,appState:{exportBackground:true},mimeType:'image/png'});download(blob,'lesson-board.png','image/png');}catch(e){notify('تعذّر تصدير الصورة؛ استخدم ملف الاستعادة.');}}}>صورة PNG</button>
     <button onClick={()=>{if(latest&&!window.confirm('قد تفقد العمل غير المحفوظ. هل صدّرت نسخة وتريد تحميل آخر حفظ؟'))return;location.reload();}}>تحميل آخر حفظ</button>
     {seat==='teacher'&&<><button disabled={!ready||saving||!!latest} onClick={toggle}>{state?.studentDraw?'إيقاف تحرير الطالب':'السماح للطالب بالتحرير'}</button><button disabled={!editable()} onClick={()=>input.current.click()}>استعادة ملف</button></>}
-    <input ref={input} type="file" accept=".json,.excalidraw" hidden onChange={async e=>{try{const f=e.target.files[0];if(f.size>2000000)throw Error();const s=JSON.parse(await f.text());if(!Array.isArray(s.elements)||s.elements.length>1000||s.elements.some(x=>!['rectangle','diamond','ellipse','arrow','line','freedraw','text','image'].includes(x.type)))throw Error();for(const f of Object.values(s.files||{})){if(typeof f.dataURL!=='string'||f.dataURL.length>700000||!/^data:image\/(png|jpeg|webp);base64,/.test(f.dataURL))throw Error();}s.elements=s.elements.map(x=>({...x,link:null}));api.addFiles(Object.values(s.files||{}));api.updateScene({elements:s.elements});}catch{notify('ملف غير صالح أو أكبر من الحد.');}e.target.value='';}}/>
+    <input ref={input} type="file" accept=".json,.excalidraw" hidden onChange={async e=>{const f=e.target.files?.[0];e.target.value='';if(!f)return;const expected=remote?.rev;try{if(!ready||saving||latest||conflict||!editable()||seat!=='teacher')throw Error('انتظر حفظ العمل والاتصال');if(f.size>2000000)throw Error('الملف كبير');const data=JSON.parse(await f.text());if(!Array.isArray(data.elements))throw Error('ملف غير صالح');data.elements=restoreElements(data.elements,null);if(remote.rev!==expected||latest||saving)throw Error('تغيرت السبورة، حاول مجددًا');if(!window.confirm('استبدال رسم المعلم بهذا الملف؟ سيُحفظ الرسم السابق للرجوع إليه، وتبقى مشاركة الطالب كما هي.'))return;await restoreScene('restore',data,expected);}catch(err){notify(err.message||'ملف غير صالح');}}}/>
+    {seat==='teacher'&&<button disabled={!ready||saving||!!latest||conflict||!state?.canUndoRestore||viewState!=='shared'} onClick={()=>{if(window.confirm('الرجوع إلى الرسم السابق للاستيراد؟'))restoreScene('restore-undo');}}>الرجوع قبل الاستيراد</button>}
    </div>
    <section className="board-bar" aria-label="صفحات الدرس المباشرة">
     {state?.savedPages?<><strong>الصفحة {state.savedPages.index+1} من {state.savedPages.count}</strong>{seat==='teacher'&&<>{Array.from({length:state.savedPages.count},(_,i)=><button key={i} aria-current={i===state.savedPages.index?'page':undefined} disabled={!ready||saving||!!latest||conflict} onClick={()=>pages('pages-go',i)}>{i+1}</button>)}<button disabled={!ready||saving||!!latest||conflict} onClick={()=>pages('pages-close')}>حفظ الصفحات والعودة للسبورة</button></>}</>:seat==='teacher'&&lessonSubject!=='preview'&&<><label>معرّف نسخة الدرس من المكتبة <input value={instanceId} onChange={e=>setInstanceId(e.target.value)} /></label><button disabled={!ready||saving||!!latest||conflict||!instanceId} onClick={()=>pages('pages-start')}>عرض الدرس للطرفين</button></>}
