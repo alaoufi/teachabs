@@ -1,6 +1,5 @@
 // Synthetic lesson assignments, not an official curriculum mapping.
 export const lessons=[
-{id:'science-g4-cell-demo',subject:'science',grade:4,title:'الخلية — عينة توضيحية غير منسوبة لمنهج رسمي',aidIds:['library-cell']},
 {id:'math-g4-angles',subject:'math',grade:4,title:'الزوايا — نموذج تجريبي غير منسوب للمنهج',aidIds:['protractor']},
 {id:'math-g4-length',subject:'math',grade:4,title:'قياس الأطوال — نموذج تجريبي غير منسوب للمنهج',aidIds:['ruler']},
 {id:'math-g4-fractions',subject:'math',grade:4,title:'الكسور — نموذج تجريبي',aidIds:['fraction']},
