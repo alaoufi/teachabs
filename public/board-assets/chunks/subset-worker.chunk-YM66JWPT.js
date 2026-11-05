@@ -1,0 +1,2 @@
+window.EXCALIDRAW_ASSET_PATH="/board-assets/";
+import{a as r,c as e}from"./chunk-FFDJ5GNW.js";import"./chunk-ZGAD6TPN.js";import"./chunk-TFCE7LQX.js";import"./chunk-6ZFRX5Z7.js";var i=import.meta.url?new URL(import.meta.url):void 0;typeof window>"u"&&typeof self<"u"&&(self.onmessage=async a=>{if(a.data.command===r.Subset){let t=await e(a.data.arrayBuffer,a.data.codePoints);self.postMessage(t,{transfer:[t]})}});export{i as WorkerUrl};

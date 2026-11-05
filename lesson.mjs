@@ -1,4 +1,5 @@
-import { randomBytes, randomUUID } from 'node:crypto';
+import { changeBoard, emptyBoard } from './board.mjs';
+import { randomBytes, randomUUID, createHash } from 'node:crypto';
 import { subjects, UserError } from './store.mjs';
 import { e } from './views.mjs';
 import { advancePlace, initialPlace, visiblePlace } from './place-value.mjs';
@@ -36,17 +37,17 @@ function classroom({seat, booking, preview}) {
     <noscript><p class="error">افتح الحصة في المتصفح مع تفعيل جافاسكربت لتشغيل السبورة والاتصال.</p></noscript>
     <div class="lesson-status"><strong id="status" role="status">جارٍ فتح الفصل…</strong>
     ${preview?'<a class="textlink" target="_blank" rel="noopener" href="/lesson/preview?seat='+opposite(seat)+'">فتح نافذة '+(seat==='teacher'?'الطالب':'المعلم')+'</a>':''}</div>
-    ${preview||booking.subject==='math'?placeBoard(seat,preview):''}
     <div class="lesson-grid"><section class="panel"><div class="lesson-head"><h2>السبورة المشتركة</h2>
-    ${seat==='teacher'?'<button type="button" class="quiet" id="erase" disabled>مسح السبورة</button>':''}</div>
-    <p>ارسم بالقلم أو بالماوس. تظهر الكتابة للطرفين.</p>
-    <svg id="board" viewBox="0 0 1000 600" aria-label="سبورة الحصة"></svg></section>
-    <section class="panel"><h2>الصوت والصورة</h2><div class="screen"><video id="remote" autoplay playsinline></video><span>الطرف الآخر</span></div>
+    ${seat==='teacher'?'<button type="button" class="quiet" id="erase" hidden disabled>مسح السبورة</button>':''}</div>
+    <p>أدوات الرسم والأشكال والنص والصور، مع مكتبة وسائل ومحرر معادلات. يستخدم الطالب العرض حتى يسمح المعلم بالتحرير.</p>
+    <link rel="stylesheet" href="/board-assets/board.css"><div id="board-pro"></div><svg id="board" hidden viewBox="0 0 1000 600"></svg></section>
+    <section class="panel"><details><summary>نشاط الآحاد والعشرات</summary>${preview||booking.subject==='math'?placeBoard(seat,preview):'هذا النشاط لحصص الرياضيات.'}</details></section>
+    <section class="panel"><details><summary>الصوت والصورة — اختياريان</summary><div class="screen"><video id="remote" autoplay playsinline></video><span>الطرف الآخر</span></div>
     <video id="local" muted autoplay playsinline hidden></video><div class="devices"><button id="mic" class="outline" disabled aria-pressed="false">تشغيل الميكروفون</button>
     <button id="cam" class="outline" disabled aria-pressed="false">تشغيل الكاميرا</button></div>
     <button id="play" class="quiet" hidden>سماع الطرف الآخر</button><p id="hint" aria-live="polite">يظل الميكروفون والكاميرا مغلقين حتى تشغّلهما بنفسك.</p>
-    ${preview?'<small>عند التجربة على جهاز واحد، استخدم سماعات وجرّب الكاميرا من نافذة واحدة كل مرة.</small>':''}</section></div>
-    </section><script type="module" src="/lesson-client.js?v=place2"></script>`;
+    ${preview?'<small>عند التجربة على جهاز واحد، استخدم سماعات وجرّب الكاميرا من نافذة واحدة كل مرة.</small>':''}</details></section></div>
+    </section><script type="module" src="/lesson-client.js?v=board1"></script>`;
 }
 
 export function lessonService(store) {
@@ -91,6 +92,7 @@ export function lessonService(store) {
     room.peers[seat]=peer;
     res.on('close',()=>detach(room,seat,peer));
     output(peer,'snapshot',room.strokes);
+    output(peer,'boardstate',{state:store.readBoard(key)||emptyBoard(),sender:null});
     if(math){
       const state=(preview?room.place:store.placeActivity(key))??initialPlace();
       output(peer,'place',visiblePlace(state,seat));
@@ -110,6 +112,10 @@ export function lessonService(store) {
     if(!room || room.peers[seat]?.client!==data.client) throw new UserError('أعد فتح نافذة الفصل.',409);
     let payload;
     try { payload=JSON.parse(data.payload); } catch { throw new UserError('رسالة غير صالحة.'); }
+    if(data.kind==='board'){
+      const next=changeBoard(store.readBoard(key),seat,payload);store.writeBoard(key,next);
+      for(const peer of Object.values(room.peers))output(peer,'boardstate',{state:next,sender:data.client});return next;
+    }
     if(data.kind==='place'){
       requireState(math,'هذا النشاط لحصة الرياضيات فقط.',403);
       const update=current=>advancePlace(current,seat,payload);
@@ -152,7 +158,7 @@ export function lessonService(store) {
         return redirect(seat==='teacher'?'/lesson/preview?seat=teacher':'/lesson/preview');
       }
       if(path==='/lesson/preview/result' && req.method==='GET'){
-        const state=ticket && rooms.get('preview-'+ticket)?.place;
+        const state=ticket && rooms.get('preview-'+createHash('sha256').update(ticket).digest('hex'))?.place;
         requireState(state?.phase==='graded','اعتمد النتيجة أولًا من مقعد المعلم في الفصل التجريبي.',403);
         return html('نتيجة ولي الأمر التجريبية','<section class="narrow panel"><div class="eyebrow">معاينة ولي الأمر · بيانات التجربة فقط</div>'+resultCard(state)+'</section>');
       }
@@ -165,7 +171,7 @@ export function lessonService(store) {
         seat=requestedSeat||'student';
         requireState(['teacher','student'].includes(seat),'مقعد غير صالح.');
         if(!ticket) return redirect(seat==='teacher'?'/lesson/teacher':'/lesson');
-        key='preview-'+ticket;
+        key='preview-'+createHash('sha256').update(ticket).digest('hex');
       }else{
         if(!u)return redirect('/login');
         booking=store.bookings(u.id,id)[0];
@@ -177,7 +183,7 @@ export function lessonService(store) {
         key=id;
       }
       if (!action && req.method==='GET'){
-        res.setHeader('Content-Security-Policy',"default-src 'self'; script-src 'self'; connect-src 'self'; media-src 'self' blob:; frame-ancestors 'none'; base-uri 'none'; form-action 'self'; object-src 'none'");
+        res.setHeader('Content-Security-Policy',"default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self' data:; img-src 'self' data: blob:; connect-src 'self'; media-src 'self' blob:; frame-ancestors 'none'; base-uri 'none'; form-action 'self'; object-src 'none'");
         return html('الفصل المباشر',classroom({seat,booking,preview}));
       }
       if(action==='events' && req.method==='GET'){

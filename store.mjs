@@ -202,7 +202,10 @@ export function openStore(path) {
       ORDER BY s.start DESC`,owner,childId,Date.now());
     return {child,results:rows.map(row=>({...row,state:JSON.parse(row.state)}))};
   }
-  return {close:()=>db.close(),user,parent,invite,activate,login,child,ownedChild,slot,offers,book,bookings,cancel,withdraw,tour,
+  db.exec('CREATE TABLE IF NOT EXISTS lesson_boards(id TEXT PRIMARY KEY,state TEXT NOT NULL,updated INTEGER NOT NULL)');
+  const readBoard=id=>{const r=one('SELECT state FROM lesson_boards WHERE id=?',id);return r?JSON.parse(r.state):null;};
+  const writeBoard=(id,state)=>run('INSERT INTO lesson_boards VALUES(?,?,?) ON CONFLICT(id) DO UPDATE SET state=excluded.state,updated=excluded.updated',id,JSON.stringify(state),Date.now());
+  return {readBoard,writeBoard,close:()=>db.close(),user,parent,invite,activate,login,child,ownedChild,slot,offers,book,bookings,cancel,withdraw,tour,
     placeActivity,changePlace,childResults,
     children:id=>all('SELECT * FROM children WHERE parent=? ORDER BY rowid',id),
     schedule:id=>all(`SELECT s.*,EXISTS(SELECT 1 FROM bookings b WHERE b.slot=s.id AND b.status='confirmed') booked FROM slots s WHERE teacher=? AND active=1 AND start>? ORDER BY start`,id,Date.now()),

@@ -15,7 +15,7 @@ files['/place-client.js']='text/javascript; charset=utf-8';
 async function fields(req){
   if(req.headers['content-type']?.split(';')[0]!=='application/x-www-form-urlencoded')throw new UserError('صيغة نموذج غير صالحة.',415);
   const chunks=[];let length=0;
-  for await (const chunk of req){length+=chunk.length;if(length>32768)throw new UserError('حجم الإدخال كبير.',413);chunks.push(chunk);}
+  for await (const chunk of req){length+=chunk.length;if(length>(req.url?.includes('/send')?3000000:32768))throw new UserError('حجم الإدخال كبير.',413);chunks.push(chunk);}
   return Object.fromEntries(new URLSearchParams(Buffer.concat(chunks).toString()));
 }
 
@@ -55,6 +55,10 @@ export function createApp(store,{origin=process.env.APP_ORIGIN}={}) {
       const uid=store.resolve(cookie);u=uid?store.user(uid):null;
       if(lessons.matches(route))return await lessons.handle({req,res,url,u,cookie,base,html,redirect,fields,limit});
       if(req.method==='GET'){
+        if(/^\/board-assets\/[A-Za-z0-9_./-]+$/.test(route)&&!route.includes('..')){
+          const ext=route.split('.').pop();const type={js:'text/javascript',css:'text/css',woff2:'font/woff2',png:'image/png'}[ext];if(!type)throw new UserError('Not found',404);
+          const asset=await readFile(new URL('./public'+route,import.meta.url));res.writeHead(200,{'Content-Type':type,'Cache-Control':'no-cache'});return res.end(asset);
+        }
         if(Object.hasOwn(files,route)){
           const asset=await readFile(new URL('./public'+route,import.meta.url));
           res.writeHead(200,{'Content-Type':files[route],'Cache-Control':'public, max-age=300'});return res.end(asset);
