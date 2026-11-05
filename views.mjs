@@ -72,7 +72,7 @@ export function teacherList(c,subject,rows) {
     link('/subjects?child='+c.id,'العودة إلى المواد','textlink back');
 }
 export function review(c,offer) {
-  return steps(3)+`<section class="narrow">${heading('الاحتراف التدريس الأخيرة','مراجعة الحجز','لن يُحجز الموعد إلا بعد الضغط على زر التأكيد.')}<div class="panel">${details([['الطفل',c.name+' · الصف '+grades[c.grade]],['المادة والمعلم',subjects[offer.subject]+' · '+offer.teacherName],['الموعد',date(offer.start)+' · '+spanTime(offer.start,offer.minutes)],['المدة',aNum(offer.minutes)+' دقيقة · بتوقيت الرياض'],['التحصيل','دون رسوم أو خصم رصيد']])}${post('/book',hidden('child',c.id)+hidden('slot',offer.id)+hidden('subject',offer.subject)+hidden('key',randomUUID())+btn('تأكيد الموعد التجريبي'),'form')}${link('/offers?child='+c.id+'&subject='+offer.subject,'تغيير الموعد','textlink back')}</div></section>`;
+  return steps(3)+`<section class="narrow">${heading('الخطوة الأخيرة','مراجعة الحجز','لن يُحجز الموعد إلا بعد الضغط على زر التأكيد.')}<div class="panel">${details([['الطفل',c.name+' · الصف '+grades[c.grade]],['المادة والمعلم',subjects[offer.subject]+' · '+offer.teacherName],['الموعد',date(offer.start)+' · '+spanTime(offer.start,offer.minutes)],['المدة',aNum(offer.minutes)+' دقيقة · بتوقيت الرياض'],['التحصيل','دون رسوم أو خصم رصيد']])}${post('/book',hidden('child',c.id)+hidden('slot',offer.id)+hidden('subject',offer.subject)+hidden('key',randomUUID())+btn('تأكيد الموعد التجريبي'),'form')}${link('/offers?child='+c.id+'&subject='+offer.subject,'تغيير الموعد','textlink back')}</div></section>`;
 }
 function details(entries){return '<dl>'+entries.map(([l,v])=>`<div><dt>${e(l)}</dt><dd>${e(v)}</dd></div>`).join('')+'</dl>';}
 export function bookingsList(rows){return heading('سجل المواعيد','الحجوزات')+(rows.length?rows.map(bookingRow).join(''):empty('لا توجد حجوزات بعد','يمكنك بدء الرحلة من لوحتك.'))+link('/app','العودة إلى لوحتي','textlink back');}
@@ -87,5 +87,5 @@ export function slotForm(u){
   return `<section class="narrow">${heading('جدول المعلم','إتاحة موعد للحجز','عند نشر هذا الموعد تستطيع أسرة مطابقة لشروط اعتمادك تأكيده مباشرة.')}<div class="panel">${post('/teacher/slots',field('المادة','<select name="subject">'+u.subjects.map(k=>opt(k,subjects[k])).join('')+'</select>')+field('التاريخ والوقت بتوقيت الرياض',input('start','type="datetime-local"'))+field('المدة','<select name="minutes">'+[...new Set(u.grades.map(duration))].map(n=>opt(n,aNum(n)+' دقيقة')).join('')+'</select>')+field('ملاحظات للأسرة (اختياري)','<textarea name="instructions" maxlength="350" placeholder="مثل تجهيز كتاب الرياضيات قبل دخول الفصل."></textarea>')+btn('نشر الموعد للحجز'),'form')}</div></section>`;
 }
 export function errorPage(message,back='/app'){
-  return `<section class="narrow">${heading('مراجعة الطلب','تعذّر إكمال الاحتراف التدريس',e(message))}${link(back,'العودة والمتابعة')}</section>`;
+  return `<section class="narrow">${heading('مراجعة الطلب','تعذّر إكمال الخطوة',e(message))}${link(back,'العودة والمتابعة')}</section>`;
 }
