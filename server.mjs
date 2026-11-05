@@ -2,6 +2,7 @@ import {registrationDashboard,registrationAdmin} from './registration-views.mjs'
 import { adminService } from './admin-service.mjs';
 import {serveAsset} from './asset-response.mjs';
 import { demoHub } from './demo.mjs';
+import { classroomLab } from './classroom-lab.mjs';
 import http from 'node:http';
 import { readFile } from 'node:fs/promises';
 import { pathToFileURL } from 'node:url';
@@ -19,6 +20,9 @@ files['/admin.css']='text/css; charset=utf-8';
 files['/lesson-client.js']='text/javascript; charset=utf-8';
 files['/lesson.css']='text/css; charset=utf-8';
 files['/place-client.js']='text/javascript; charset=utf-8';
+files['/classroom-lab.js']='text/javascript; charset=utf-8';
+files['/classroom-lab-model.js']='text/javascript; charset=utf-8';
+files['/classroom-lab.css']='text/css; charset=utf-8';
 async function fields(req){
   if(req.headers['content-type']?.split(';')[0]!=='application/x-www-form-urlencoded')throw new UserError('صيغة نموذج غير صالحة.',415);
   const chunks=[];let length=0;
@@ -64,6 +68,11 @@ export function createApp(store,{origin=process.env.APP_ORIGIN}={}) {
       if(administration.matches(route)&&route!=='/admin/registration-agents')return await administration.handle({req,url,u,base,html,redirect,fields,limit,enter});
       if(lessons.matches(route))return await lessons.handle({req,res,url,u,cookie,base,html,redirect,fields,limit});
       if(req.method==='GET'){
+        if(route==='/classroom-lab'){
+          res.setHeader('Content-Security-Policy',"default-src 'self'; script-src 'self'; connect-src 'none'; img-src 'self' data: blob:; frame-src 'none'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'; object-src 'none'");
+          res.setHeader('Permissions-Policy','camera=(), microphone=(), display-capture=()');
+          return html('مختبر الفصل التعليمي',classroomLab());
+        }
         if(route==='/demo')return html('شاشات التجربة',demoHub(u,q.role));
         if(/^\/board-assets\/[A-Za-z0-9_./-]+$/.test(route)&&!route.includes('..')){
           const ext=route.split('.').pop();const type={js:'text/javascript',css:'text/css',woff2:'font/woff2',png:'image/png'}[ext];if(!type)throw new UserError('Not found',404);

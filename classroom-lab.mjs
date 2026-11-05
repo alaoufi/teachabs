@@ -1,0 +1,31 @@
+// Independent experiment: no lesson database, sessions, or external embeds.
+export function classroomLab() {
+  return `<link rel="stylesheet" href="/classroom-lab.css">
+<section class="classroom-lab" dir="rtl" lang="ar">
+ <header class="lab-hero"><span class="lab-badge">مختبر احتراف التدريس · تجربة ١</span><h1>نجرب اليوم، ونطوّر فصل الغد</h1><p>مساحة مستقلة للكتابة والرسم وتوثيق التجربة. الفصل الحالي وأدواته باقية كما هي.</p><a href="/demo">العودة إلى المشروع</a> · <a href="/lesson/teacher">تجربة الفصل الحالي والسبورة المتقدمة</a></header>
+ <div class="lab-notice"><strong>نموذج محلي على جهازك</strong> — لا صوت أو فيديو أو تسجيل أو مشاركة بين الأجهزة هنا. عرض الطالب أدناه محاكاة للواجهة فقط، وليس صلاحية حساب حقيقية. استخدم أمثلة تعليمية خالية من بيانات الطلاب.</div>
+ <nav class="lab-nav" aria-label="أقسام المختبر"><a href="#lab-workspace">السبورة</a><a href="#lab-method">طريقة التجربة</a><a href="#lab-compare">المقارنة</a><a href="#lab-journal">سجل الاستفادة</a></nav>
+ <section class="lab-panel" id="lab-workspace"><div class="lab-heading"><div><h2>سبورة التجربة الخفيفة</h2><p>قلم ولمس وفأرة · أشكال · قالب إحداثيات · حفظ محلي وتصدير</p></div><label>معاينة الواجهة <select id="lab-role"><option value="teacher">المعلم</option><option value="student">الطالب (قراءة فقط)</option></select></label></div>
+ <div class="lab-toolbar" role="group" aria-label="أدوات الرسم">
+ <label>الأداة <select id="lab-tool"><option value="pen">قلم</option><option value="line">خط مستقيم</option><option value="rect">مستطيل</option><option value="ellipse">دائرة / قطع ناقص</option><option value="text">نص</option></select></label>
+ <label>لون القلم <input id="lab-color" type="color" value="#126b68"></label>
+ <label>السماكة <select id="lab-width"><option value="2">رفيع</option><option value="4" selected>متوسط</option><option value="8">عريض</option></select></label>
+ <label class="lab-text-label">نص للإدراج <input id="lab-text" maxlength="150" placeholder="اكتب ثم المس السبورة"></label>
+ <button type="button" id="lab-undo">تراجع</button><button type="button" id="lab-redo">إعادة</button>
+ <button type="button" id="lab-axes">إضافة محاور</button><button type="button" id="lab-curve">إضافة منحنى ص = س²</button><button type="button" id="lab-clear">مسح السبورة</button>
+ </div>
+ <svg id="lab-board" viewBox="0 0 1000 600" role="img" aria-label="سبورة رسم؛ اختر أداة وارسم بالقلم أو اللمس. استخدم إضافة محاور أو منحنى من لوحة المفاتيح."></svg>
+ <div class="lab-toolbar"><button type="button" id="lab-save">حفظ على هذا الجهاز</button><button type="button" id="lab-export">تنزيل التجربة JSON</button><button type="button" id="lab-svg">تنزيل السبورة SVG</button><label class="lab-import">استعادة تجربة JSON <input type="file" id="lab-import" accept=".json,application/json"></label></div>
+ <p id="lab-status" role="status">لا يوجد حفظ تلقائي. احفظ أو نزّل التجربة قبل إغلاق الصفحة.</p>
+ </section>
+ <section class="lab-panel" id="lab-method"><h2>جرّبها في خمس دقائق</h2><ol><li>اكتب بالقلم أو اللمس، ثم جرّب الخط والأشكال والنص العربي.</li><li>أضف المحاور والمنحنى، ثم تراجع وأعد الخطوة. الرسم قالب توضيحي ثابت، وليس محرّك معادلات.</li><li>انتقل إلى معاينة الطالب وتأكد أن أدوات التعديل مقفلة. هذه محاكاة محلية فقط.</li><li>دوّن ملاحظاتك أدناه، واحفظ ثم أعد تحميل الصفحة، أو نزّل JSON واستعده.</li><li>افتح الفصل الحالي لتجربة سبورته المتقدمة وتبادل أدوار المعلم والطالب وفق طريقة الدخول الموجودة.</li></ol><p>دعم القلم هنا عبر أحداث المؤشر؛ لا تحويل للخط إلى نص، ولا تعرّف على المعادلات أو قياس ضغط القلم. يجب اختبار قلم حقيقي على جهازك.</p></section>
+ <section class="lab-panel" id="lab-compare"><h2>ما الذي نستفيد منه؟</h2><div class="lab-comparison">
+ <article><h3>فصلنا الحالي</h3><p>Excalidraw محلي، كتابة وأشكال، محرر رياضيات، مسطرة ومنقلة، حفظ مشاهد الدروس، تجهيز خاص للمعلم ومراجعة عمل الطالب. اتصال WebRTC ثنائي موجود؛ نجاح الصوت عبر شبكات مختلفة يحتاج اختبارًا مستقلًا.</p><a href="/lesson/teacher">فتح الفصل الحالي</a></article>
+ <article><h3>LearnCube</h3><p>مرجع لتجربة السبورة ومكتبة المحتوى والصوت والفيديو والتسجيل بحسب الموقع الرسمي. لا نستخدم شفرته أو أصوله التجارية، ولا نفترض أن جميع المزايا متاحة في التجربة المجانية.</p><a href="https://www.learncube.com/" target="_blank" rel="noopener noreferrer">زيارة العرض الرسمي ↗</a></article>
+ <article><h3>BigBlueButton</h3><p>مرجع مفتوح المصدر للفصول الجماعية. تجربة الخدمة منفصلة عن مشروعنا؛ تشغيلها ذاتيًا يتطلب خادمًا وإدارة وموارد إضافية.</p><a href="https://demo.bigbluebutton.org" target="_blank" rel="noopener noreferrer">فتح التجربة الرسمية ↗</a> · <a href="https://github.com/bigbluebutton/bigbluebutton" target="_blank" rel="noopener noreferrer">المصدر والترخيص ↗</a></article>
+ </div><p>الروابط الخارجية تفتح باختيارك في تبويب جديد؛ ليست دمجًا أو مشاركة لبيانات الحصة. مراجعة الصفحات الرسمية ليست اختبارًا عمليًا لجميع خصائص المنصتين.</p>
+ <h3>ما يحتاج تطويرًا واختبارًا لاحقًا</h3><p>فصل متعدد الطلاب، مشاركة الشاشة، تسجيل الوسائط، حضور موثق، واجبات واختبارات عامة وتصحيح، أدوات فيزياء وكيمياء تفاعلية، وحفظ دائم مع سياسات استبقاء. لا تمثل الرسومات الثابتة محاكاة علمية.</p></section>
+ <section class="lab-panel" id="lab-journal"><h2>سجل الاستفادة من التجربة</h2><p>اكتب الخطوات والنتيجة وما تقترح إضافته. تحفظ الملاحظات مع السبورة عند الضغط على الحفظ أو تنزيل JSON؛ لا تُرسل للخادم.</p><label>عنوان التجربة <input id="lab-title" maxlength="120" placeholder="مثال: شرح الدالة التربيعية"></label><label>الطريقة والنتيجة والدروس المستفادة <textarea id="lab-notes" rows="6" maxlength="10000" placeholder="الأداة التي جربتها، خطوات التنفيذ، ما نجح، ما يحتاج تحسينًا…"></textarea></label></section>
+ <noscript><p>فعّل JavaScript لتجربة السبورة. تظل المقارنة وطريقة العمل متاحتين للقراءة.</p></noscript>
+</section><script type="module" src="/classroom-lab.js"></script>`;
+}
