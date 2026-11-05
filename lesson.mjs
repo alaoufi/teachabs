@@ -120,7 +120,7 @@ export function lessonService(store) {
         requireState(seat==='teacher'&&!preview,'Saved lessons require a teacher booking',403);
         context={...context,savedInstance:store.savedLessons.forLiveBooking(context.owner,payload.instanceId,key)};
       }
-      const next=changeBoard(store.readBoard(key),seat,payload,context);store.writeBoard(key,next);
+      const next=store.changeSavedBoard(key,current=>changeBoard(current,seat,payload,context));
       for(const peer of Object.values(room.peers))output(peer,'boardstate',{state:visibleBoard(next,context),sender:data.client});return visibleBoard(next,context);
     }
     if(data.kind==='place'){
