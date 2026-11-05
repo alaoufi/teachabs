@@ -32,19 +32,30 @@ export function attachProfessionalBoard(seat,signals,send,client,lessonSubject,g
  const signature=s=>JSON.stringify({elements:s.elements,files:s.files});
  let baseline='';
  const mode=()=>api?.updateScene({appState:{viewModeEnabled:!ready||conflict||!editable()}});
- function apply(s){
-  if(!api)return;applying=true;remote=s;
-  const current=viewed(s);api.addFiles(Object.values(current.files));api.updateScene({elements:current.elements,appState:{viewModeEnabled:!ready||!editable()}});
-  baseline=signature(scene());initialized=true;applying=false;refresh(s);
+ function apply(s,{resetHistory=false}={}){
+  // Replies to permission/timer/lesson commands can arrive after preparation
+  // starts. Update server metadata, never replace a private canvas with them.
+  if(!s||(remote&&s.rev<remote.rev))return false;
+  remote=s;
+  if(preparation){refresh(s);mode();return false;}
+  if(!api)return false;
+  applying=true;
+  const current=viewed(s),previous=api.getAppState();
+  // A history-stack clear alone leaves private elements in Store.snapshot.
+  // Reset both Store and History before restoring so even deleted tombstones
+  // cannot reappear through a later Undo/Redo or enter an outgoing snapshot.
+  if(resetHistory)api.resetScene({resetLoadingState:true});
+  api.addFiles(Object.values(current.files));api.updateScene({elements:current.elements,appState:{...(resetHistory?{scrollX:previous.scrollX,scrollY:previous.scrollY,zoom:previous.zoom,currentItemFontFamily:2,selectedElementIds:{},selectedGroupIds:{},editingGroupId:null}:{}),viewModeEnabled:!ready||conflict||!editable()},captureUpdate:CaptureUpdateAction.NEVER});
+  baseline=signature(scene());initialized=true;applying=false;refresh(s);return true;
  }
  async function save(){
   if(!latest||saving||!ready||conflict)return;
   const snapshot=latest; saving=true;notify('جارٍ حفظ السبورة…');
   try{
    const next=await send('board',{rev:remote.rev,...snapshot});
-   remote=next;baseline=signature(snapshot);
+   if(!remote||next.rev>=remote.rev)remote=next;baseline=signature(snapshot);
    if(latest===snapshot)latest=null;
-   notify('تم التزامن • الحفظ على الخادم مؤقت');refresh(next);
+   notify('تم التزامن • الحفظ على الخادم مؤقت');refresh(remote);
   }catch(e){conflict=true;notify(e.message+' صدّر نسخة محلية ثم حمّل آخر حفظ.');mode();}
   finally{saving=false;if(latest&&!conflict)save();}
  }
@@ -59,6 +70,7 @@ export function attachProfessionalBoard(seat,signals,send,client,lessonSubject,g
  }
  signals.addEventListener('boardstate',event=>{
   const {state,sender}=JSON.parse(event.data);
+  if(remote&&state.rev<remote.rev)return;
   resolveInitial({elements:state.elements,files:state.files,appState:{currentItemFontFamily:2}});
   ready=true;
   if(sender===client){remote=state;return;}
@@ -81,7 +93,7 @@ export function attachProfessionalBoard(seat,signals,send,client,lessonSubject,g
   useEffect(()=>{if(!expanded)return;const previous=document.body.style.overflow;document.body.style.overflow='hidden';const escape=e=>{if(e.key==='Escape'){setExpanded(false);expandButton.current?.focus();}};window.addEventListener('keydown',escape);return()=>{document.body.style.overflow=previous;window.removeEventListener('keydown',escape);};},[expanded]);
   useEffect(()=>{if(!preparing)return;const warn=e=>{e.preventDefault();e.returnValue='';};window.addEventListener('beforeunload',warn);return()=>window.removeEventListener('beforeunload',warn);},[preparing]);
   const startPreparation=()=>{if(preparation)return true;if(seat!=='teacher'||view!=='shared'||!ready||latest||saving||conflict)return false;preparation=createPreparation(remote,scene());setPreparing(true);notify('تجهيز خاص: حرّك الوسيلة واضبط حجمها، ثم أرسلها للطالب.');return true;};
-  const cancelPreparation=()=>{preparation=null;setPreparing(false);apply(remote);api.updateScene({appState:{selectedElementIds:{},selectedGroupIds:{}}});api.history.clear();notify('أُلغي التجهيز الخاص؛ لم يُرسل للطالب.');};
+  const cancelPreparation=()=>{preparation=null;setPreparing(false);apply(remote,{resetHistory:true});notify('أُلغي التجهيز الخاص؛ لم يُرسل للطالب.');};
   const publishPreparation=()=>{if(!ready||conflict||!editable()||!canPublishPreparation(preparation,remote))return;const snapshot=scene();preparation=null;setPreparing(false);latest={...snapshot,lessonId:remote.activeLesson,op:'scene'};save();};
   const adjustSelection=change=>{if(!ready||conflict||!editable()||!api)return;api.updateScene({elements:transformSelection(api.getSceneElementsIncludingDeleted(),api.getAppState().selectedElementIds,change),...(change.remove?{appState:{selectedElementIds:{},selectedGroupIds:{}}}:{}),captureUpdate:CaptureUpdateAction.IMMEDIATELY});};
   const selectView=value=>{if(preparation){notify('أرسل التجهيز الخاص أو ألغِه قبل تغيير مساحة العمل.');return;}if(latest||saving){notify('انتظر حفظ العمل أو صدّره قبل تغيير العرض.');return;}view=value;setViewState(value);apply(remote);};
@@ -94,11 +106,11 @@ export function attachProfessionalBoard(seat,signals,send,client,lessonSubject,g
   const input=useRef();notify=setStatus;refresh=setState;
   const available=state?.resources||[];
   const selectedLesson=choices.find(l=>l.id===state?.activeLesson);
-  const changeLesson=async id=>{if(!id||latest||saving||conflict||preparation)return;try{const s=await send('board',{op:'lesson',rev:remote.rev,lessonId:id});apply(s);focus(s.elements);}catch(e){notify(e.message);}};
+  const changeLesson=async id=>{if(!id||latest||saving||conflict||preparation)return;try{const s=await send('board',{op:'lesson',rev:remote.rev,lessonId:id});if(apply(s))focus(s.elements);}catch(e){notify(e.message);}};
   const addAid=a=>{if(!ready||conflict||!api||!editable())return;if(seat==='teacher'&&!startPreparation()){notify('انتظر حفظ العمل قبل تجهيز وسيلة جديدة.');return;}const position=nextPosition();const elements=convertToExcalidrawElements(a.kind==='protractor'?protractorElements(position.x,position.y,'protractor-'+crypto.randomUUID()):a.kind==='ruler'?rulerElements(position.x,position.y,'ruler-'+crypto.randomUUID()):[{type:'text',...position,text:wrapAidText(a.title+'\n'+a.text+'\n'+a.explanation),fontSize:24,fontFamily:2}],{regenerateIds:false});api.updateScene({elements:[...api.getSceneElements(),...elements],appState:selectionState(elements),captureUpdate:CaptureUpdateAction.IMMEDIATELY});api.setActiveTool({type:'selection'});focus(elements);if(['ruler','protractor'].includes(a.kind))notify(a.explanation);};
   const adjustRuler=change=>{if(!ready||conflict||!editable())return;api.updateScene({elements:transformRuler(api.getSceneElements(),change),captureUpdate:CaptureUpdateAction.IMMEDIATELY});};
   const adjustAngle=delta=>{if(!ready||conflict||!editable())return;const elements=api.getSceneElements(),reading=protractorReading(elements);if(reading)api.updateScene({elements:setProtractorAngle(elements,reading.degrees+delta),captureUpdate:CaptureUpdateAction.IMMEDIATELY});};
-  const toggle=async()=>{try{const s=await send('board',{op:'permission',rev:remote.rev,allow:!remote.studentDraw});remote=s;apply(s);}catch(e){notify(e.message);}};
+  const toggle=async()=>{try{const s=await send('board',{op:'permission',rev:remote.rev,allow:!remote.studentDraw});apply(s);}catch(e){notify(e.message);}};
   return <div ref={workspace} className={'teaching-board'+(expanded?' board-expanded':'')+(!properties?' board-hide-properties':'')} dir="rtl">
    <header className="board-heading"><div><strong>سبورة الشرح</strong><small>{preparing?'معاينة خاصة بالمعلم':viewState==='shared'?'شرح مباشر للطالب':viewState==='draft'?'مسودة الطالب':'مشاركة معتمدة'}</small></div><div className="board-heading-actions"><button ref={expandButton} aria-pressed={expanded} onClick={()=>{setExpanded(!expanded);requestAnimationFrame(()=>workspace.current?.scrollTo({top:0}));}}>{expanded?'العودة إلى الفصل':'توسيع مساحة السبورة'}</button><button disabled={!ready} onClick={()=>api&&focus(api.getSceneElements())}>ملاءمة المحتوى</button></div></header>
    <div className="engine" id="board-canvas"><Excalidraw excalidrawAPI={receiveAPI}
