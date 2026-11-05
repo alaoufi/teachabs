@@ -1,4 +1,4 @@
-import {attachProfessionalBoard} from '/board-assets/board.js';
+import {attachProfessionalBoard} from './board-loader.js';
 import { attachPlaceBoard } from './place-client.js?v=place2';
 const $ = id => document.getElementById(id);
 const seat=$('classroom').dataset.seat;

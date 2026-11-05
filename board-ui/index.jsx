@@ -1,6 +1,6 @@
 import {allowedLessons} from '../lesson-catalog.mjs';
 import React,{useState,useRef} from 'react';
-import{MathPanel}from'./MathPanel.jsx';
+
 import{createRoot}from'react-dom/client';
 import{Excalidraw,MainMenu,convertToExcalidrawElements,exportToBlob}from'@excalidraw/excalidraw';
 import'@excalidraw/excalidraw/index.css';
@@ -70,6 +70,8 @@ export function attachProfessionalBoard(seat,signals,send,client,lessonSubject,g
   const [exiting,setExiting]=useState(false);openExit=()=>setExiting(true);
   const leave=()=>{location.href=document.getElementById('leave').href;};
   const clearAndLeave=async()=>{try{const next=await send('board',{op:'clear',confirm:true,rev:remote.rev,lessonId:remote.activeLesson});latest=null;clearTimeout(timer);apply(next);leave();}catch(e){notify('لم يُمسح العمل: '+e.message);}};
+  const [MathPanel,setMathPanel]=useState(null),[mathLoading,setMathLoading]=useState(false),[mathFailed,setMathFailed]=useState(false);
+  const loadMath=async()=>{if(mathFailed){if(latest||saving||conflict){notify('احفظ أو صدّر التغييرات أولًا قبل إعادة تحميل الأدوات.');return;}location.reload();return;}setMathLoading(true);try{const m=await import('./MathPanel.jsx');setMathPanel(()=>m.MathPanel);}catch{setMathFailed(true);notify('تعذر تحميل محرر المعادلات. إعادة المحاولة تعيد تحميل الصفحة بعد حفظ العمل.');}finally{setMathLoading(false);}};
   const [instanceId,setInstanceId]=useState('');
   const pages=async(op,page)=>{if(latest||saving||conflict)return;try{const next=await send('board',{op,page,instanceId:remote.savedPages?.id||instanceId,rev:remote.rev});view='shared';setViewState('shared');apply(next);focus(next.elements);}catch(e){notify(e.message);}};
   const input=useRef();notify=setStatus;refresh=setState;
@@ -96,7 +98,8 @@ export function attachProfessionalBoard(seat,signals,send,client,lessonSubject,g
     {available.filter(a=>selectedLesson?.aidIds.includes(a.id)).map(a=><button key={a.id} disabled={!ready||conflict||!editable()} onClick={()=>addAid(a)}>{a.title} +</button>)}
     <p>محتوى أصلي للمشروع. يضاف إلى السبورة ويتزامن للطرفين؛ يمكن تعديله. صورك تُخزن على خدمة التجربة؛ استخدم مواد وهمية فقط.</p>
    </details>
-   {selectedLesson?.subject==='math'&&<MathPanel enabled={ready&&!conflict&&editable()} notify={notify} insert={(dataURL,width,height)=>{const id=crypto.randomUUID();api.addFiles([{id,dataURL,mimeType:'image/png',created:Date.now()}]);api.updateScene({elements:[...api.getSceneElements(),...convertToExcalidrawElements([{type:'image',...nextPosition(),...fitDimensions(width,height),fileId:id,status:'saved'}])]});focus(api.getSceneElements().slice(-1));}}/>}
+   {selectedLesson?.subject==='math'&&!MathPanel&&<button disabled={mathLoading} onClick={loadMath}>{mathLoading?'جاري تحميل محرر المعادلات…':mathFailed?'إعادة تحميل الأدوات':'تحميل محرر المعادلات'}</button>}
+   {selectedLesson?.subject==='math'&&MathPanel&&<MathPanel enabled={ready&&!conflict&&editable()} notify={notify} insert={(dataURL,width,height)=>{const id=crypto.randomUUID();api.addFiles([{id,dataURL,mimeType:'image/png',created:Date.now()}]);api.updateScene({elements:[...api.getSceneElements(),...convertToExcalidrawElements([{type:'image',...nextPosition(),...fitDimensions(width,height),fileId:id,status:'saved'}])]});focus(api.getSceneElements().slice(-1));}}/>}
    <div className="engine"><Excalidraw excalidrawAPI={value=>{api=value;if(remote)apply(remote);}}
     onChange={changed} langCode="ar-SA" viewModeEnabled={!ready||conflict||!state||!editable()} initialData={initialData}
     UIOptions={{canvasActions:{loadScene:false,saveToActiveFile:false,export:false,toggleTheme:false},tools:{image:true}}}
