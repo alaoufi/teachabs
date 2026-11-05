@@ -4,22 +4,35 @@ const need=(ok,message,status=400)=>{if(!ok)throw new UserError(message,status);
 export const emptyBoard=()=>({format:'khatwa-board',version:1,rev:0,studentDraw:false,elements:[],files:{}});
 export function changeBoard(current,seat,command,context={}){
  const state=current||emptyBoard();
+ need(['teacher','student'].includes(seat),'مقعد غير مصرح.',403);
  need(command&&Number.isInteger(command.rev)&&command.rev===state.rev,'تغيّرت السبورة. صدّر عملك المحلي قبل تحميل نسخة الخادم.',409);
  if(command.op==='lesson'){
   need(seat==='teacher','تغيير الدرس للمعلم فقط.',403);
   need(allowedLessons(context).some(l=>l.id===command.lessonId),'الدرس غير متاح لهذه المادة والصف.',403);
-  const archive={...(state.lessonScenes||{}),[state.activeLesson||'unassigned']:{elements:state.elements,files:state.files}};
-  const target=archive[command.lessonId]||{elements:[],files:{}};
+  const archive={...(state.lessonScenes||{}),[state.activeLesson||'unassigned']:{elements:state.elements,files:state.files,studentDraft:state.studentDraft||null,publishedStudent:state.publishedStudent||null}};
+  const target=archive[command.lessonId]||{elements:[],files:{},studentDraft:null,publishedStudent:null};
   const next={...state,...target,activeLesson:command.lessonId,lessonScenes:archive,studentDraw:false,rev:state.rev+1};
   need(JSON.stringify(next).length<=2000000,'تجاوزت مساحة حفظ الدروس الحد المسموح.');return next;
  }
- if(command.op==='scene'&&state.activeLesson)need(command.lessonId===state.activeLesson,'تغير الدرس؛ احتفظ بعملك وأعد التحميل.',409);
+ if(['scene','draft','publish','hide'].includes(command.op)&&state.activeLesson)need(command.lessonId===state.activeLesson,'تغير الدرس؛ احتفظ بعملك وأعد التحميل.',409);
+ if(command.op==='draft'){
+  need(seat==='student'&&state.studentDraw,'كتابة المسودة تحتاج إذن المعلم.',403);
+  const checked=changeBoard(emptyBoard(),'teacher',{...command,op:'scene',rev:0});
+  const next={...state,rev:state.rev+1,studentDraft:{elements:checked.elements,files:checked.files}};
+  need(JSON.stringify(next).length<=2000000,'تجاوزت مساحة الحفظ.');return next;
+ }
+ if(command.op==='publish'||command.op==='hide'){
+  need(seat==='teacher','نشر المشاركة وحجبها للمعلم فقط.',403);
+  need(command.op==='hide'||state.studentDraft,'لا توجد مسودة للمراجعة.');
+  const next={...state,rev:state.rev+1,publishedStudent:command.op==='hide'?null:structuredClone(state.studentDraft)};
+  need(JSON.stringify(next).length<=2000000,'تجاوزت مساحة الحفظ.');return next;
+ }
  if(command.op==='permission'){
   need(seat==='teacher'&&typeof command.allow==='boolean','الإذن للمعلم فقط.',403);
   return {...state,rev:state.rev+1,studentDraw:command.allow};
  }
  need(command.op==='scene','أمر غير معروف.');
- need(seat==='teacher'||state.studentDraw,'السبورة للعرض الآن؛ اطلب الإذن من المعلم.',403);
+ need(seat==='teacher','السبورة للعرض الآن؛ اطلب الإذن من المعلم.',403);
  need(Array.isArray(command.elements)&&command.elements.length<=1000,'حد السبورة ألف عنصر.');
  const allowed=new Set(['rectangle','diamond','ellipse','arrow','line','freedraw','text','image']),ids=new Set();
  const elements=command.elements.map(raw=>{

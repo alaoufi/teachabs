@@ -7,9 +7,9 @@ test('scene revision, permissions, external image and link restrictions',()=>{
  assert.throws(()=>changeBoard(s,'student',{rev:1,op:'scene',elements:[],files:{}}),e=>e.status===403);
  s=changeBoard(s,'teacher',{rev:1,op:'permission',allow:true});
  assert.throws(()=>changeBoard(s,'teacher',{rev:1,op:'scene',elements:[],files:{}}),e=>e.status===409);
- assert.throws(()=>changeBoard(s,'student',{rev:2,op:'scene',elements:[{...element,type:'embeddable'}]}));
- assert.throws(()=>changeBoard(s,'student',{rev:2,op:'scene',elements:[{...element,type:'image',fileId:'f'}],files:{f:{dataURL:'https://tracker.example/a.png'}}}));
- s=changeBoard(s,'student',{rev:2,op:'scene',elements:[element],files:{}});assert.equal(s.rev,3);
+ assert.throws(()=>changeBoard(s,'student',{rev:2,op:'draft',elements:[{...element,type:'embeddable'}]}));
+ assert.throws(()=>changeBoard(s,'student',{rev:2,op:'draft',elements:[{...element,type:'image',fileId:'f'}],files:{f:{dataURL:'https://tracker.example/a.png'}}}));
+ s=changeBoard(s,'student',{rev:2,op:'draft',elements:[element],files:{}});assert.equal(s.rev,3);
 });
 test('board persists independently of in-memory lesson room and remains isolated by key',()=>{
  const dir=mkdtempSync(join(tmpdir(),'board-persist-')),path=join(dir,'test.sqlite');
