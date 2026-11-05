@@ -63,7 +63,11 @@ async function toggle(kind){
       await sender(connection,kind)?.replaceTrack(null);
     }else{
       if(!navigator.mediaDevices?.getUserMedia) throw new Error('unavailable');
-      const stream=await navigator.mediaDevices.getUserMedia({[kind]:true});
+      // Preferences, not mandatory constraints: older devices may ignore them.
+      // Avoid automatic gain boosting quiet/distant room noise by default.
+      const stream=await navigator.mediaDevices.getUserMedia({[kind]:kind==='audio'?{
+        echoCancellation:{ideal:true},noiseSuppression:{ideal:true},autoGainControl:{ideal:false}
+      }:true});
       const track=stream.getTracks()[0];
       if(!present || ended || document.hidden || epoch!==mediaEpoch){track.stop();return;}
       tracks[kind]=track;
