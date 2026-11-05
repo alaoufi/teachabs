@@ -9,3 +9,46 @@
 .adm-record-actions .adm-form{gap:0}.adm-record-actions .adm-form .btn{font-size:11px;padding:7px 10px;min-height:38px}.adm-teacher>.adm-badge{margin-top:7px}.adm-teacher>.adm-form{margin-top:13px}.adm-teacher>.adm-form .btn{font-size:11px;padding:7px 12px;min-height:38px}
 .adm-support-list{display:grid;gap:17px}.adm-support-ticket{padding:19px;border:1px solid #d8e2ce;border-radius:14px;background:#fafbf4}.adm-support-top{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:13px}.adm-support-badges{display:flex;flex-wrap:wrap;gap:6px}.adm-support-top>small,.adm-ticket-actor{font-size:11px;color:#718167}.adm-support-ticket h3{font-size:18px}.adm-support-ticket>p{font-size:13px;margin:10px 0}.adm-preserve-lines{white-space:pre-wrap;overflow-wrap:anywhere}.adm-support-ticket>.adm-form{border-top:1px solid #dce5d3;padding-top:16px;margin-top:17px}.adm-urgent{background:#f9e3d9;color:#923e23}.adm-resource-link{margin:0 0 24px}.adm-library-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px}.adm-library-card{display:flex;flex-direction:column;padding:22px;border:1px solid #cedbc8;border-radius:19px;background:#fffef9;box-shadow:0 4px 0 #e1e8d9}.adm-library-card>p{font-size:13px;margin:8px 0 13px}.adm-library-card>small{font-size:10px;color:#6f7f64;overflow-wrap:anywhere}.adm-library-card .adm-resource-domain{font-size:12px;color:#3e6854;margin-bottom:8px}.adm-library-actions{display:grid;gap:10px;padding-top:17px;margin-top:auto}.adm-library-actions>.outline{justify-self:start}.adm-library-actions .adm-form>.btn{font-size:11px;padding:7px 13px;min-height:38px;background:#eaf0e1;color:#365d43;border-color:#ceddc3}.adm-new-tab{font-size:10px;margin-inline-start:6px;font-weight:400}.adm-library-card h3{font-size:18px}@media(max-width:700px){.adm-support-top{align-items:start;flex-direction:column;gap:8px}.adm-support-ticket{padding:16px}.adm-library-card{padding:18px}}@media(max-width:460px){.adm-library-grid{grid-template-columns:1fr}.adm-support-ticket .adm-form-grid{grid-template-columns:1fr}.adm-support-ticket h3{font-size:16px}}
 .adm-library-card>.adm-support-badges{margin-top:9px}.adm-library-card .adm-license-details{margin:0 0 13px;border-top:1px solid #e2e9d9;border-bottom:1px solid #e2e9d9;padding:6px 0}.adm-library-card .adm-license-details>div{font-size:11px;align-items:baseline}
+
+/* Stage 033: compact context, touch navigation and content-first sections. */
+body:has(.adm) main>.demo{display:none}
+.adm-breadcrumb{margin-bottom:10px;font-size:14px;gap:8px}
+.adm-breadcrumb a{min-height:44px;display:inline-flex;align-items:center;font-size:14px}
+.adm-simulation{margin-bottom:16px;padding:10px 14px;gap:14px;align-items:center}
+.adm-simulation p{font-size:13px}.adm-simulation .adm-field{font-size:13px}
+.adm-simulation select,.adm-simulation .btn{min-height:44px;font-size:14px}
+.adm-sidebar{padding:12px;box-shadow:0 3px 0 #dce5d6}
+.adm-identity{padding:0 0 12px;margin-bottom:10px;display:flex;gap:10px;text-align:start;align-items:center}
+.adm-identity strong{font-size:14px;margin:0}.adm-identity .adm-avatar{width:38px;height:38px;border-radius:12px;font-size:18px}
+.adm-sidebar nav a{min-height:46px;font-size:14px;padding:10px 8px;line-height:1.5}
+.adm-heading{margin-bottom:16px;gap:12px}.adm-heading h1{margin:0 0 4px;font-size:28px}.adm-heading p{font-size:14px}
+.adm-heading-icon{width:48px;height:48px;border-radius:15px;box-shadow:0 4px 0 #c9d7c2;transform:rotate(-4deg)}
+.adm-overview{padding:16px 20px;margin-bottom:20px}.adm-overview h2{font-size:23px;margin:0 0 7px}.adm-overview .adm-eyebrow{display:none}.adm-overview-mark{padding:12px}.adm-overview-mark svg{width:48px;height:48px}
+.adm-section-card{padding:18px}.adm-section-card p{margin-bottom:12px}.adm-card-icon{box-shadow:0 4px 0 #cbd8bd;transform:translateY(-3px)}
+.adm-mobile-nav{display:none}.adm-disclosure{margin:0 0 22px;border:1px solid var(--adm-line);border-radius:16px;background:#f0f4e9}
+.adm-disclosure summary{min-height:52px;padding:12px 16px;cursor:pointer;font-size:16px;font-weight:700;list-style-position:inside}
+.adm-disclosure summary svg{width:22px;height:22px;vertical-align:middle;margin-inline-end:9px}.adm-disclosure .adm-panel{margin:0;border:0;box-shadow:none;border-radius:0 0 16px 16px}
+.adm :is(.btn,.outline,.adm-check,.adm-record-actions .outline){min-height:44px;font-size:14px}
+.adm .adm-check{line-height:1.6}.adm .adm-check input{width:20px;height:20px}
+.adm-permissions>div{gap:14px}.adm-permission-group{border:1px solid #d8e2d0;border-radius:12px;padding:12px;display:grid;align-content:start;gap:8px}
+.adm-permission-group h3{font-size:15px;margin:0 0 5px}.adm-permission-group .adm-check{padding:9px}
+.adm-toolbar{flex-wrap:wrap}.adm-toolbar .btn{min-height:44px;font-size:14px}
+@media(max-width:700px){
+ body:has(.adm) main{width:calc(100% - 24px);margin-top:16px}
+ .adm-sidebar{display:none}.adm-layout{display:block}.adm-mobile-nav{display:block;margin:0 0 16px;border:1px solid #cbd9c3;border-radius:13px;background:#eef3e8}
+ .adm-mobile-nav summary{display:flex;align-items:center;gap:10px;min-height:48px;padding:10px 12px;font-size:15px;font-weight:700;cursor:pointer;list-style:none}
+ .adm-mobile-nav summary::after{content:'⌄';margin-inline-start:auto;font-size:21px}.adm-mobile-nav[open] summary::after{content:'⌃'}
+ .adm-mobile-nav summary small{font-size:12px;font-weight:400;color:#52685e}.adm-mobile-nav nav{min-height:0;display:grid;grid-template-columns:1fr 1fr;width:100%;gap:6px;padding:0 8px 10px}
+ .adm-mobile-nav nav a{display:flex;align-items:center;gap:8px;min-height:48px;padding:9px;border-radius:9px;font-size:14px;line-height:1.5}
+ .adm-mobile-nav nav [aria-current]{background:#155c4d;color:white}.adm-mobile-nav nav svg{width:20px;height:20px}
+ .adm-simulation{display:block;padding:10px 12px;margin-bottom:12px}.adm-simulation>div{display:flex;gap:9px;flex-wrap:wrap;align-items:center}.adm-simulation p{margin:0}
+ .adm-simulation .adm-form{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;margin-top:7px}.adm-simulation .adm-field{gap:3px}
+ .adm-heading{margin-bottom:14px}.adm-heading h1{font-size:25px}.adm-heading p{font-size:14px}.adm-heading-icon{display:grid;width:42px;height:42px}
+ .adm-panel{padding:16px;margin-bottom:18px}.adm-panel-head{margin-bottom:12px;padding-bottom:10px}.adm-overview{padding:16px}.adm-overview h2{font-size:22px}.adm-overview p{font-size:14px}
+ .adm-record small,.adm-teacher small{font-size:13px}.adm-permission-group{padding:10px}
+}
+@media(max-width:360px){.adm-mobile-nav summary small{display:none}.adm-simulation .adm-form{grid-template-columns:minmax(0,1fr)}.adm-simulation .btn{width:100%}.adm-heading-icon{width:36px;height:36px}.adm-mobile-nav nav{grid-template-columns:1fr}.adm-heading h1{font-size:23px}}
+@media(prefers-reduced-motion:reduce){.adm-section-card{transition:none}.adm-section-card:hover{transform:none}}
+
+body:has(.adm) main{padding-top:12px}
+@media(max-width:700px){body:has(.adm) main{margin-top:0;padding-top:8px}.adm-breadcrumb{margin-bottom:6px}.adm-heading{margin-bottom:10px}}
