@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { openStore } from '../store.mjs';
 import { createApp } from '../server.mjs';
 
-test('demo hub names unavailable roles honestly and does not create a session on GET', async t => {
+test('demo hub offers admin entry and does not create a session on GET', async t => {
   const store=openStore(':memory:'), app=createApp(store);
   await new Promise(r=>app.listen(0,'127.0.0.1',r));
   t.after(async()=>{app.closeAllConnections();await new Promise(r=>app.close(r));store.close();});
@@ -12,10 +12,10 @@ test('demo hub names unavailable roles honestly and does not create a session on
   assert.equal(response.status,200);
   assert.equal(response.headers.get('set-cookie'),null);
   const html=await response.text();
-  for(const label of ['ولي الأمر','المعلم','الطالب','السبورة','الإدارة','غير متاحة','مؤقت']) assert.ok(html.includes(label),label);
+  for(const label of ['ولي الأمر','المعلم','الطالب','السبورة','الإدارة','المشرف العام','مؤقت']) assert.ok(html.includes(label),label);
   const post=(role,origin=base,cookie='')=>fetch(base+'/demo/start',{method:'POST',headers:{origin,cookie},body:new URLSearchParams({role}),redirect:'manual'});
   assert.equal((await post('teacher','https://other.example')).status,403);
-  assert.equal((await post('admin')).status,400);
+  assert.equal((await post('admin')).status,303);
   const parent=await post('parent');
   assert.equal(parent.status,303);
   const parentCookie=parent.headers.get('set-cookie').split(';')[0];

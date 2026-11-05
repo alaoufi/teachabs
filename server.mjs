@@ -1,3 +1,4 @@
+import { adminService } from './admin-service.mjs';
 import {serveAsset} from './asset-response.mjs';
 import { demoHub } from './demo.mjs';
 import http from 'node:http';
@@ -13,6 +14,7 @@ import { progressPage, bookingResult } from './place-views.mjs';
 const files={'/style.css':'text/css; charset=utf-8','/mark.svg':'image/svg+xml','/study.svg':'image/svg+xml','/app.webmanifest':'application/manifest+json','/icon-192.png':'image/png','/icon-512.png':'image/png'};
 files['/board-loader.js']='text/javascript; charset=utf-8';
 files['/depth.css']='text/css; charset=utf-8';
+files['/admin.css']='text/css; charset=utf-8';
 files['/lesson-client.js']='text/javascript; charset=utf-8';
 files['/lesson.css']='text/css; charset=utf-8';
 files['/place-client.js']='text/javascript; charset=utf-8';
@@ -25,6 +27,7 @@ async function fields(req){
 
 export function createApp(store,{origin=process.env.APP_ORIGIN}={}) {
   const lessons=lessonService(store);
+  const administration=adminService(store);
   const limits=new Map();
   function limit(req,key,max){
     const now=Date.now();
@@ -57,6 +60,7 @@ export function createApp(store,{origin=process.env.APP_ORIGIN}={}) {
       const url=new URL(req.url,base);
       route=url.pathname;const q=Object.fromEntries(url.searchParams);
       const uid=store.resolve(cookie);u=uid?store.user(uid):null;
+      if(administration.matches(route))return await administration.handle({req,url,u,base,html,redirect,fields,limit,enter});
       if(lessons.matches(route))return await lessons.handle({req,res,url,u,cookie,base,html,redirect,fields,limit});
       if(req.method==='GET'){
         if(route==='/demo')return html('شاشات التجربة',demoHub(u,q.role));
@@ -71,6 +75,7 @@ export function createApp(store,{origin=process.env.APP_ORIGIN}={}) {
         if(route==='/')return u?redirect('/app'):html('التعليم الفردي',ui.landing());
         if(['/login','/register','/activate'].includes(route))return html('الحساب',ui.auth(route.slice(1),q.code||''));
         if(!u)return redirect('/login');
+        if(route==='/app'&&u.role==='admin')return redirect('/admin');
         if(route==='/app')return html('لوحتي',ui.home(u,store));
         if(route==='/bookings')return html('الحجوزات',ui.bookingsList(store.bookings(uid)));
         if(route==='/progress'){
@@ -99,10 +104,11 @@ export function createApp(store,{origin=process.env.APP_ORIGIN}={}) {
         if(req.headers.origin!==base)throw new UserError('تعذّر التحقق من مصدر الطلب. افتح التطبيق مجددًا.',403);
         data=await fields(req);
         if(route==='/demo/start'){
-          if(!['parent','teacher'].includes(data.role))throw new UserError('اختر تجربة متاحة.');
+          if(!['parent','teacher','admin'].includes(data.role))throw new UserError('اختر تجربة متاحة.');
           if(u && !u.scope)throw new UserError('سجّل الخروج من الحساب الفعلي قبل بدء تجربة.',409);
           limit(req,'demo',15);
-          if(u)return enter(u.role===data.role?u.id:store.switchTour(u.id));
+          if(data.role==='admin')return enter(store.admin.demo().supervisor);
+          if(u&&['parent','teacher'].includes(u.role))return enter(u.role===data.role?u.id:store.switchTour(u.id));
           const tour=store.tour();return enter(tour[data.role]);
         }
         if(['/login','/register','/activate','/tour'].includes(route))limit(req,route,route==='/login'?25:15);

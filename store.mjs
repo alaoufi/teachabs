@@ -1,3 +1,4 @@
+import { createAdminStore } from './admin-model.mjs';
 import { DatabaseSync } from 'node:sqlite';
 import { randomBytes, randomUUID, createHash, scryptSync, timingSafeEqual } from 'node:crypto';
 
@@ -37,10 +38,13 @@ export function openStore(path) {
   const one=(sql,...args)=>db.prepare(sql).get(...args);
   const all=(sql,...args)=>db.prepare(sql).all(...args);
   const run=(sql,...args)=>db.prepare(sql).run(...args);
+  let transactionDepth=0;
   function transaction(fn) {
-    db.exec('BEGIN IMMEDIATE');
+    if(transactionDepth){return fn();}
+    db.exec('BEGIN IMMEDIATE');transactionDepth++;
     try {const value=fn();db.exec('COMMIT');return value;}
     catch(e){db.exec('ROLLBACK');throw e;}
+    finally{transactionDepth--;}
   }
   function user(id) {
     const u=one('SELECT id,role,name,scope,subjects,grades,language FROM users WHERE id=?',id);
@@ -77,6 +81,8 @@ export function openStore(path) {
     return transaction(()=>{
       const row=one('SELECT user FROM invites WHERE token=? AND expires>?',hash(String(token)),Date.now());
       check(row,'انتهت الدعوة أو استُخدمت من قبل.');
+      const membership=one('SELECT active FROM admin_members WHERE user=?',row.user);
+      check(!membership||membership.active===1,'هذا الحساب موقوف. تواصل مع المشرف العام.',403);
       run('UPDATE users SET pass=? WHERE id=?',passwordHash(password),row.user);
       run('DELETE FROM invites WHERE token=?',hash(token));
       return row.user;
@@ -89,6 +95,8 @@ export function openStore(path) {
     const [salt,digest]=(u?.pass||('unknown:'+ '0'.repeat(128))).split(':');
     const ok=timingSafeEqual(scryptSync(password,salt,64),Buffer.from(digest,'hex'));
     check(ok && u?.pass,'تحقق من البريد وكلمة المرور.',403);
+    const membership=one('SELECT active FROM admin_members WHERE user=?',u.id);
+    check(!membership||membership.active===1,'هذا الحساب موقوف. تواصل مع المشرف العام.',403);
     return u.id;
   }
   function child(parentId,{name,grade,curriculum,language}) {
@@ -122,6 +130,7 @@ export function openStore(path) {
     return all(`SELECT s.id,s.teacher,s.subject,s.minutes,s.start,u.name teacherName
       FROM slots s JOIN users u ON u.id=s.teacher JOIN users p ON p.id=?
       WHERE u.scope=p.scope AND u.role='teacher' AND u.language=? AND s.minutes=? AND s.active=1 AND s.start>?
+      AND (u.pass IS NOT NULL OR (u.scope<>'' AND u.email IS NULL))
       AND s.subject=? AND (? IS NULL OR s.id=?)
       AND EXISTS(SELECT 1 FROM json_each(u.grades) WHERE value=?)
       AND EXISTS(SELECT 1 FROM json_each(u.subjects) WHERE value=s.subject)
@@ -205,11 +214,12 @@ export function openStore(path) {
   db.exec('CREATE TABLE IF NOT EXISTS lesson_boards(id TEXT PRIMARY KEY,state TEXT NOT NULL,updated INTEGER NOT NULL)');
   const readBoard=id=>{const r=one('SELECT state FROM lesson_boards WHERE id=?',id);return r?JSON.parse(r.state):null;};
   const writeBoard=(id,state)=>run('INSERT INTO lesson_boards VALUES(?,?,?) ON CONFLICT(id) DO UPDATE SET state=excluded.state,updated=excluded.updated',id,JSON.stringify(state),Date.now());
-  return {readBoard,writeBoard,close:()=>db.close(),user,parent,invite,activate,login,child,ownedChild,slot,offers,book,bookings,cancel,withdraw,tour,
+  const admin=createAdminStore({db,one,all,run,transaction,user,UserError,subjects,grades,duration,validEmail,secret,hash,tour});
+  return {admin,readBoard,writeBoard,close:()=>db.close(),user,parent,invite,activate,login,child,ownedChild,slot,offers,book,bookings,cancel,withdraw,tour,
     placeActivity,changePlace,childResults,
     children:id=>all('SELECT * FROM children WHERE parent=? ORDER BY rowid',id),
     schedule:id=>all(`SELECT s.*,EXISTS(SELECT 1 FROM bookings b WHERE b.slot=s.id AND b.status='confirmed') booked FROM slots s WHERE teacher=? AND active=1 AND start>? ORDER BY start`,id,Date.now()),
-    switchTour:id=>{const u=user(id);check(u.scope,'هذه الميزة للجولة فقط.',403);return one('SELECT id FROM users WHERE scope=? AND id<>?',u.scope,id).id;},
+    switchTour:id=>{const u=user(id);check(u.scope&&['parent','teacher'].includes(u.role),'هذه الميزة لجولة الأسرة والمعلم فقط.',403);return one('SELECT id FROM users WHERE scope=? AND role=?',u.scope,u.role==='parent'?'teacher':'parent').id;},
     session:id=>{const key=secret();run('DELETE FROM sessions WHERE expires<=?',Date.now());run('INSERT INTO sessions VALUES(?,?,?)',hash(key),id,Date.now()+7*86400000);return key;},
     resolve:key=>key && one('SELECT user FROM sessions WHERE token=? AND expires>?',hash(key),Date.now())?.user,
     logout:key=>{if(key)run('DELETE FROM sessions WHERE token=?',hash(key));}
