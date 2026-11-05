@@ -13,6 +13,7 @@ export function adminService(store) {
     const invitation=result=>ui.adminInviteResult(profile,{...result,activationUrl:new URL('/activate?code='+result.token,base).href});
     if(req.method==='GET') {
       if(path==='/admin')return html('الإدارة',ui.adminHome(profile,admin.overview(u.id)));
+      if(path==='/admin/school')return html('الصفوف والفصول',ui.adminSchool(profile,admin.school(u.id)));
       if(path==='/admin/accounts')return html('أعضاء الإدارة',ui.adminAccounts(profile,admin.members(u.id)));
       if(path==='/admin/accounts/new'){admin.requireAccess(u.id,'supervisor');return html('إضافة عضو إدارة',ui.adminAccountForm(profile));}
       const account=path.match(/^\/admin\/accounts\/([\da-f-]{36})$/i);
@@ -41,6 +42,12 @@ export function adminService(store) {
         admin.updateMember(u.id,account[1],{...data,active:data.active==='1',revision:Number(data.revision),permissions:selectedPermissions(data)});
         return redirect('/admin/accounts');
       }
+      if(path==='/admin/school/grades'){admin.addSchoolGrade(u.id,{grade:Number(data.grade)});return redirect('/admin/school');}
+      if(path==='/admin/school/classes'){admin.addSchoolClass(u.id,data);return redirect('/admin/school');}
+      if(path==='/admin/school/teachers'){admin.assignSchoolTeacher(u.id,data);return redirect('/admin/school');}
+      if(path==='/admin/school/students'){admin.assignSchoolStudent(u.id,data);return redirect('/admin/school');}
+      if(path==='/admin/school/supervisors'){admin.assignSchoolSupervisor(u.id,data);return redirect('/admin/school');}
+      if(path==='/admin/school/remove'){admin.removeSchoolAssignment(u.id,data);return redirect('/admin/school');}
       if(path==='/admin/technical'){admin.addTicket(u.id,{...data,description:data.description||''});return redirect(path);}
       const ticket=path.match(/^\/admin\/technical\/([\da-f-]{36})$/i);
       if(ticket){admin.updateTicket(u.id,ticket[1],{status:data.status,priority:data.priority,revision:Number(data.revision)});return redirect('/admin/technical');}
