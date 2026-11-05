@@ -1,0 +1,77 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { openStore } from '../store.mjs';
+import { createApp } from '../server.mjs';
+
+test('الدرس متاح لطرفي الحجز فقط وفي وقت الحصة وتغلق السبورة عند الإلغاء',async t=>{
+  const s=openStore(':memory:');
+  const app=createApp(s); await new Promise(r=>app.listen(0,'127.0.0.1',r));
+  const base='http://127.0.0.1:'+app.address().port;
+  const abort=new AbortController();
+  t.after(async()=>{abort.abort();app.closeAllConnections();await new Promise(r=>app.close(r));s.close()});
+  const tour=s.tour(),other=s.tour();
+  const cookie=id=>'ks='+s.session(id);
+  const owner=cookie(tour.parent),teacher=cookie(tour.teacher),stranger=cookie(other.parent);
+  function make(start){
+    const slot=s.slot(tour.teacher,{subject:'math',minutes:45,start,instructions:'الفصل'});
+    return s.book(tour.parent,tour.child,slot,'lesson-'+start);
+  }
+  const id=make(Date.now()+60000);
+  const later=make(Date.now()+7200000);
+  const path='/lesson/'+id;
+  const get=(url,c)=>fetch(base+url,{headers:{cookie:c},redirect:'manual',signal:abort.signal});
+  assert.equal((await get(path,owner)).status,200);
+  assert.equal((await get(path,teacher)).status,200);
+  assert.equal((await get(path,stranger)).status,404);
+  assert.equal((await get('/lesson/'+later,owner)).status,403);
+  assert.equal((await get(path+'?seat=teacher',owner)).status,403);
+  assert.equal((await get(path,'')).status,303);
+  const client='aa45b5de-9404-4909-829b-4fddda2b1017';
+  const resp=await get(path+'/events?client='+client,owner);
+  assert.match(resp.headers.get('content-type'),/text\/event-stream/);
+  const reader=resp.body.getReader();
+  const first=await reader.read(); assert.match(new TextDecoder().decode(first.value),/snapshot/);
+  const signal=(c,origin,body)=>fetch(base+path+'/send',{method:'POST',headers:{cookie:c,origin},body:new URLSearchParams({client,kind:'stroke',payload:JSON.stringify(body)})});
+  assert.equal((await signal(stranger,base,[[20,20]])).status,404);
+  assert.equal((await signal(owner,'https://other.example',[[20,20]])).status,403);
+  assert.equal((await signal(owner,base,[[20,25],[40,60]])).status,204);
+  await reader.cancel();
+  const rejoined=await get(path+'/events?client='+client,owner);
+  const replay=rejoined.body.getReader();
+  const snapshot=await replay.read();
+  assert.match(new TextDecoder().decode(snapshot.value),/\[20,25\]/);
+  await replay.cancel();
+  await fetch(base+'/cancel',{method:'POST',headers:{cookie:owner,origin:base},body:new URLSearchParams({id}),redirect:'manual'});
+  assert.equal((await signal(owner,base,[[10,10]])).status,403);
+  assert.equal((await get(path,teacher)).status,403);
+});
+
+test('تجربة نافذتي الدرس لها إذن منفصل عن حساب الأسرة',async t=>{
+  const s=openStore(':memory:'), app=createApp(s);
+  await new Promise(r=>app.listen(0,'127.0.0.1',r));
+  t.after(async()=>{app.closeAllConnections();await new Promise(r=>app.close(r));s.close()});
+  const base='http://127.0.0.1:'+app.address().port;
+  assert.equal((await fetch(base+'/lesson')).status,200);
+  const entry=await fetch(base+'/lesson/teacher');
+  assert.equal(entry.status,200);
+  assert.match(await entry.text(),/action="\/lesson\/preview\/start\?seat=teacher"/);
+  const fromHome=await fetch(base+'/');
+  assert.match(await fromHome.text(),/href="\/lesson\/teacher"/);
+  const cold=await fetch(base+'/lesson/preview?seat=teacher',{redirect:'manual'});
+  assert.equal(cold.headers.get('location'),'/lesson/teacher');
+  const teacherTour=await fetch(base+'/lesson/preview/start?seat=teacher',{method:'POST',headers:{origin:base},redirect:'manual'});
+  assert.equal(teacherTour.headers.get('location'),'/lesson/preview?seat=teacher');
+  const teacherRoom=await fetch(base+teacherTour.headers.get('location'),{headers:{cookie:teacherTour.headers.get('set-cookie').split(';')[0]}});
+  const teacherBody=await teacherRoom.text();
+  assert.match(teacherBody,/data-seat="teacher"/);
+  assert.match(teacherBody,/id="pv-observe"/);
+  const tour=await fetch(base+'/lesson/preview/start',{method:'POST',headers:{origin:base},body:new URLSearchParams(),redirect:'manual'});
+  assert.equal(tour.status,303);
+  assert.equal(tour.headers.get('location'),'/lesson/preview');
+  const c=tour.headers.get('set-cookie').split(';')[0];
+  const get=(suffix,cookie)=>fetch(base+'/lesson/preview'+suffix,{headers:{cookie},redirect:'manual'});
+  assert.equal((await get('?seat=teacher',c)).status,200);
+  assert.doesNotMatch(await (await get('',c)).text(),/id="pv-observe"/);
+  assert.notEqual((await get('?seat=teacher','')).status,200);
+  assert.equal((await fetch(base+'/app',{headers:{cookie:c},redirect:'manual'})).status,303);
+});

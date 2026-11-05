@@ -1,0 +1,34 @@
+plugins { id 'com.android.application' }
+
+def publicOrigin = providers.gradleProperty('khatwaOrigin').orNull
+def startUrl = 'http://127.0.0.1:4817/'
+if (publicOrigin != null) {
+    def uri = new URI(publicOrigin).parseServerAuthority()
+    if (uri.scheme != 'https' || !uri.host || uri.userInfo != null ||
+            !(uri.path in ['', '/']) || uri.query != null || uri.fragment != null ||
+            uri.port == 0 || uri.port > 65535) {
+        throw new GradleException('khatwaOrigin must be an HTTPS origin without a path, credentials, query or fragment.')
+    }
+    startUrl = uri.resolve('/').toASCIIString()
+}
+
+android {
+    namespace 'app.khatwa.learning'
+    compileSdk 34
+    defaultConfig {
+        applicationId 'app.khatwa.learning'
+        minSdk 24
+        targetSdk 34
+        versionCode 2
+        versionName '0.1.1'
+        resValue 'string', 'khatwa_start_url', startUrl
+    }
+    buildTypes {
+        debug { applicationIdSuffix '.local' }
+    }
+}
+
+// A release must have its own HTTPS service. Local USB builds remain available in debug.
+androidComponents.beforeVariants(androidComponents.selector().withBuildType('release')) { variant ->
+    variant.enable = publicOrigin != null
+}
