@@ -78,12 +78,13 @@ export function createAdminStore({db,one,all,run,transaction,user,UserError,subj
   function createMember(actorId,values) {
     return transaction(()=>{const a=requireAccess(actorId,'supervisor'),result=insertMember(a.scope,values);audit(a,'member.created',result.id,{adminRole:values.adminRole,permissions:grants(values.adminRole,values.permissions)});return result;});
   }
+  function createRegistrationAgent(actorId,values){return transaction(()=>{const a=requireAccess(actorId,'supervisor');check(validText(values.name,60),'Invalid agent name');const email=emailForScope(values.email,a.scope);check(!one('SELECT id FROM users WHERE email=?',email),'Email already registered',409);const keys=['register_parent','register_child','manage_status'];check(keys.every(k=>typeof values[k]==='boolean'),'Invalid agent permissions');const id=randomUUID(),token=secret();run("INSERT INTO users(id,role,name,email,scope) VALUES(?,'registration_agent',?,?,?)",id,values.name.trim(),email,a.scope);run('INSERT INTO registration_permissions VALUES(?,?,?,?,0)',id,...keys.map(k=>values[k]?1:0));run('INSERT INTO invites VALUES(?,?,?)',hash(token),id,Date.now()+86400000);audit(a,'registration_agent.invited',id,{permissions:Object.fromEntries(keys.map(k=>[k,values[k]]))});return {id,name:values.name.trim(),token};});}
   function renewInvitation(actorId,targetId,type='member') {
     return transaction(()=>{
       const a=requireAccess(actorId,type==='teacher'?'education.write':'supervisor');
-      check(['member','teacher'].includes(type),'نوع الدعوة غير صالح.');
+      check(['member','teacher','agent'].includes(type),'نوع الدعوة غير صالح.');
       const target=one('SELECT id,name,role,pass,email FROM users WHERE id=? AND scope=?',targetId,a.scope);
-      check(target&&target.role===(type==='teacher'?'teacher':'admin'),'الحساب غير متاح.',404);
+      check(target&&target.role===(type==='teacher'?'teacher':type==='agent'?'registration_agent':'admin'),'الحساب غير متاح.',404);
       check(target.email,'حسابات الجولة الأساسية جاهزة للتبديل ولا تحتاج إلى دعوة.',409);
       check(!target.pass,'هذا الحساب مفعّل بالفعل.',409);
       if(type==='member')check(one('SELECT active FROM admin_members WHERE user=?',targetId)?.active===1,'فعّل حالة العضو قبل تجديد الدعوة.',409);
@@ -200,5 +201,5 @@ export function createAdminStore({db,one,all,run,transaction,user,UserError,subj
   function isDemoAgent(id){const u=user(id);return u.role==='registration_agent'&&!!u.scope&&!!one('SELECT agent FROM admin_demo_agents WHERE scope=? AND agent=?',u.scope,id);}
   function switchDemo(actorId,adminRole) {const a=isDemoAgent(actorId)?user(actorId):profile(actorId);check(a.scope&&(adminRole==='registration_agent'||Object.hasOwn(ADMIN_ROLES,adminRole)),'التبديل متاح داخل الجولة الإدارية فقط.',403);if(adminRole==='registration_agent'){const r=one('SELECT agent FROM admin_demo_agents WHERE scope=?',a.scope);check(r,'Start a new administrative demo to use the agent',404);return r.agent;}const row=one('SELECT u.id FROM users u JOIN admin_members m ON m.user=u.id WHERE u.scope=? AND m.department=? AND m.active=1 ORDER BY u.rowid LIMIT 1',a.scope,adminRole);check(row,'حساب القسم غير متاح في هذه الجولة.',404);return row.id;}
   const technicalStore=createTechnicalStore({db,one,all,run,transaction,requireAccess,audit,check});
-  return {...technicalStore,profile,requireAccess,bootstrap,members,createMember,renewInvitation,updateMember,overview,ledger,addLedger,registration,education,createTeacher,addSlot,operations,addOperation,updateOperation,auditLog,demo,switchDemo,isDemoAgent};
+  return {...technicalStore,profile,requireAccess,bootstrap,members,createMember,createRegistrationAgent,renewInvitation,updateMember,overview,ledger,addLedger,registration,education,createTeacher,addSlot,operations,addOperation,updateOperation,auditLog,demo,switchDemo,isDemoAgent};
 }

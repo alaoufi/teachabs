@@ -29,6 +29,8 @@ export function adminService(store) {
       if(req.headers.origin!==base)throw new UserError('تعذّر التحقق من مصدر الطلب. افتح التطبيق مجددًا.',403);
       limit(req,'admin-write',180);
       const data=await fields(req);
+      if(path==='/admin/registration-agents/new')return html('دعوة وكيل تسجيل',invitation(admin.createRegistrationAgent(u.id,{...data,register_parent:data.register_parent==='on',register_child:data.register_child==='on',manage_status:data.manage_status==='on'})),201);
+      if(path==='/admin/registration-agents/renew')return html('تجديد دعوة وكيل',invitation(admin.renewInvitation(u.id,data.agent,'agent')));
       const renew=path.match(/^\/admin\/(accounts|education\/teachers)\/([\da-f-]{36})\/renew$/i);
       if(renew)return html('تجديد رابط التفعيل',invitation(admin.renewInvitation(u.id,renew[2],renew[1]==='accounts'?'member':'teacher')));
       if(path==='/admin/demo/switch')return enter(admin.switchDemo(u.id,data.adminRole));
