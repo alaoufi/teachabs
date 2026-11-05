@@ -1,0 +1,11 @@
+# Local Excalidraw library samples — stage 029
+
+Base: live-compatible 64282c1, isolated feature/library-samples. Backup 029 restored and git-fsck checked before changes. No admin/recovery development merged here. No production service or data changed.
+
+Sources are pinned in vendor/excalidraw-libraries/PROVENANCE.md and samples.json, with original files, author, source URL, SHA256 and upstream MIT LICENSE. Selected Blank Number Line (Yatrik Patel) avoids presenting negative integers as a grade-one curriculum requirement. Selected Cell (Sanketh) is explicitly an unreviewed schematic, not a validated anatomy model or animation. The cell sample needs pedagogical review before classroom adoption; no anatomical labels or scientific accuracy claims were added. Synthetic lesson placement is NOT an official Saudi curriculum mapping.
+
+Server lesson resources contain only samples allowed for the authenticated subject/grade/lesson. No automatic external library browsing or student-data transfer is added. All sample elements are local; links and metadata are stripped on insertion, IDs regenerated, groups unified, and rotated bounds scaled proportionally. Teachers insert into the shared board; students retain the existing permission/private-draft workflow. These are editable drawings, not calibrated measuring instruments or interactive 3D models.
+
+Tests: existing 28 tests passed initially; catalog count was updated for the added sample and the new bounded-geometry/license test passed (30 tests total across runs). Browser synthetic two-seat preview passed insertion, synchronization, reload, lesson switching/restoration, hidden student insertion control and 320px viewport. Observed local insert-to-student times: blank line 2527ms, cell 802ms; not a benchmark or real-device/Render claim. Serialized visible states including resource data were 16,912 and 350,044 characters respectively. No external HTTP requests were observed. Source cell contains 56 vector strokes; line 12 elements. Screenshots inspected visually. No physical phone, high-load session, font-200% or network-loss test for this branch.
+
+Keep deployment pending review of the cell and current live data. Repeated resource geometry in SSE state is a known optimization opportunity; do not grow this approach to a large catalog without a scoped lazy asset endpoint.
