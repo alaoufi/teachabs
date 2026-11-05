@@ -1,3 +1,4 @@
+import {advanceDigestion} from './digestion-steps.js';
 import {digestionElements} from './digestion-elements.js';
 import {libraryElements} from './library-elements.js';
 import {rulerElements,transformRuler} from './ruler.js';
@@ -124,6 +125,7 @@ export function attachProfessionalBoard(seat,signals,send,client,lessonSubject,g
 
    <div className="board-status"><span role="status" id="board-status">{status}</span></div>
    {preparing&&<section className="board-preparation" aria-label="التجهيز الخاص"><div><strong>تجهيز خاص قبل الإرسال</strong><p>كل تعديل هنا يبقى على جهاز المعلم حتى التأكيد. اضبط المكان والحجم ثم أرسل؛ التحريك بعد الإرسال يظهر مباشرة للطالب.</p></div><button disabled={!ready||conflict||!canPublishPreparation(preparation,state)} onClick={publishPreparation}>تأكيد المكان وإرسال للطالب</button><button onClick={cancelPreparation}>إلغاء التجهيز</button></section>}
+   {seat==='teacher'&&selectedLesson?.id==='science-g6-digestion-demo'&&<div className="board-selection" role="group" aria-label="شرح رحلة الطعام بالتتابع"><span>إبراز خطوة من رحلة الطعام</span>{[-1,1].map(delta=><button key={delta} disabled={!ready||conflict||!editable()} onClick={()=>{api.updateScene({elements:advanceDigestion(api.getSceneElements(),delta),captureUpdate:CaptureUpdateAction.IMMEDIATELY});}}>{delta<0?'الخطوة السابقة':'الخطوة التالية'}</button>)}<small>{preparing?'التحديد خاص أثناء التجهيز':'بعد الإرسال يظهر الإبراز للطالب'}</small></div>}
    <div className="board-selection" role="group" aria-label="تحريك وتعديل التحديد"><button disabled={!ready||conflict||!editable()} onClick={()=>api?.setActiveTool({type:'selection'})}>تحديد وتحريك</button><button aria-pressed={properties} onClick={()=>{setProperties(!properties);api?.updateScene({appState:{openMenu:properties?null:'shape'}});}}>{properties?'إخفاء خصائص الرسم':'خصائص الرسم'}</button><button disabled={!ready||conflict||!editable()||!selectionCount} onClick={()=>adjustSelection({scale:1.15})}>تكبير التحديد +</button><button disabled={!ready||conflict||!editable()||!selectionCount} onClick={()=>adjustSelection({scale:1/1.15})}>تصغير التحديد −</button><button disabled={!ready||conflict||!editable()||!selectionCount} onClick={()=>adjustSelection({remove:true})}>حذف التحديد</button>{seat==='teacher'&&!preparing&&<button disabled={!ready||conflict||!editable()||saving||!!latest} onClick={startPreparation}>تجهيز خاص</button>}<small>اسحب الأداة لتحريكها، واسحب مقابض الزوايا لتغيير حجمها.</small></div>
    <div className="board-tools" aria-label="أدوات الحصة أسفل السبورة">
    <details className="aid-library board-toolgroup"><summary>وسائل الدرس</summary>
@@ -157,6 +159,7 @@ export function attachProfessionalBoard(seat,signals,send,client,lessonSubject,g
  }
  createRoot(document.getElementById('board-pro')).render(<App/>);
 }
+
 
 
 
