@@ -1,4 +1,7 @@
+import samples from '../vendor/excalidraw-libraries/samples.json' with {type:'json'};
 const catalog=[
+{id:'library-number-line',subject:'الرياضيات',kind:'library',title:'خط أعداد فارغ — مكتبة Excalidraw',explanation:'رسم توضيحي قابل للتحرير من Yatrik Patel، بترخيص MIT. أضف الأعداد المناسبة للدرس؛ ليس أداة قياس.',...samples['library-number-line']},
+{id:'library-cell',subject:'العلوم',kind:'library',title:'رسم خلية — عينة للمراجعة',explanation:'رسم تخطيطي من Sanketh، بترخيص MIT؛ يحتاج مراجعة المعلم العلمية، وليس نموذجًا تشريحيًا معتمدًا أو متحركًا.',...samples['library-cell']},
 {id:'protractor',subject:'رياضيات',kind:'protractor',title:'منقلة تعليمية',explanation:'نموذج لعرض زاوية منشأة؛ ليس أداة قياس معايرة للأشكال الخارجية. استخدم أزرار آخر منقلة.',text:''},
 {id:'ruler',subject:'رياضيات',kind:'ruler',title:'مسطرة قابلة للتحريك والدوران',explanation:'حدد المجموعة لتحريكها أو تدويرها من مقبض الدوران. التدريج وحدات نسبية وليس سنتيمترات فعلية. مثال أصلي تجريبي.',text:''},
  {id:'number-line',subject:'رياضيات',title:'خط الأعداد ٠–١٠',explanation:'ضع الأعداد على الخط. اشرح الجمع بالحركة يمينًا والطرح بالحركة يسارًا.',text:'٠    ١    ٢    ٣    ٤    ٥    ٦    ٧    ٨    ٩    ١٠\n←────────────────────────────→'},
@@ -10,6 +13,6 @@ const catalog=[
 ];
 // Original starter teaching material created for this project. No third-party media.
 
-const subjectKeys={protractor:'math',ruler:'math','number-line':'math',fraction:'math',water:'science',sentence:'arabic',english:'english',islamic:'islamic'};
+const subjectKeys={'library-number-line':'math','library-cell':'science',protractor:'math',ruler:'math','number-line':'math',fraction:'math',water:'science',sentence:'arabic',english:'english',islamic:'islamic'};
 export const aids=catalog.map(a=>({...a,subjectKey:subjectKeys[a.id]}));
 export function aidsForSubject(key){return aids.filter(a=>a.subjectKey===key);}
