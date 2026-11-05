@@ -5,6 +5,7 @@ export function demoHub(user,selected='') {
   const real=user && !user.scope;
   const available=role=>real?'<p>أنت داخل حساب فعلي. سجّل الخروج بنفسك قبل بدء الجولة.</p><a class="outline" href="/app">العودة إلى حسابي</a>':start(role);
   const cards={
+    lab:card('board','مختبر الفصل التعليمي','جرّب سبورة مستقلة وسجّل الطريقة والدروس المستفادة، واطّلع على مراجع LearnCube وBigBlueButton.','<a class="btn" href="/classroom-lab">فتح مختبر الفصل</a>'),
     parent:card('parent','ولي الأمر','جولة ببيانات افتراضية: الأطفال والمواد والمواعيد والحجوزات. لا تدخل بيانات شخصية في التجربة.',available('parent')),
     teacher:card('teacher','المعلم','لوحة المعلم التجريبية ومواعيده. الدخول الفعلي يبقى بحساب معلم مفعّل.',available('teacher')+'<p><a class="textlink" href="/lesson/teacher">مقعد المعلم والسبورة في حصة تجريبية</a></p>'),
     student:card('student','الطالب والحصة','لا يوجد حساب طالب مستقل بعد. الحصة الفعلية من حجز ولي الأمر، ويمكن تجربة مقعد الطالب ببيانات افتراضية.','<a class="btn" href="/lesson">فتح مدخل الحصة</a>'),
