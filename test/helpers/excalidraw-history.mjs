@@ -2,13 +2,13 @@ import {build} from 'esbuild';
 import {readFile,mkdtemp,rm} from 'node:fs/promises';
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
-import {pathToFileURL} from 'node:url';
+import {pathToFileURL,fileURLToPath} from 'node:url';
 
 // Test the pinned editor's actual Store/History implementation, not a substitute.
 // The published package exposes these internally in its readable development
 // bundle. Re-review this extraction when upgrading Excalidraw 0.18.1.
 export async function loadHistoryEngine(){
- const dir=new URL('../../node_modules/@excalidraw/excalidraw/dist/dev/',import.meta.url).pathname;
+ const dir=fileURLToPath(new URL('../../node_modules/@excalidraw/excalidraw/dist/dev/',import.meta.url)).replaceAll('\\','/');
  const source=await readFile(dir+'index.js','utf8');
  const history=source.split('// history.ts\n')[1]?.split('// hooks/useEmitter.ts')[0];
  if(!history?.includes('var HistoryEntry ='))throw Error('Review real Excalidraw History extraction after package upgrade.');
@@ -21,3 +21,4 @@ export async function loadHistoryEngine(){
  globalThis.document={documentElement:{style:{}},createElement:()=>({getContext:()=>({measureText:()=>({width:20})})})};
  try{return await import(pathToFileURL(output).href);}finally{Object.assign(globalThis,previous);await rm(temporary,{recursive:true,force:true});}
 }
+

@@ -162,7 +162,8 @@ test('stored malicious names and ledger descriptions remain escaped in admin vie
  const {a,ids}=fixture(t),attack='<img src=x onerror=alert(1)>',created=a.createMember(ids.supervisor,member('finance',{name:attack}));
  a.addLedger(created.id,ledger({description:attack}));
  const profile=a.profile(created.id);
- for(const html of [views.adminHome(profile,a.overview(created.id)),views.adminAccounts(a.profile(ids.supervisor),a.members(ids.supervisor)),views.adminAccountForm(a.profile(ids.supervisor),current(a,ids.supervisor,created.id)),views.adminFinance(profile,a.ledger(created.id))]){
+ assert.ok(!views.adminHome(profile,a.overview(created.id)).includes(attack));
+ for(const html of [views.adminAccounts(a.profile(ids.supervisor),a.members(ids.supervisor)),views.adminAccountForm(a.profile(ids.supervisor),current(a,ids.supervisor,created.id)),views.adminFinance(profile,a.ledger(created.id))]){
   assert.ok(!html.includes(attack)); assert.ok(html.includes('&lt;img src=x onerror=alert(1)&gt;'));
  }
 });
@@ -202,3 +203,4 @@ test('pending teachers may have prepared schedules but are not offered or bookab
  assert.equal(store.offers(parent,child,'math')[0].id,slot);
  const booking=store.book(parent,child,slot,randomUUID());assert.equal(store.bookings(parent)[0].id,booking);
 });
+

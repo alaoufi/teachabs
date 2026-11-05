@@ -1,4 +1,4 @@
-import test from 'node:test';import assert from 'node:assert/strict';import {mkdtemp,writeFile,rm} from 'node:fs/promises';import {tmpdir} from 'node:os';import {join} from 'node:path';import {pathToFileURL} from 'node:url';import {build} from 'esbuild';
+import test from 'node:test';import assert from 'node:assert/strict';import {mkdtemp,writeFile,rm} from 'node:fs/promises';import {tmpdir} from 'node:os';import {join} from 'node:path';import {pathToFileURL,fileURLToPath} from 'node:url';import {build} from 'esbuild';
 import {loadHistoryEngine} from './helpers/excalidraw-history.mjs';
 const {Store,History,getDefaultAppState,newElement,arrayToMap}=await loadHistoryEngine();
 import {changeBoard,emptyBoard} from '../board.mjs';import {aids} from '../board-ui/aids.js';
@@ -14,7 +14,7 @@ const plugin={name:'deterministic-board-client',setup(b){
  b.onResolve({filter:/ClassTimer\.jsx$/},()=>({path:'timer',namespace:'timer'}));b.onLoad({filter:/.*/,namespace:'timer'},()=>({contents:"export const ClassTimer=()=>null;",loader:'js'}));
  b.onResolve({filter:/MathPanel\.jsx$/},()=>({path:'math',namespace:'math'}));b.onLoad({filter:/.*/,namespace:'math'},()=>({contents:"export const MathPanel=()=>null;",loader:'js'}));
 }};
-await build({entryPoints:[new URL('../board-ui/index.jsx',import.meta.url).pathname],bundle:true,format:'esm',platform:'node',outfile:join(directory,'client.mjs'),plugins:[plugin]});
+await build({entryPoints:[fileURLToPath(new URL('../board-ui/index.jsx',import.meta.url))],bundle:true,format:'esm',platform:'node',outfile:join(directory,'client.mjs'),plugins:[plugin]});
 let moduleNumber=0;
 function nodes(node){if(node==null||typeof node!=='object')return [];if(Array.isArray(node))return node.flatMap(nodes);return [node,...nodes(node.props?.children)];}
 function text(node){if(node==null||typeof node==='boolean')return '';if(typeof node!=='object')return String(node);if(Array.isArray(node))return node.map(text).join('');return text(node.props?.children);}
@@ -104,3 +104,4 @@ test('an older delayed command reply cannot replace a newer shared revision or r
  await h.click('إيقاف تحرير الطالب');assert.equal(h.requests.at(-1).payload.rev,newer.rev);assert.ok(h.state.elements.every(e=>!privateIds.has(e.id)));assert.deepEqual(h.state.elements,[shared]);h.dispose();
 });
 test.after(async()=>{await rm(directory,{recursive:true,force:true});});
+
