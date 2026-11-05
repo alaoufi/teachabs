@@ -1,6 +1,6 @@
 import {allowedLessons} from './lesson-catalog.mjs';
 import {aids} from './board-ui/aids.js';
-const visibleBoard=(state,context)=>{const {lessonScenes,...visible}=state;const lesson=allowedLessons(context).find(l=>l.id===state.activeLesson);return {...visible,resources:aids.filter(a=>lesson?.aidIds.includes(a.id))};};
+const visibleBoard=(state,context)=>{const {lessonScenes,pageSession,savedPageArchives,...visible}=state;const lesson=allowedLessons(context).find(l=>l.id===state.activeLesson);return {...visible,savedPages:pageSession?{id:pageSession.id,index:pageSession.index,count:pageSession.pages.length}:null,resources:pageSession?[]:aids.filter(a=>lesson?.aidIds.includes(a.id))};};
 import { changeBoard, emptyBoard } from './board.mjs';
 import { randomBytes, randomUUID, createHash } from 'node:crypto';
 import { subjects, UserError } from './store.mjs';
@@ -116,6 +116,10 @@ export function lessonService(store) {
     let payload;
     try { payload=JSON.parse(data.payload); } catch { throw new UserError('رسالة غير صالحة.'); }
     if(data.kind==='board'){
+      if(payload.op==='pages-start'){
+        requireState(seat==='teacher'&&!preview,'Saved lessons require a teacher booking',403);
+        context={...context,savedInstance:store.savedLessons.forLiveBooking(context.owner,payload.instanceId,key)};
+      }
       const next=changeBoard(store.readBoard(key),seat,payload,context);store.writeBoard(key,next);
       for(const peer of Object.values(room.peers))output(peer,'boardstate',{state:visibleBoard(next,context),sender:data.client});return visibleBoard(next,context);
     }
@@ -207,7 +211,7 @@ export function lessonService(store) {
       if(action==='send' && req.method==='POST'){
         const data=await fields(req);
         if(!preview)requireState(store.resolve(cookie)===u.id && isOpen(store.bookings(u.id,id)[0]),'انتهى إذن الدخول للحصة.',403);
-        const result=deliver(key,seat,data,preview||booking.subject==='math',preview,{preview,subject:booking?.subject,grade:booking?.grade});
+        const result=deliver(key,seat,data,preview||booking.subject==='math',preview,{preview,owner:u?.id,subject:booking?.subject,grade:booking?.grade});
         if(result){res.writeHead(200,{'Content-Type':'application/json'});return res.end(JSON.stringify(result));}
         res.writeHead(204);return res.end();
       }

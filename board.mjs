@@ -1,3 +1,4 @@
+import {changeLivePages} from './live-pages.mjs';
 import {allowedLessons} from './lesson-catalog.mjs';
 import { UserError } from './store.mjs';
 const need=(ok,message,status=400)=>{if(!ok)throw new UserError(message,status);};
@@ -6,7 +7,9 @@ export function changeBoard(current,seat,command,context={}){
  const state=current||emptyBoard();
  need(['teacher','student'].includes(seat),'مقعد غير مصرح.',403);
  need(command&&Number.isInteger(command.rev)&&command.rev===state.rev,'تغيّرت السبورة. صدّر عملك المحلي قبل تحميل نسخة الخادم.',409);
+ if(command.op?.startsWith('pages-'))return changeLivePages(state,seat,command,context.savedInstance);
  if(command.op==='lesson'){
+  need(!state.pageSession,'Close the saved lesson before changing subject',409);
   need(seat==='teacher','تغيير الدرس للمعلم فقط.',403);
   need(allowedLessons(context).some(l=>l.id===command.lessonId),'الدرس غير متاح لهذه المادة والصف.',403);
   const archive={...(state.lessonScenes||{}),[state.activeLesson||'unassigned']:{elements:state.elements,files:state.files,studentDraft:state.studentDraft||null,publishedStudent:state.publishedStudent||null}};

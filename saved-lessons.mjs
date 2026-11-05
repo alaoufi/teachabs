@@ -30,6 +30,7 @@ export function savedLessonLibrary(db){
   state.pageIndex=pageIndex;const result=db.prepare('UPDATE saved_lesson_instances SET rev=rev+1,state=? WHERE id=? AND rev=?').run(JSON.stringify(state),id,expectedRev);requireValue(result.changes===1,'Lesson changed',409);return {id,rev:expectedRev+1,...state};
  }
  return {createTemplate,instantiate,navigate,
+  forLiveBooking:(owner,id,booking)=>{const row=ownedInstance(owner,id);requireValue(row.booking===booking,'Instance belongs to another booking',403);return {id,...JSON.parse(row.state)};},
   listTemplates:owner=>{teacher(owner);return db.prepare('SELECT id,subject,grade,title,version FROM teacher_lesson_templates WHERE teacher=? ORDER BY rowid DESC').all(owner);},
   fromBooking:(owner,bookingId,title,baseId=null)=>{
    teacher(owner);const booking=db.prepare('SELECT s.subject,c.grade FROM bookings b JOIN slots s ON s.id=b.slot JOIN children c ON c.id=b.child WHERE b.id=? AND s.teacher=?').get(bookingId,owner);requireValue(booking,'Booking unavailable',404);

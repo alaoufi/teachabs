@@ -70,6 +70,8 @@ export function attachProfessionalBoard(seat,signals,send,client,lessonSubject,g
   const [exiting,setExiting]=useState(false);openExit=()=>setExiting(true);
   const leave=()=>{location.href=document.getElementById('leave').href;};
   const clearAndLeave=async()=>{try{const next=await send('board',{op:'clear',confirm:true,rev:remote.rev,lessonId:remote.activeLesson});latest=null;clearTimeout(timer);apply(next);leave();}catch(e){notify('لم يُمسح العمل: '+e.message);}};
+  const [instanceId,setInstanceId]=useState('');
+  const pages=async(op,page)=>{if(latest||saving||conflict)return;try{const next=await send('board',{op,page,instanceId:remote.savedPages?.id||instanceId,rev:remote.rev});view='shared';setViewState('shared');apply(next);focus(next.elements);}catch(e){notify(e.message);}};
   const input=useRef();notify=setStatus;refresh=setState;
   const available=state?.resources||[];
   const selectedLesson=choices.find(l=>l.id===state?.activeLesson);
@@ -84,7 +86,9 @@ export function attachProfessionalBoard(seat,signals,send,client,lessonSubject,g
     {seat==='teacher'&&<><button disabled={!ready||saving||!!latest} onClick={toggle}>{state?.studentDraw?'إيقاف تحرير الطالب':'السماح للطالب بالتحرير'}</button><button disabled={!editable()} onClick={()=>input.current.click()}>استعادة ملف</button></>}
     <input ref={input} type="file" accept=".json,.excalidraw" hidden onChange={async e=>{try{const f=e.target.files[0];if(f.size>2000000)throw Error();const s=JSON.parse(await f.text());if(!Array.isArray(s.elements)||s.elements.length>1000||s.elements.some(x=>!['rectangle','diamond','ellipse','arrow','line','freedraw','text','image'].includes(x.type)))throw Error();for(const f of Object.values(s.files||{})){if(typeof f.dataURL!=='string'||f.dataURL.length>700000||!/^data:image\/(png|jpeg|webp);base64,/.test(f.dataURL))throw Error();}s.elements=s.elements.map(x=>({...x,link:null}));api.addFiles(Object.values(s.files||{}));api.updateScene({elements:s.elements});}catch{notify('ملف غير صالح أو أكبر من الحد.');}e.target.value='';}}/>
    </div>
-   <details className="aid-library"><summary>مكتبة وسائل الشرح — نماذج أولية وليست جميع التخصصات</summary>
+   <section className="board-bar" aria-label="صفحات الدرس المباشرة">
+    {state?.savedPages?<><strong>الصفحة {state.savedPages.index+1} من {state.savedPages.count}</strong>{seat==='teacher'&&<>{Array.from({length:state.savedPages.count},(_,i)=><button key={i} aria-current={i===state.savedPages.index?'page':undefined} disabled={!ready||saving||!!latest||conflict} onClick={()=>pages('pages-go',i)}>{i+1}</button>)}<button disabled={!ready||saving||!!latest||conflict} onClick={()=>pages('pages-close')}>حفظ الصفحات والعودة للسبورة</button></>}</>:seat==='teacher'&&lessonSubject!=='preview'&&<><label>معرّف نسخة الدرس من المكتبة <input value={instanceId} onChange={e=>setInstanceId(e.target.value)} /></label><button disabled={!ready||saving||!!latest||conflict||!instanceId} onClick={()=>pages('pages-start')}>عرض الدرس للطرفين</button></>}
+    </section><details className="aid-library"><summary>مكتبة وسائل الشرح — نماذج أولية وليست جميع التخصصات</summary>
     <p>المحتوى تجريبي؛ توزيع الصفوف هنا لا يمثل اعتمادًا لمنهج رسمي.</p>
     {seat==='teacher'?<label>الدرس <select aria-label="الدرس" value={state?.activeLesson||''} disabled={!ready||saving||!!latest||conflict} onChange={e=>changeLesson(e.target.value)}><option value="">اختر درسًا</option>{choices.map(l=><option key={l.id} value={l.id}>{l.subject} · الصف {l.grade} · {l.title}</option>)}</select></label>:<p>الدرس: {selectedLesson?.title||'ينتظر اختيار المعلم'}</p>}
     {!selectedLesson&&<p>يختار المعلم الدرس قبل عرض الوسائل.</p>}
