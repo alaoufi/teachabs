@@ -10,8 +10,8 @@ export function rulerElements(x,y,groupId){
  result.push({...common,type:'text',x:x+35,y:y+72,text:'مسطرة تعليمية — وحدات نسبية',fontSize:18,fontFamily:2});
  return result;
 }
-export function transformRuler(elements,{rotate=0,dx=0,dy=0}){
- const group=[...elements].reverse().find(e=>!e.isDeleted&&e.groupIds?.some(id=>id.startsWith('ruler-')))?.groupIds.find(id=>id.startsWith('ruler-'));
+export function transformRuler(elements,{rotate=0,dx=0,dy=0,prefix='ruler-'}){
+ const group=[...elements].reverse().find(e=>!e.isDeleted&&e.groupIds?.some(id=>id.startsWith(prefix)))?.groupIds.find(id=>id.startsWith(prefix));
  if(!group)return elements;
  const members=elements.filter(e=>!e.isDeleted&&e.groupIds?.includes(group));
  const anchor=members.find(e=>e.type==='rectangle')||members[0];

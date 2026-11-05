@@ -1,4 +1,5 @@
 const catalog=[
+{id:'protractor',subject:'رياضيات',kind:'protractor',title:'منقلة تعليمية',explanation:'نموذج لعرض زاوية منشأة؛ ليس أداة قياس معايرة للأشكال الخارجية. استخدم أزرار آخر منقلة.',text:''},
 {id:'ruler',subject:'رياضيات',kind:'ruler',title:'مسطرة قابلة للتحريك والدوران',explanation:'حدد المجموعة لتحريكها أو تدويرها من مقبض الدوران. التدريج وحدات نسبية وليس سنتيمترات فعلية. مثال أصلي تجريبي.',text:''},
  {id:'number-line',subject:'رياضيات',title:'خط الأعداد ٠–١٠',explanation:'ضع الأعداد على الخط. اشرح الجمع بالحركة يمينًا والطرح بالحركة يسارًا.',text:'٠    ١    ٢    ٣    ٤    ٥    ٦    ٧    ٨    ٩    ١٠\n←────────────────────────────→'},
  {id:'fraction',subject:'رياضيات',title:'الجزء والكل',explanation:'قسّم مستطيلًا إلى أربعة أجزاء متساوية ولون جزءًا. ناقش: ١/٤ + ١/٤ = ١/٢.',text:'الكسور: أجزاء متساوية من كل واحد\n١/٤ + ١/٤ = ٢/٤ = ١/٢'},
@@ -9,6 +10,6 @@ const catalog=[
 ];
 // Original starter teaching material created for this project. No third-party media.
 
-const subjectKeys={ruler:'math','number-line':'math',fraction:'math',water:'science',sentence:'arabic',english:'english',islamic:'islamic'};
+const subjectKeys={protractor:'math',ruler:'math','number-line':'math',fraction:'math',water:'science',sentence:'arabic',english:'english',islamic:'islamic'};
 export const aids=catalog.map(a=>({...a,subjectKey:subjectKeys[a.id]}));
 export function aidsForSubject(key){return aids.filter(a=>a.subjectKey===key);}
