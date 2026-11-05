@@ -12,7 +12,8 @@ const validKey=value=>typeof value==='string'&&/^[\da-f-]{36}$/i.test(value);
 // session snapshots never supply authority. Every query is bound to actor scope.
 export function createAdminStore({db,one,all,run,transaction,user,UserError,subjects,grades,duration,validEmail,secret,hash,tour}) {
   const check=(ok,message,status=400)=>{if(!ok)throw new UserError(message,status);};
-  db.exec(`CREATE TABLE IF NOT EXISTS admin_members(user TEXT PRIMARY KEY REFERENCES users(id),department TEXT NOT NULL,permissions TEXT NOT NULL,active INTEGER NOT NULL DEFAULT 1,revision INTEGER NOT NULL DEFAULT 1);
+  db.exec(`CREATE TABLE IF NOT EXISTS admin_demo_agents(scope TEXT PRIMARY KEY,agent TEXT UNIQUE NOT NULL REFERENCES users(id));
+    CREATE TABLE IF NOT EXISTS admin_members(user TEXT PRIMARY KEY REFERENCES users(id),department TEXT NOT NULL,permissions TEXT NOT NULL,active INTEGER NOT NULL DEFAULT 1,revision INTEGER NOT NULL DEFAULT 1);
     CREATE TABLE IF NOT EXISTS admin_audit(id TEXT PRIMARY KEY,scope TEXT NOT NULL,actor TEXT NOT NULL REFERENCES users(id),action TEXT NOT NULL,target TEXT NOT NULL,details TEXT NOT NULL,created INTEGER NOT NULL);
     CREATE TABLE IF NOT EXISTS admin_ledger(id TEXT PRIMARY KEY,scope TEXT NOT NULL,actor TEXT NOT NULL REFERENCES users(id),description TEXT NOT NULL,amount_cents INTEGER NOT NULL CHECK(amount_cents>0),kind TEXT NOT NULL CHECK(kind IN ('income','expense')),request TEXT NOT NULL,created INTEGER NOT NULL,UNIQUE(actor,request));
     CREATE TABLE IF NOT EXISTS admin_operations(id TEXT PRIMARY KEY,scope TEXT NOT NULL,title TEXT NOT NULL,status TEXT NOT NULL DEFAULT 'open',revision INTEGER NOT NULL DEFAULT 1,actor TEXT NOT NULL REFERENCES users(id),request TEXT NOT NULL,created INTEGER NOT NULL,UNIQUE(actor,request));
@@ -188,14 +189,16 @@ export function createAdminStore({db,one,all,run,transaction,user,UserError,subj
         const id=randomUUID();run("INSERT INTO users(id,role,name,scope) VALUES(?,'admin',?,?)",id,'عضو '+label+' التجريبي',scope);
         run('INSERT INTO admin_members(user,department,permissions) VALUES(?,?,?)',id,adminRole,JSON.stringify(DEFAULT_GRANTS[adminRole]));result[adminRole]=id;
       }
-      audit({id:result.supervisor,scope},'demo.created',scope,{synthetic:true});
+      const agent=randomUUID();run("INSERT INTO users(id,role,name,scope) VALUES(?,'registration_agent','سارة أحمد — وكيل تسجيل تجريبي',?)",agent,scope);run('INSERT INTO admin_demo_agents VALUES(?,?)',scope,agent);run('INSERT INTO registration_permissions VALUES(?,1,1,1,0)',agent);
+        audit({id:result.supervisor,scope},'demo.created',scope,{synthetic:true});
       addLedger(result.finance,{description:'مثال توضيحي: رسوم حصة افتراضية',amount:'120',kind:'income',request:randomUUID()});
       addOperation(result.deputy,{title:'مراجعة جاهزية الفصل التجريبي',request:randomUUID()});
       technicalStore.addTicket(result.technical,{title:'فحص الدخول إلى الفصل التجريبي',description:'بلاغ افتراضي لتجربة متابعة الدعم الفني فقط.',category:'support',priority:'normal',request:randomUUID()});
       return result;
     });
   }
-  function switchDemo(actorId,adminRole) {const a=profile(actorId);check(a.scope&&Object.hasOwn(ADMIN_ROLES,adminRole),'التبديل متاح داخل الجولة الإدارية فقط.',403);const row=one('SELECT u.id FROM users u JOIN admin_members m ON m.user=u.id WHERE u.scope=? AND m.department=? AND m.active=1 ORDER BY u.rowid LIMIT 1',a.scope,adminRole);check(row,'حساب القسم غير متاح في هذه الجولة.',404);return row.id;}
+  function isDemoAgent(id){const u=user(id);return u.role==='registration_agent'&&!!u.scope&&!!one('SELECT agent FROM admin_demo_agents WHERE scope=? AND agent=?',u.scope,id);}
+  function switchDemo(actorId,adminRole) {const a=isDemoAgent(actorId)?user(actorId):profile(actorId);check(a.scope&&(adminRole==='registration_agent'||Object.hasOwn(ADMIN_ROLES,adminRole)),'التبديل متاح داخل الجولة الإدارية فقط.',403);if(adminRole==='registration_agent'){const r=one('SELECT agent FROM admin_demo_agents WHERE scope=?',a.scope);check(r,'Start a new administrative demo to use the agent',404);return r.agent;}const row=one('SELECT u.id FROM users u JOIN admin_members m ON m.user=u.id WHERE u.scope=? AND m.department=? AND m.active=1 ORDER BY u.rowid LIMIT 1',a.scope,adminRole);check(row,'حساب القسم غير متاح في هذه الجولة.',404);return row.id;}
   const technicalStore=createTechnicalStore({db,one,all,run,transaction,requireAccess,audit,check});
-  return {...technicalStore,profile,requireAccess,bootstrap,members,createMember,renewInvitation,updateMember,overview,ledger,addLedger,registration,education,createTeacher,addSlot,operations,addOperation,updateOperation,auditLog,demo,switchDemo};
+  return {...technicalStore,profile,requireAccess,bootstrap,members,createMember,renewInvitation,updateMember,overview,ledger,addLedger,registration,education,createTeacher,addSlot,operations,addOperation,updateOperation,auditLog,demo,switchDemo,isDemoAgent};
 }

@@ -7,7 +7,9 @@ export function adminService(store) {
   const admin=store.admin;
   return {matches:path=>path==='/admin'||path.startsWith('/admin/'),async handle({req,url,u,base,html,redirect,fields,limit,enter}) {
     if(!u)return redirect('/login');
-    const profile=admin.profile(u.id),path=url.pathname;
+    const path=url.pathname;
+    if(path==='/admin/demo/switch'&&req.method==='POST'){if(req.headers.origin!==base)throw new UserError('Untrusted origin',403);limit(req,'admin-write',180);const data=await fields(req);return enter(admin.switchDemo(u.id,data.adminRole));}
+    const profile=admin.profile(u.id);
     const invitation=result=>ui.adminInviteResult(profile,{...result,activationUrl:new URL('/activate?code='+result.token,base).href});
     if(req.method==='GET') {
       if(path==='/admin')return html('الإدارة',ui.adminHome(profile,admin.overview(u.id)));

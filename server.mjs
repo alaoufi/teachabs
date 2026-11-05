@@ -76,7 +76,7 @@ export function createApp(store,{origin=process.env.APP_ORIGIN}={}) {
         if(route==='/')return u?redirect('/app'):html('التعليم الفردي',ui.landing());
         if(['/login','/register','/activate'].includes(route))return html('الحساب',ui.auth(route.slice(1),q.code||''));
         if(!u)return redirect('/login');
-                if(route==='/registration'||(route==='/app'&&u.role==='registration_agent')){role('registration_agent');return html('وكيل التسجيل',registrationDashboard(store.registration.dashboard(uid)));}
+                if(route==='/registration'||(route==='/app'&&u.role==='registration_agent')){role('registration_agent');const demo=store.admin.isDemoAgent(uid);try{return html('وكيل التسجيل',registrationDashboard(store.registration.dashboard(uid),demo));}catch(err){if(!demo||err.status!==403)throw err;return html('وكيل التسجيل',registrationDashboard({permissions:{},parents:[],children:[]},true));}}
         if(route==='/admin/registration-agents'){role('admin');return html('صلاحيات التسجيل',registrationAdmin(store.registration.agents(uid)));}
         if(route==='/app'&&u.role==='admin')return redirect('/admin');
         if(route==='/app')return html('لوحتي',ui.home(u,store));
