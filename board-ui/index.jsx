@@ -1,9 +1,11 @@
+import {rulerElements,transformRuler} from './ruler.js';
+import {protractorElements,protractorReading,setProtractorAngle} from './protractor.js';
 import {ClassTimer} from './ClassTimer.jsx';
 import {allowedLessons} from '../lesson-catalog.mjs';
 import React,{useState,useRef} from 'react';
 
 import{createRoot}from'react-dom/client';
-import{Excalidraw,MainMenu,convertToExcalidrawElements,exportToBlob}from'@excalidraw/excalidraw';
+import{Excalidraw,MainMenu,CaptureUpdateAction,convertToExcalidrawElements,exportToBlob}from'@excalidraw/excalidraw';
 import'@excalidraw/excalidraw/index.css';
 import{fitDimensions,wrapAidText}from'./fit.js';
 
@@ -77,7 +79,9 @@ export function attachProfessionalBoard(seat,signals,send,client,lessonSubject,g
   const available=state?.resources||[];
   const selectedLesson=choices.find(l=>l.id===state?.activeLesson);
   const changeLesson=async id=>{if(!id||latest||saving||conflict)return;try{const s=await send('board',{op:'lesson',rev:remote.rev,lessonId:id});apply(s);focus(s.elements);}catch(e){notify(e.message);}};
-  const addAid=a=>{if(!ready||conflict||!api||!editable())return;const elements=convertToExcalidrawElements([{type:'text',...nextPosition(),text:wrapAidText(a.title+'\n'+a.text+'\n'+a.explanation),fontSize:24,fontFamily:2}]);api.updateScene({elements:[...api.getSceneElements(),...elements]});focus(elements);};
+  const addAid=a=>{if(!ready||conflict||!api||!editable())return;const position=nextPosition();const elements=convertToExcalidrawElements(a.kind==='protractor'?protractorElements(position.x,position.y,'protractor-'+crypto.randomUUID()):a.kind==='ruler'?rulerElements(position.x,position.y,'ruler-'+crypto.randomUUID()):[{type:'text',...position,text:wrapAidText(a.title+'\n'+a.text+'\n'+a.explanation),fontSize:24,fontFamily:2}],{regenerateIds:false});api.updateScene({elements:[...api.getSceneElements(),...elements],appState:{selectedElementIds:Object.fromEntries(elements.map(e=>[e.id,true]))},captureUpdate:CaptureUpdateAction.IMMEDIATELY});focus(elements);if(['ruler','protractor'].includes(a.kind))notify(a.explanation);};
+  const adjustRuler=change=>{if(!ready||conflict||!editable())return;api.updateScene({elements:transformRuler(api.getSceneElements(),change),captureUpdate:CaptureUpdateAction.IMMEDIATELY});};
+  const adjustAngle=delta=>{if(!ready||conflict||!editable())return;const elements=api.getSceneElements(),reading=protractorReading(elements);if(reading)api.updateScene({elements:setProtractorAngle(elements,reading.degrees+delta),captureUpdate:CaptureUpdateAction.IMMEDIATELY});};
   const toggle=async()=>{try{const s=await send('board',{op:'permission',rev:remote.rev,allow:!remote.studentDraw});remote=s;apply(s);}catch(e){notify(e.message);}};
   return <div className="teaching-board" dir="rtl">
    <ClassTimer timer={state?.classTimer} serverNow={state?.serverNow} teacher={seat==='teacher'} enabled={ready&&!saving&&!latest&&!conflict} command={async(op,extra={})=>{try{const next=await send('board',{op,...extra,rev:remote.rev});apply(next);}catch(e){notify(e.message);}}}/>
@@ -90,9 +94,12 @@ export function attachProfessionalBoard(seat,signals,send,client,lessonSubject,g
    </div>
    <details className="aid-library"><summary>مكتبة وسائل الشرح — نماذج أولية وليست جميع التخصصات</summary>
     <p>المحتوى تجريبي؛ توزيع الصفوف هنا لا يمثل اعتمادًا لمنهج رسمي.</p>
-    {seat==='teacher'?<label>الدرس <select aria-label="الدرس" value={state?.activeLesson||''} disabled={!ready||saving||!!latest||conflict} onChange={e=>changeLesson(e.target.value)}><option value="">اختر درسًا</option>{choices.map(l=><option key={l.id} value={l.id}>{l.subject} · الصف {l.grade} · {l.title}</option>)}</select></label>:<p>الدرس: {selectedLesson?.title||'ينتظر اختيار المعلم'}</p>}
+    {seat==='teacher'?<label>الدرس <select aria-label="الدرس" value={state?.activeLesson||''} disabled={!ready||saving||!!latest||conflict} onChange={e=>changeLesson(e.target.value)}><option value="">اختر درسًا</option>{choices.map(l=><option key={l.id} value={l.id}>{({math:'رياضيات',science:'علوم',arabic:'العربية',english:'الإنجليزية',islamic:'الدراسات الإسلامية'})[l.subject]||l.subject} · الصف {l.grade} · {l.title}</option>)}</select></label>:<p>الدرس: {selectedLesson?.title||'ينتظر اختيار المعلم'}</p>}
+    {seat==='teacher'&&selectedLesson&&<p>الدرس الحالي: {selectedLesson.title}</p>}
     {!selectedLesson&&<p>يختار المعلم الدرس قبل عرض الوسائل.</p>}
     {selectedLesson&&!selectedLesson.aidIds.length&&<p>لا توجد وسائل جاهزة لهذا الدرس بعد؛ تتوفر السبورة الحرة.</p>}
+    {available.some(a=>a.kind==='protractor')&&state&&protractorReading(viewed(state).elements)&&<div role="group" aria-label="آخر منقلة"><span>آخر منقلة — عرض تعليمي للزاوية</span><output aria-label="قراءة زاوية المنقلة" dir="ltr">{state&&protractorReading(viewed(state).elements)?.degrees!=null?protractorReading(viewed(state).elements).degrees+'°':'—'}</output><button disabled={!ready||conflict||!editable()} onClick={()=>adjustRuler({prefix:'protractor-',dx:20})}>منقلة يمين</button><button disabled={!ready||conflict||!editable()} onClick={()=>adjustRuler({prefix:'protractor-',rotate:Math.PI/12})}>تدوير المنقلة 15°</button><button disabled={!ready||conflict||!editable()} onClick={()=>adjustAngle(5)}>زيادة الزاوية 5°</button><button disabled={!ready||conflict||!editable()} onClick={()=>adjustAngle(-5)}>تقليل الزاوية 5°</button></div>}
+    {available.some(a=>a.kind==='ruler')&&state&&viewed(state).elements.some(e=>!e.isDeleted&&e.groupIds?.some(g=>g.startsWith('ruler-')))&&<div role="group" aria-label="تحريك آخر مسطرة"><span>آخر مسطرة: وحدات نسبية وليست سنتيمترات فعلية</span><button disabled={!ready||conflict||!editable()} onClick={()=>adjustRuler({dx:20})}>مسطرة يمين</button><button disabled={!ready||conflict||!editable()} onClick={()=>adjustRuler({dx:-20})}>مسطرة يسار</button><button disabled={!ready||conflict||!editable()} onClick={()=>adjustRuler({rotate:Math.PI/12})}>تدوير المسطرة 15°</button></div>}
     {available.filter(a=>selectedLesson?.aidIds.includes(a.id)).map(a=><button key={a.id} disabled={!ready||conflict||!editable()} onClick={()=>addAid(a)}>{a.title} +</button>)}
     <p>محتوى أصلي للمشروع. يضاف إلى السبورة ويتزامن للطرفين؛ يمكن تعديله. صورك تُخزن على خدمة التجربة؛ استخدم مواد وهمية فقط.</p>
    </details>

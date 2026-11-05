@@ -1,0 +1,8 @@
+import test from 'node:test';import assert from 'node:assert/strict';import {protractorElements,protractorReading,setProtractorAngle} from '../board-ui/protractor.js';import {transformRuler} from '../board-ui/ruler.js';import {allowedLessons} from '../lesson-catalog.mjs';import {changeBoard,emptyBoard} from '../board.mjs';
+test('protractor constructed angle stays anchored after movement and rotation',()=>{
+ let items=protractorElements(40,50,'protractor-test').map((e,i)=>({...e,id:e.id||'item'+i,width:e.width||20,height:e.height||0,angle:e.angle||0,version:1}));assert.equal(protractorReading(items).degrees,90);
+ items=transformRuler(items,{prefix:'protractor-',dx:20,rotate:Math.PI/12});assert.equal(protractorReading(items).degrees,90);
+ for(const degrees of [0,30,45,90,135,180]){items=setProtractorAngle(items,degrees);const {base}=protractorReading(items),ray=items.find(e=>e.id==='ray-protractor-test');const origin=e=>[e.x+e.width/2-Math.cos(e.angle)*e.width/2,e.y+e.height/2-Math.sin(e.angle)*e.width/2];assert.ok(origin(base).every((v,i)=>Math.abs(v-origin(ray)[i])<1e-8));assert.equal(protractorReading(items).degrees,degrees);}
+ assert.equal(allowedLessons({subject:'science',grade:4}).some(l=>l.aidIds.includes('protractor')),false);
+ let s=changeBoard(emptyBoard(),'teacher',{op:'lesson',lessonId:'math-g4-angles',rev:0},{subject:'math',grade:4});s=changeBoard(s,'teacher',{op:'scene',rev:s.rev,lessonId:s.activeLesson,elements:items,files:{}});assert.equal(protractorReading(s.elements).degrees,180);assert.throws(()=>changeBoard(s,'student',{op:'draft',rev:s.rev,lessonId:s.activeLesson,elements:items,files:{}}),e=>e.status===403);
+});
