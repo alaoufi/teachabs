@@ -1,5 +1,6 @@
 import {advanceDigestion} from './digestion-steps.js';
-import {OriginalBookPage} from './OriginalBookPage.jsx';
+import {OriginalBookPage,OriginalBookBackdrop} from './OriginalBookOverlay.jsx';
+import {bookViewport} from './book-page.js';
 import {digestionElements} from './digestion-elements.js';
 import {libraryElements} from './library-elements.js';
 import {rulerElements,transformRuler} from './ruler.js';
@@ -34,7 +35,7 @@ export function attachProfessionalBoard(seat,signals,send,client,lessonSubject,g
  const relevantFiles=(elements,files)=>Object.fromEntries(elements.filter(e=>e.type==='image'&&!e.isDeleted&&files[e.fileId]).map(e=>[e.fileId,files[e.fileId]]));
  const scene=()=>{const elements=api.getSceneElementsIncludingDeleted();return {elements,files:relevantFiles(elements,api.getFiles())};};
  const signature=s=>JSON.stringify({elements:s.elements,files:s.files});
- let baseline='',appliedLesson=null;
+ let baseline='',appliedLesson=null,refreshBookViewport=()=>{};
  const mode=()=>api?.updateScene({appState:{viewModeEnabled:!ready||conflict||!editable()}});
  function apply(s,{resetHistory=false}={}){
   if(s&&appliedLesson!==s.activeLesson&&(appliedLesson?.startsWith('original-book-')||s.activeLesson?.startsWith('original-book-')))resetHistory=true;
@@ -50,7 +51,8 @@ export function attachProfessionalBoard(seat,signals,send,client,lessonSubject,g
   // Reset both Store and History before restoring so even deleted tombstones
   // cannot reappear through a later Undo/Redo or enter an outgoing snapshot.
   if(resetHistory)api.resetScene({resetLoadingState:true});
-  api.addFiles(Object.values(current.files));api.updateScene({elements:current.elements,appState:{...(resetHistory?{scrollX:previous.scrollX,scrollY:previous.scrollY,zoom:previous.zoom,currentItemFontFamily:2,selectedElementIds:{},selectedGroupIds:{},editingGroupId:null}:{}),viewModeEnabled:!ready||conflict||!editable()},captureUpdate:CaptureUpdateAction.NEVER});
+  const book=s.activeLesson?.startsWith('original-book-'),bookChanged=appliedLesson!==s.activeLesson;
+  api.addFiles(Object.values(current.files));api.updateScene({elements:current.elements,appState:{...(resetHistory?{scrollX:previous.scrollX,scrollY:previous.scrollY,zoom:previous.zoom,currentItemFontFamily:2,selectedElementIds:{},selectedGroupIds:{},editingGroupId:null}:{}),...(book?{viewBackgroundColor:'transparent',...(bookChanged?bookViewport(previous.width,previous.height):{})}:appliedLesson?.startsWith('original-book-')?{viewBackgroundColor:'#ffffff'}:{}),viewModeEnabled:!ready||conflict||!editable()},captureUpdate:CaptureUpdateAction.NEVER});
   appliedLesson=s.activeLesson;baseline=signature(scene());initialized=true;applying=false;refresh(s);return true;
  }
  async function save(){
@@ -65,6 +67,7 @@ export function attachProfessionalBoard(seat,signals,send,client,lessonSubject,g
   finally{saving=false;if(latest&&!conflict)save();}
  }
  function changed(elements,appState,files){
+  refreshBookViewport({scrollX:appState.scrollX,scrollY:appState.scrollY,zoom:appState.zoom.value});
   refreshSelection(selectedElements(elements,appState.selectedElementIds).length);refreshToolReading(elements);
   files=relevantFiles(elements,files);
   if(!api||applying||!remote||appState.isLoading)return;
@@ -76,7 +79,8 @@ export function attachProfessionalBoard(seat,signals,send,client,lessonSubject,g
  signals.addEventListener('boardstate',event=>{
   const {state,sender}=JSON.parse(event.data);
   if(remote&&state.rev<remote.rev)return;
-  resolveInitial({elements:state.elements,files:state.files,appState:{currentItemFontFamily:2}});
+  const bounds=document.getElementById('board-canvas')?.getBoundingClientRect?.();
+  resolveInitial({elements:state.elements,files:state.files,appState:{currentItemFontFamily:2,...(state.activeLesson?.startsWith('original-book-')?{viewBackgroundColor:'transparent',...bookViewport(bounds?.width||1000,bounds?.height||600)}:{})}});
   ready=true;
   if(sender===client){remote=state;return;}
   if(preparation){remote=state;refresh(state);mode();notify(canPublishPreparation(preparation,state)?'تجهيز خاص: لم يُرسل للطالب بعد.':'تغيّرت السبورة أثناء التجهيز. صدّر المعاينة أو ألغها؛ الإرسال موقوف لحماية العمل.');return;}
@@ -91,6 +95,9 @@ export function attachProfessionalBoard(seat,signals,send,client,lessonSubject,g
  function App(){
   const [status,setStatus]=useState('جارٍ فتح السبورة…'),[state,setState]=useState(null);
   const [viewState,setViewState]=useState('shared');
+  const [bookVisible,setBookVisible]=useState(true),[bookView,setBookView]=useState({scrollX:0,scrollY:0,zoom:1});
+  refreshBookViewport=next=>setBookView(old=>old.scrollX===next.scrollX&&old.scrollY===next.scrollY&&old.zoom===next.zoom?old:next);
+  useEffect(()=>setBookVisible(true),[state?.activeLesson]);
   const [preparing,setPreparing]=useState(false),[selectionCount,setSelectionCount]=useState(0),[properties,setProperties]=useState(false),[expanded,setExpanded]=useState(false);
   const [toolReading,setToolReading]=useState({angle:null,ruler:false});
   refreshToolReading=elements=>{const angle=protractorReading(elements)?.degrees??null,ruler=elements.some(e=>!e.isDeleted&&e.groupIds?.some(g=>g.startsWith('ruler-')));setToolReading(previous=>previous.angle===angle&&previous.ruler===ruler?previous:{angle,ruler});};
@@ -111,14 +118,14 @@ export function attachProfessionalBoard(seat,signals,send,client,lessonSubject,g
   const input=useRef();notify=setStatus;refresh=setState;
   const available=state?.resources||[];
   const selectedLesson=choices.find(l=>l.id===state?.activeLesson);
-  const changeLesson=async id=>{if(!id||latest||saving||conflict||preparation)return;const resetHistory=id.startsWith('original-book-')||remote.activeLesson?.startsWith('original-book-');try{const s=await send('board',{op:'lesson',rev:remote.rev,lessonId:id});if(apply(s,{resetHistory}))focus(s.elements);}catch(e){notify(e.message);}};
+  const changeLesson=async id=>{if(!id||latest||saving||conflict||preparation)return;const resetHistory=id.startsWith('original-book-')||remote.activeLesson?.startsWith('original-book-');try{const s=await send('board',{op:'lesson',rev:remote.rev,lessonId:id});if(apply(s,{resetHistory})&&!id.startsWith('original-book-'))focus(s.elements);}catch(e){notify(e.message);}};
   const addAid=a=>{if(!ready||conflict||!api||!editable())return;if(seat==='teacher'&&!startPreparation()){notify('انتظر حفظ العمل قبل تجهيز وسيلة جديدة.');return;}const position=nextPosition();const elements=a.kind==='library'?libraryElements(a.elements,position.x,position.y,Math.min(520,api.getAppState().width*0.8),280):convertToExcalidrawElements(a.kind==='digestion'?digestionElements(position.x,position.y,api.getAppState().width*0.75):a.kind==='protractor'?protractorElements(position.x,position.y,'protractor-'+crypto.randomUUID()):a.kind==='ruler'?rulerElements(position.x,position.y,'ruler-'+crypto.randomUUID()):[{type:'text',...position,text:wrapAidText(a.title+'\n'+a.text+'\n'+a.explanation),fontSize:24,fontFamily:2}],{regenerateIds:false});api.updateScene({elements:[...api.getSceneElements(),...elements],appState:selectionState(elements),captureUpdate:CaptureUpdateAction.IMMEDIATELY});api.setActiveTool({type:'selection'});focus(elements);if(['ruler','protractor'].includes(a.kind))notify(a.explanation);};
   const adjustRuler=change=>{if(!ready||conflict||!editable())return;api.updateScene({elements:transformRuler(api.getSceneElements(),change),captureUpdate:CaptureUpdateAction.IMMEDIATELY});};
   const adjustAngle=delta=>{if(!ready||conflict||!editable())return;const elements=api.getSceneElements(),reading=protractorReading(elements);if(reading)api.updateScene({elements:setProtractorAngle(elements,reading.degrees+delta),captureUpdate:CaptureUpdateAction.IMMEDIATELY});};
   const toggle=async()=>{try{const s=await send('board',{op:'permission',rev:remote.rev,allow:!remote.studentDraw});apply(s);}catch(e){notify(e.message);}};
   return <div ref={workspace} className={'teaching-board'+(expanded?' board-expanded':'')+(!properties?' board-hide-properties':'')} dir="rtl">
    <header className="board-heading"><div><strong>سبورة الشرح</strong><small>{preparing?'معاينة خاصة بالمعلم':viewState==='shared'?'شرح مباشر للطالب':viewState==='draft'?'مسودة الطالب':'مشاركة معتمدة'}</small></div><div className="board-heading-actions"><button ref={expandButton} aria-pressed={expanded} onClick={()=>{setExpanded(!expanded);requestAnimationFrame(()=>workspace.current?.scrollTo({top:0}));}}>{expanded?'العودة إلى الفصل':'توسيع مساحة السبورة'}</button><button disabled={!ready} onClick={()=>api&&focus(api.getSceneElements())}>ملاءمة المحتوى</button></div></header>
-   <div className="engine" id="board-canvas"><Excalidraw excalidrawAPI={receiveAPI}
+   <div className={'engine'+(selectedLesson?.bookPage?' has-original-book':'')} id="board-canvas"><OriginalBookBackdrop page={selectedLesson?.bookPage} viewport={bookView} visible={bookVisible}/><Excalidraw excalidrawAPI={receiveAPI}
     onChange={changed} langCode="ar-SA" viewModeEnabled={!ready||conflict||!state||!editable()} initialData={initialData}
     UIOptions={{canvasActions:{loadScene:false,saveToActiveFile:false,export:false,toggleTheme:false},tools:{image:true}}}
     onLinkOpen={(element,event)=>event.preventDefault()} validateEmbeddable={()=>false}>
@@ -126,7 +133,7 @@ export function attachProfessionalBoard(seat,signals,send,client,lessonSubject,g
     </Excalidraw></div>
 
    <div className="board-status"><span role="status" id="board-status">{status}</span></div>
-   <OriginalBookPage page={selectedLesson?.bookPage} teacher={seat==='teacher'} disabled={!ready||saving||!!latest||conflict||preparing} onPage={changeLesson}/>
+   <OriginalBookPage page={selectedLesson?.bookPage} teacher={seat==='teacher'} disabled={!ready||saving||!!latest||conflict||preparing} onPage={changeLesson} visible={bookVisible} onVisibility={()=>setBookVisible(v=>!v)} zoom={bookView.zoom} onZoom={factor=>api?.updateScene({appState:{zoom:{value:Math.max(.1,Math.min(2,bookView.zoom*factor))}},captureUpdate:CaptureUpdateAction.NEVER})} onFit={()=>{const a=api?.getAppState();if(a)api.updateScene({appState:bookViewport(a.width,a.height),captureUpdate:CaptureUpdateAction.NEVER});}}/>
    {preparing&&<section className="board-preparation" aria-label="التجهيز الخاص"><div><strong>تجهيز خاص قبل الإرسال</strong><p>كل تعديل هنا يبقى على جهاز المعلم حتى التأكيد. اضبط المكان والحجم ثم أرسل؛ التحريك بعد الإرسال يظهر مباشرة للطالب.</p></div><button disabled={!ready||conflict||!canPublishPreparation(preparation,state)} onClick={publishPreparation}>تأكيد المكان وإرسال للطالب</button><button onClick={cancelPreparation}>إلغاء التجهيز</button></section>}
    {seat==='teacher'&&selectedLesson?.id==='science-g6-digestion-demo'&&<div className="board-selection" role="group" aria-label="شرح رحلة الطعام بالتتابع"><span>إبراز خطوة من رحلة الطعام</span>{[-1,1].map(delta=><button key={delta} disabled={!ready||conflict||!editable()} onClick={()=>{api.updateScene({elements:advanceDigestion(api.getSceneElements(),delta),captureUpdate:CaptureUpdateAction.IMMEDIATELY});}}>{delta<0?'الخطوة السابقة':'الخطوة التالية'}</button>)}<small>{preparing?'التحديد خاص أثناء التجهيز':'بعد الإرسال يظهر الإبراز للطالب'}</small></div>}
    <div className="board-selection" role="group" aria-label="تحريك وتعديل التحديد"><button disabled={!ready||conflict||!editable()} onClick={()=>api?.setActiveTool({type:'selection'})}>تحديد وتحريك</button><button aria-pressed={properties} onClick={()=>{setProperties(!properties);api?.updateScene({appState:{openMenu:properties?null:'shape'}});}}>{properties?'إخفاء خصائص الرسم':'خصائص الرسم'}</button><button disabled={!ready||conflict||!editable()||!selectionCount} onClick={()=>adjustSelection({scale:1.15})}>تكبير التحديد +</button><button disabled={!ready||conflict||!editable()||!selectionCount} onClick={()=>adjustSelection({scale:1/1.15})}>تصغير التحديد −</button><button disabled={!ready||conflict||!editable()||!selectionCount} onClick={()=>adjustSelection({remove:true})}>حذف التحديد</button>{seat==='teacher'&&!preparing&&<button disabled={!ready||conflict||!editable()||saving||!!latest} onClick={startPreparation}>تجهيز خاص</button>}<small>اسحب الأداة لتحريكها، واسحب مقابض الزوايا لتغيير حجمها.</small></div>
