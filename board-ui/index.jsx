@@ -3,6 +3,7 @@ import{MathPanel}from'./MathPanel.jsx';
 import{createRoot}from'react-dom/client';
 import{Excalidraw,MainMenu,convertToExcalidrawElements,exportToBlob}from'@excalidraw/excalidraw';
 import'@excalidraw/excalidraw/index.css';
+import{fitDimensions,wrapAidText}from'./fit.js';
 import{aids,aidsForSubject}from'./aids.js';
 import'./board.css';
 
@@ -13,6 +14,7 @@ export function attachProfessionalBoard(seat,signals,send,client,lessonSubject){
  let api,remote,ready=false,applying=false,saving=false,latest=null,timer,conflict=false;
  let notify=()=>{},refresh=()=>{};
  const nextPosition=()=>({x:80,y:Math.max(40,...api.getSceneElements().filter(e=>!e.isDeleted).map(e=>e.y+e.height))+40});
+ const focus=elements=>requestAnimationFrame(()=>api.scrollToContent(elements,{fitToViewport:true,viewportZoomFactor:0.8,animate:false}));
  const scene=()=>({elements:api.getSceneElementsIncludingDeleted(),files:api.getFiles()});
  const signature=s=>JSON.stringify({elements:s.elements,files:s.files});
  let baseline='';
@@ -55,10 +57,10 @@ export function attachProfessionalBoard(seat,signals,send,client,lessonSubject){
  function App(){
   const [status,setStatus]=useState('جارٍ فتح السبورة…'),[state,setState]=useState(null),[subject,setSubject]=useState(available[0]?.subject||'');
   const input=useRef();notify=setStatus;refresh=setState;
-  const addAid=a=>{if(!ready||conflict||!api)return;const elements=convertToExcalidrawElements([{type:'text',...nextPosition(),text:a.title+'\n'+a.text+'\n'+a.explanation,fontSize:24,fontFamily:2}]);api.updateScene({elements:[...api.getSceneElements(),...elements]});};
+  const addAid=a=>{if(!ready||conflict||!api)return;const elements=convertToExcalidrawElements([{type:'text',...nextPosition(),text:wrapAidText(a.title+'\n'+a.text+'\n'+a.explanation),fontSize:24,fontFamily:2}]);api.updateScene({elements:[...api.getSceneElements(),...elements]});focus(elements);};
   const toggle=async()=>{try{const s=await send('board',{op:'permission',rev:remote.rev,allow:!remote.studentDraw});remote=s;apply(s);}catch(e){notify(e.message);}};
   return <div className="teaching-board" dir="rtl">
-   <div className="board-bar"><strong>سبورة الشرح</strong><span role="status" id="board-status">{status}</span>
+   <div className="board-bar"><button onClick={()=>api&&focus(api.getSceneElements())}>إظهار السبورة كاملة</button><strong>سبورة الشرح</strong><span role="status" id="board-status">{status}</span>
     <button onClick={()=>download(JSON.stringify({format:'khatwa-board',version:1,engine:'excalidraw',...scene()}),'lesson-board.json','application/json')}>تصدير قابل للاستعادة</button>
     <button onClick={async()=>{try{const s=scene();const blob=await exportToBlob({...s,appState:{exportBackground:true},mimeType:'image/png'});download(blob,'lesson-board.png','image/png');}catch(e){notify('تعذّر تصدير الصورة؛ استخدم ملف الاستعادة.');}}}>صورة PNG</button>
     <button onClick={()=>{if(latest&&!window.confirm('قد تفقد العمل غير المحفوظ. هل صدّرت نسخة وتريد تحميل آخر حفظ؟'))return;location.reload();}}>تحميل آخر حفظ</button>
@@ -70,7 +72,7 @@ export function attachProfessionalBoard(seat,signals,send,client,lessonSubject){
     {available.filter(a=>a.subject===subject).map(a=><button key={a.id} disabled={!ready||conflict||(seat!=='teacher'&&!state?.studentDraw)} onClick={()=>addAid(a)}>{a.title} +</button>)}
     <p>محتوى أصلي للمشروع. يضاف إلى السبورة ويتزامن للطرفين؛ يمكن تعديله. صورك تُخزن على خدمة التجربة؛ استخدم مواد وهمية فقط.</p>
    </details>
-   <MathPanel enabled={ready&&!conflict&&(seat==='teacher'||state?.studentDraw)} notify={notify} insert={(dataURL,width,height)=>{const id=crypto.randomUUID();api.addFiles([{id,dataURL,mimeType:'image/png',created:Date.now()}]);api.updateScene({elements:[...api.getSceneElements(),...convertToExcalidrawElements([{type:'image',...nextPosition(),width,height,fileId:id,status:'saved'}])]});}}/>
+   <MathPanel enabled={ready&&!conflict&&(seat==='teacher'||state?.studentDraw)} notify={notify} insert={(dataURL,width,height)=>{const id=crypto.randomUUID();api.addFiles([{id,dataURL,mimeType:'image/png',created:Date.now()}]);api.updateScene({elements:[...api.getSceneElements(),...convertToExcalidrawElements([{type:'image',...nextPosition(),...fitDimensions(width,height),fileId:id,status:'saved'}])]});focus(api.getSceneElements().slice(-1));}}/>
    <div className="engine"><Excalidraw excalidrawAPI={value=>{api=value;if(remote)apply(remote);}}
     onChange={changed} langCode="ar-SA" viewModeEnabled={!ready||conflict||!state||(seat!=='teacher'&&!state.studentDraw)} initialData={initialData}
     UIOptions={{canvasActions:{loadScene:false,saveToActiveFile:false,export:false,toggleTheme:false},tools:{image:true}}}
