@@ -23,7 +23,7 @@ async function send(kind,payload,generation=''){
   if(response.headers.get('content-type')?.startsWith('application/json'))return response.json();
 }
 const placeConnected=attachPlaceBoard(seat,signals,send);
-attachProfessionalBoard(seat,signals,send,client,$('classroom').dataset.subject);
+attachProfessionalBoard(seat,signals,send,client,$('classroom').dataset.subject,Number($('classroom').dataset.grade));
 function resetPeer(){
   if(connection){connection.onconnectionstatechange=null;connection.ontrack=null;connection.close();}
   connection=null;pair=null;$('remote').srcObject=null;$('play').hidden=true;

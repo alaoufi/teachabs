@@ -1,3 +1,4 @@
+const visibleBoard=state=>{const {lessonScenes,...visible}=state;return visible;};
 import { changeBoard, emptyBoard } from './board.mjs';
 import { randomBytes, randomUUID, createHash } from 'node:crypto';
 import { subjects, UserError } from './store.mjs';
@@ -29,7 +30,7 @@ function lobby(user, teacherEntry=false) {
 function classroom({seat, booking, preview}) {
   const name = seat === 'teacher' ? 'المعلم' : 'الطالب';
   const back = preview ? '/lesson' : '/booking/' + booking.id;
-  return `<link rel="stylesheet" href="/lesson.css?v=place2"><section id="classroom" data-seat="${seat}" data-subject="${preview?'preview':e(booking.subject)}">
+  return `<link rel="stylesheet" href="/lesson.css?v=place2"><section id="classroom" data-seat="${seat}" data-grade="${preview?0:booking.grade}" data-subject="${preview?'preview':e(booking.subject)}">
     <div class="lesson-head"><div><div class="eyebrow"><i></i>${preview?'تجربة محلية بمقعدين':'الحصة الفردية'}</div>
     <h1>${preview?'الفصل التجريبي':'حصة '+e(subjects[booking.subject])}</h1>
     <p>${preview?'أنت في مقعد '+name:e(booking.childName)+' مع '+e(booking.teacherName)+' · مقعد '+name} · التسجيل متوقف</p></div>
@@ -92,7 +93,7 @@ export function lessonService(store) {
     room.peers[seat]=peer;
     res.on('close',()=>detach(room,seat,peer));
     output(peer,'snapshot',room.strokes);
-    output(peer,'boardstate',{state:store.readBoard(key)||emptyBoard(),sender:null});
+    output(peer,'boardstate',{state:visibleBoard(store.readBoard(key)||emptyBoard()),sender:null});
     if(math){
       const state=(preview?room.place:store.placeActivity(key))??initialPlace();
       output(peer,'place',visiblePlace(state,seat));
@@ -107,14 +108,14 @@ export function lessonService(store) {
     },5000);
     peer.timer.unref();
   }
-  function deliver(key,seat,data,math,preview) {
+  function deliver(key,seat,data,math,preview,context) {
     const room=rooms.get(key);
     if(!room || room.peers[seat]?.client!==data.client) throw new UserError('أعد فتح نافذة الفصل.',409);
     let payload;
     try { payload=JSON.parse(data.payload); } catch { throw new UserError('رسالة غير صالحة.'); }
     if(data.kind==='board'){
-      const next=changeBoard(store.readBoard(key),seat,payload);store.writeBoard(key,next);
-      for(const peer of Object.values(room.peers))output(peer,'boardstate',{state:next,sender:data.client});return next;
+      const next=changeBoard(store.readBoard(key),seat,payload,context);store.writeBoard(key,next);
+      for(const peer of Object.values(room.peers))output(peer,'boardstate',{state:visibleBoard(next),sender:data.client});return visibleBoard(next);
     }
     if(data.kind==='place'){
       requireState(math,'هذا النشاط لحصة الرياضيات فقط.',403);
@@ -195,7 +196,7 @@ export function lessonService(store) {
       if(action==='send' && req.method==='POST'){
         const data=await fields(req);
         if(!preview)requireState(store.resolve(cookie)===u.id && isOpen(store.bookings(u.id,id)[0]),'انتهى إذن الدخول للحصة.',403);
-        const result=deliver(key,seat,data,preview||booking.subject==='math',preview);
+        const result=deliver(key,seat,data,preview||booking.subject==='math',preview,{preview,subject:booking?.subject,grade:booking?.grade});
         if(result){res.writeHead(200,{'Content-Type':'application/json'});return res.end(JSON.stringify(result));}
         res.writeHead(204);return res.end();
       }

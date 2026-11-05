@@ -1,9 +1,19 @@
+import {allowedLessons} from './lesson-catalog.mjs';
 import { UserError } from './store.mjs';
 const need=(ok,message,status=400)=>{if(!ok)throw new UserError(message,status);};
 export const emptyBoard=()=>({format:'khatwa-board',version:1,rev:0,studentDraw:false,elements:[],files:{}});
-export function changeBoard(current,seat,command){
+export function changeBoard(current,seat,command,context={}){
  const state=current||emptyBoard();
  need(command&&Number.isInteger(command.rev)&&command.rev===state.rev,'تغيّرت السبورة. صدّر عملك المحلي قبل تحميل نسخة الخادم.',409);
+ if(command.op==='lesson'){
+  need(seat==='teacher','تغيير الدرس للمعلم فقط.',403);
+  need(allowedLessons(context).some(l=>l.id===command.lessonId),'الدرس غير متاح لهذه المادة والصف.',403);
+  const archive={...(state.lessonScenes||{}),[state.activeLesson||'unassigned']:{elements:state.elements,files:state.files}};
+  const target=archive[command.lessonId]||{elements:[],files:{}};
+  const next={...state,...target,activeLesson:command.lessonId,lessonScenes:archive,studentDraw:false,rev:state.rev+1};
+  need(JSON.stringify(next).length<=2000000,'تجاوزت مساحة حفظ الدروس الحد المسموح.');return next;
+ }
+ if(command.op==='scene'&&state.activeLesson)need(command.lessonId===state.activeLesson,'تغير الدرس؛ احتفظ بعملك وأعد التحميل.',409);
  if(command.op==='permission'){
   need(seat==='teacher'&&typeof command.allow==='boolean','الإذن للمعلم فقط.',403);
   return {...state,rev:state.rev+1,studentDraw:command.allow};
