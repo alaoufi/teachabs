@@ -1,3 +1,4 @@
+import {changeModel3d} from './model3d.mjs';
 import {changeClassTimer} from './class-timer.mjs';
 import {changeLivePages} from './live-pages.mjs';
 import {allowedLessons} from './lesson-catalog.mjs';
@@ -8,14 +9,15 @@ export function changeBoard(current,seat,command,context={}){
  const state=current||emptyBoard();
  need(['teacher','student'].includes(seat),'مقعد غير مصرح.',403);
  need(command&&Number.isInteger(command.rev)&&command.rev===state.rev,'تغيّرت السبورة. صدّر عملك المحلي قبل تحميل نسخة الخادم.',409);
+ if(command.op==='model3d')return changeModel3d(state,seat,command,context);
  if(command.op?.startsWith('timer-'))return {...state,rev:state.rev+1,classTimer:changeClassTimer(state.classTimer,seat,command)};
  if(command.op?.startsWith('pages-'))return changeLivePages(state,seat,command,context.savedInstance);
  if(command.op==='lesson'){
   need(!state.pageSession,'Close the saved lesson before changing subject',409);
   need(seat==='teacher','تغيير الدرس للمعلم فقط.',403);
   need(allowedLessons(context).some(l=>l.id===command.lessonId),'الدرس غير متاح لهذه المادة والصف.',403);
-  const archive={...(state.lessonScenes||{}),[state.activeLesson||'unassigned']:{elements:state.elements,files:state.files,studentDraft:state.studentDraft||null,publishedStudent:state.publishedStudent||null}};
-  const target=archive[command.lessonId]||{elements:[],files:{},studentDraft:null,publishedStudent:null};
+  const archive={...(state.lessonScenes||{}),[state.activeLesson||'unassigned']:{elements:state.elements,files:state.files,studentDraft:state.studentDraft||null,publishedStudent:state.publishedStudent||null,model3d:state.model3d||null}};
+  const target=archive[command.lessonId]||{elements:[],files:{},studentDraft:null,publishedStudent:null,model3d:null};
   const next={...state,...target,activeLesson:command.lessonId,lessonScenes:archive,studentDraw:false,rev:state.rev+1};
   need(JSON.stringify(next).length<=2000000,'تجاوزت مساحة حفظ الدروس الحد المسموح.');return next;
  }

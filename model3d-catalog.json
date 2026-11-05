@@ -1,0 +1,16 @@
+{
+  "id": "geometry-demo-v1",
+  "version": 1,
+  "kind": "original-procedural-geometry",
+  "titleAr": "مجسمات هندسية — تجربة تقنية",
+  "source": "board-ui/geometry-viewer.js",
+  "provenance": "Original geometry authored for this project; no downloaded model or external media",
+  "thirdPartyAssetLicense": null,
+  "reviewStatus": "synthetic-demo-only",
+  "anatomicalModel": false,
+  "lessonIds": ["math-g4-solids"],
+  "parts": [{"id":"cube","labelAr":"المكعب الأزرق"},{"id":"pyramid","labelAr":"الهرم البرتقالي"}],
+  "controls": {"sharedWriter":"teacher","student":"read-only"},
+  "externalRequests": false,
+  "templateExportSupported": false
+}
