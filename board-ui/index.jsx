@@ -1,6 +1,7 @@
+import {ClassTimer} from './ClassTimer.jsx';
 import {allowedLessons} from '../lesson-catalog.mjs';
 import React,{useState,useRef} from 'react';
-import{MathPanel}from'./MathPanel.jsx';
+
 import{createRoot}from'react-dom/client';
 import{Excalidraw,MainMenu,convertToExcalidrawElements,exportToBlob}from'@excalidraw/excalidraw';
 import'@excalidraw/excalidraw/index.css';
@@ -70,6 +71,8 @@ export function attachProfessionalBoard(seat,signals,send,client,lessonSubject,g
   const [exiting,setExiting]=useState(false);openExit=()=>setExiting(true);
   const leave=()=>{location.href=document.getElementById('leave').href;};
   const clearAndLeave=async()=>{try{const next=await send('board',{op:'clear',confirm:true,rev:remote.rev,lessonId:remote.activeLesson});latest=null;clearTimeout(timer);apply(next);leave();}catch(e){notify('لم يُمسح العمل: '+e.message);}};
+  const [MathPanel,setMathPanel]=useState(null),[mathLoading,setMathLoading]=useState(false),[mathFailed,setMathFailed]=useState(false);
+  const loadMath=async()=>{if(mathFailed){if(latest||saving||conflict){notify('احفظ أو صدّر التغييرات أولًا قبل إعادة تحميل الأدوات.');return;}location.reload();return;}setMathLoading(true);try{const m=await import('./MathPanel.jsx');setMathPanel(()=>m.MathPanel);}catch{setMathFailed(true);notify('تعذر تحميل محرر المعادلات. إعادة المحاولة تعيد تحميل الصفحة بعد حفظ العمل.');}finally{setMathLoading(false);}};
   const input=useRef();notify=setStatus;refresh=setState;
   const available=state?.resources||[];
   const selectedLesson=choices.find(l=>l.id===state?.activeLesson);
@@ -77,6 +80,7 @@ export function attachProfessionalBoard(seat,signals,send,client,lessonSubject,g
   const addAid=a=>{if(!ready||conflict||!api||!editable())return;const elements=convertToExcalidrawElements([{type:'text',...nextPosition(),text:wrapAidText(a.title+'\n'+a.text+'\n'+a.explanation),fontSize:24,fontFamily:2}]);api.updateScene({elements:[...api.getSceneElements(),...elements]});focus(elements);};
   const toggle=async()=>{try{const s=await send('board',{op:'permission',rev:remote.rev,allow:!remote.studentDraw});remote=s;apply(s);}catch(e){notify(e.message);}};
   return <div className="teaching-board" dir="rtl">
+   <ClassTimer timer={state?.classTimer} serverNow={state?.serverNow} teacher={seat==='teacher'} enabled={ready&&!saving&&!latest&&!conflict} command={async(op,extra={})=>{try{const next=await send('board',{op,...extra,rev:remote.rev});apply(next);}catch(e){notify(e.message);}}}/>
    {exiting&&<section role="dialog" aria-modal="false" aria-label="مغادرة الحصة" className="panel"><h3>هل تريد مسح أعمال الدرس الحالي قبل المغادرة؟</h3><p>يشمل سبورة المعلم ومسودة الطالب والنسخة المنشورة لهذا الدرس فقط. الدروس الأخرى وسجلات الطلاب تبقى محفوظة. يمكنك التصدير أولًا.</p><button onClick={()=>download(JSON.stringify(remote),'current-lesson-backup.json','application/json')}>تصدير أعمال الدرس بصيغة JSON</button><button onClick={leave}>مغادرة مع الاحتفاظ بالعمل</button><button disabled={saving||!!latest||conflict||!remote} onClick={clearAndLeave}>أوافق: مسح هذا الدرس والمغادرة</button><button onClick={()=>setExiting(false)}>إلغاء</button></section>}<div className="board-bar"><label>مساحة العمل <select aria-label="مساحة العمل" value={viewState} disabled={!ready||saving||!!latest||conflict} onChange={e=>selectView(e.target.value)}><option value="shared">سبورة المعلم المشتركة</option><option value="draft">مسودة الطالب الخاصة بالطالب والمعلم</option><option value="published">مشاركة الطالب المعتمدة</option></select></label>{seat==='teacher'&&<><button disabled={!ready||saving||!!latest||conflict||!state?.studentDraft} onClick={()=>moderate('publish')}>نشر نسخة من مسودة الطالب</button><button disabled={!ready||saving||!!latest||conflict||!state?.publishedStudent} onClick={()=>moderate('hide')}>حجب المشاركة المعتمدة</button></>}<button onClick={()=>api&&focus(api.getSceneElements())}>إظهار السبورة كاملة</button><strong>سبورة الشرح</strong><span role="status" id="board-status">{status}</span>
     <button onClick={()=>download(JSON.stringify({format:'khatwa-board',version:1,engine:'excalidraw',...scene()}),'lesson-board.json','application/json')}>تصدير قابل للاستعادة</button>
     <button onClick={async()=>{try{const s=scene();const blob=await exportToBlob({...s,appState:{exportBackground:true},mimeType:'image/png'});download(blob,'lesson-board.png','image/png');}catch(e){notify('تعذّر تصدير الصورة؛ استخدم ملف الاستعادة.');}}}>صورة PNG</button>
@@ -92,7 +96,8 @@ export function attachProfessionalBoard(seat,signals,send,client,lessonSubject,g
     {available.filter(a=>selectedLesson?.aidIds.includes(a.id)).map(a=><button key={a.id} disabled={!ready||conflict||!editable()} onClick={()=>addAid(a)}>{a.title} +</button>)}
     <p>محتوى أصلي للمشروع. يضاف إلى السبورة ويتزامن للطرفين؛ يمكن تعديله. صورك تُخزن على خدمة التجربة؛ استخدم مواد وهمية فقط.</p>
    </details>
-   {selectedLesson?.subject==='math'&&<MathPanel enabled={ready&&!conflict&&editable()} notify={notify} insert={(dataURL,width,height)=>{const id=crypto.randomUUID();api.addFiles([{id,dataURL,mimeType:'image/png',created:Date.now()}]);api.updateScene({elements:[...api.getSceneElements(),...convertToExcalidrawElements([{type:'image',...nextPosition(),...fitDimensions(width,height),fileId:id,status:'saved'}])]});focus(api.getSceneElements().slice(-1));}}/>}
+   {selectedLesson?.subject==='math'&&!MathPanel&&<button disabled={mathLoading} onClick={loadMath}>{mathLoading?'جاري تحميل محرر المعادلات…':mathFailed?'إعادة تحميل الأدوات':'تحميل محرر المعادلات'}</button>}
+   {selectedLesson?.subject==='math'&&MathPanel&&<MathPanel enabled={ready&&!conflict&&editable()} notify={notify} insert={(dataURL,width,height)=>{const id=crypto.randomUUID();api.addFiles([{id,dataURL,mimeType:'image/png',created:Date.now()}]);api.updateScene({elements:[...api.getSceneElements(),...convertToExcalidrawElements([{type:'image',...nextPosition(),...fitDimensions(width,height),fileId:id,status:'saved'}])]});focus(api.getSceneElements().slice(-1));}}/>}
    <div className="engine"><Excalidraw excalidrawAPI={value=>{api=value;if(remote)apply(remote);}}
     onChange={changed} langCode="ar-SA" viewModeEnabled={!ready||conflict||!state||!editable()} initialData={initialData}
     UIOptions={{canvasActions:{loadScene:false,saveToActiveFile:false,export:false,toggleTheme:false},tools:{image:true}}}

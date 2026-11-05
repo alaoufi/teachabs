@@ -1,6 +1,6 @@
 import {allowedLessons} from './lesson-catalog.mjs';
 import {aids} from './board-ui/aids.js';
-const visibleBoard=(state,context)=>{const {lessonScenes,...visible}=state;const lesson=allowedLessons(context).find(l=>l.id===state.activeLesson);return {...visible,resources:aids.filter(a=>lesson?.aidIds.includes(a.id))};};
+const visibleBoard=(state,context)=>{const {lessonScenes,...visible}=state;const lesson=allowedLessons(context).find(l=>l.id===state.activeLesson);return {...visible,serverNow:Date.now(),resources:aids.filter(a=>lesson?.aidIds.includes(a.id))};};
 import { changeBoard, emptyBoard } from './board.mjs';
 import { randomBytes, randomUUID, createHash } from 'node:crypto';
 import { subjects, UserError } from './store.mjs';

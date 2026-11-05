@@ -1,3 +1,4 @@
+import {serveAsset} from './asset-response.mjs';
 import { demoHub } from './demo.mjs';
 import http from 'node:http';
 import { readFile } from 'node:fs/promises';
@@ -10,6 +11,7 @@ import { advancePlace } from './place-value.mjs';
 import { progressPage, bookingResult } from './place-views.mjs';
 
 const files={'/style.css':'text/css; charset=utf-8','/mark.svg':'image/svg+xml','/study.svg':'image/svg+xml','/app.webmanifest':'application/manifest+json','/icon-192.png':'image/png','/icon-512.png':'image/png'};
+files['/board-loader.js']='text/javascript; charset=utf-8';
 files['/depth.css']='text/css; charset=utf-8';
 files['/lesson-client.js']='text/javascript; charset=utf-8';
 files['/lesson.css']='text/css; charset=utf-8';
@@ -60,11 +62,11 @@ export function createApp(store,{origin=process.env.APP_ORIGIN}={}) {
         if(route==='/demo')return html('شاشات التجربة',demoHub(u,q.role));
         if(/^\/board-assets\/[A-Za-z0-9_./-]+$/.test(route)&&!route.includes('..')){
           const ext=route.split('.').pop();const type={js:'text/javascript',css:'text/css',woff2:'font/woff2',png:'image/png'}[ext];if(!type)throw new UserError('Not found',404);
-          const asset=await readFile(new URL('./public'+route,import.meta.url));res.writeHead(200,{'Content-Type':type,'Cache-Control':'no-cache'});return res.end(asset);
+          const asset=await readFile(new URL('./public'+route,import.meta.url));return await serveAsset(req,res,asset,type,/^\/board-assets\/(chunks|assets)\/[^/]+-[A-Z0-9]{8}\.[a-z0-9]+$/.test(route));
         }
         if(Object.hasOwn(files,route)){
           const asset=await readFile(new URL('./public'+route,import.meta.url));
-          res.writeHead(200,{'Content-Type':files[route],'Cache-Control':'public, max-age=300'});return res.end(asset);
+          return await serveAsset(req,res,asset,files[route]);
         }
         if(route==='/')return u?redirect('/app'):html('التعليم الفردي',ui.landing());
         if(['/login','/register','/activate'].includes(route))return html('الحساب',ui.auth(route.slice(1),q.code||''));
