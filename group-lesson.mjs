@@ -1,6 +1,6 @@
 // Group lesson service: planner, live teacher console, display screen and student seats.
 import {validatePlan, defaultPlan, PlanError, LIMITS, LESSON_TEMPLATES} from './public/group-plan.js';
-import {initialState, teacherCommand, teacherView, publicView, checkAnswer, checkEvaluation, contentFor, narrationFor, segmentAudio, MAX_STUDENTS} from './group-session.mjs';
+import {initialState, teacherCommand, teacherView, publicView, voiceOf, checkAnswer, checkEvaluation, contentFor, narrationFor, segmentAudio, MAX_STUDENTS} from './group-session.mjs';
 import {UserError} from './store.mjs';
 import * as v from './group-views.mjs';
 
@@ -61,6 +61,22 @@ export function groupService(store) {
     res.write('event: view\ndata: ' + JSON.stringify(kind === 'teacher' ? teacherView(d.s.state, d.s.plan, d.students, d.responses) : publicView(d.s.state, d.s.plan, kind === 'student' ? id : null, d.responses, d.names)) + '\n\n');
   }
 
+  // ---- live voice signalling: each student connects to the teacher only; messages are relayed, never stored ----
+  const RTC_TYPES = ['hello', 'offer', 'answer', 'ice', 'mic', 'bye'];
+  async function rtcMessage(req, base) {
+    const body = await json(req, base, 24_000);
+    need(body && RTC_TYPES.includes(body.type), 'رسالة صوت غير صالحة.');
+    return {type: body.type, data: body.data ?? null, to: typeof body.to === 'string' ? body.to : null};
+  }
+  function relay(code, target, payload) {
+    let sent = 0;
+    for (const l of listeners.get(code) || []) {
+      if (target === 'teacher' ? l.kind !== 'teacher' : !(l.kind === 'student' && l.id === target)) continue;
+      l.res.write('event: rtc\ndata: ' + JSON.stringify(payload) + '\n\n'); sent++;
+    }
+    return sent;
+  }
+
   const joinLimits = new Map();
   function joinLimit(req) {
     const now = Date.now(), key = req.socket.remoteAddress;
@@ -73,7 +89,7 @@ export function groupService(store) {
     matches: path => path === '/join' || path.startsWith('/teach/') || path === '/teach' || path.startsWith('/class/'),
     async handle(ctx) {
       const {req, res, url} = ctx, path = url.pathname;
-      const api = /\/(events|content|narration|answer|command|evaluate|remove|plan|display-events|texts|delete|import)$/.test(path) || /^\/teach\/texts\//.test(path) || path.endsWith('.json') || req.headers['content-type']?.startsWith('application/json');
+      const api = /\/(events|content|narration|answer|command|evaluate|remove|plan|display-events|texts|delete|import|rtc)$/.test(path) || /^\/teach\/texts\//.test(path) || path.endsWith('.json') || req.headers['content-type']?.startsWith('application/json');
       try { return await route(ctx); } catch (err) {
         if (api && err instanceof UserError && !res.headersSent) return send(res, {error: err.message}, err.status);
         throw err;
@@ -97,13 +113,20 @@ export function groupService(store) {
         res.setHeader('Set-Cookie', `gl_${code}=${joined.token}; Path=/class/${code}; Max-Age=1209600; HttpOnly; SameSite=Lax${base.startsWith('https:') ? '; Secure' : ''}`);
         broadcast(code); return redirect('/class/' + code);
       }
-      const cls = path.match(/^\/class\/([A-Z0-9]{6})(?:\/(events|content|narration|answer))?$/);
+      const cls = path.match(/^\/class\/([A-Z0-9]{6})(?:\/(events|content|narration|answer|rtc))?$/);
       if (cls) {
         const [, code, action] = cls; need(CODE.test(code), 'رمز الحصة غير صالح.', 404);
         const s = g.session(code), me = s && g.student(code, studentToken(req, code));
         if (!me) { if (!action && method === 'GET') return redirect('/join?code=' + code); throw new UserError('انضم إلى الحصة أولًا.', 401); }
-        if (!action && method === 'GET') return page(res, html, 'الحصة', v.studentPage(code, me.name, s.plan.title));
+        if (!action && method === 'GET') return page(res, html, 'الحصة', v.studentPage(code, me.name, s.plan.title), true); // the student may open the microphone
         if (action === 'events' && method === 'GET') return subscribe(req, res, code, 'student', me.id);
+        if (action === 'rtc' && method === 'POST') {
+          const m = await rtcMessage(req, base);
+          need(s.state.live, 'انتهت الحصة.', 409);
+          if (m.type === 'mic' && m.data === true) need(voiceOf(s.state).mics, 'أغلق المعلم مايك الطلاب الآن.', 409);
+          relay(code, 'teacher', {from: me.id, name: me.name, type: m.type, data: m.data});
+          return send(res, {ok: true});
+        }
         if (action === 'content' && method === 'GET') return send(res, contentFor(s.state, s.plan, url.searchParams.get('step') || ''));
         if (action === 'narration' && method === 'GET') {
           const segment = url.searchParams.get('segment');
@@ -159,7 +182,7 @@ export function groupService(store) {
         if (action === '/start' && method === 'POST') { await fields(req); const clean = validatePlan(plan.plan); return redirect('/teach/live/' + g.startSession(teacher.id, clean, initialState(clean))); }
         throw new UserError('إجراء غير متاح.', 405);
       }
-      const lm = path.match(/^\/teach\/live\/([A-Z0-9]{6})(?:\/(events|plan|command|evaluate|remove|display|display-events))?$/);
+      const lm = path.match(/^\/teach\/live\/([A-Z0-9]{6})(?:\/(events|plan|command|evaluate|remove|display|display-events|rtc))?$/);
       if (lm) {
         const [, code, action] = lm, s = ownSession(teacher, code);
         if (!action && method === 'GET') return page(res, html, 'إدارة الحصة', v.teacherPage(code, s.plan.title, base), true);
@@ -167,6 +190,11 @@ export function groupService(store) {
         if (action === 'plan' && method === 'GET') return send(res, s.plan);
         if (action === 'events' && method === 'GET') return subscribe(req, res, code, 'teacher', teacher.id);
         if (action === 'display-events' && method === 'GET') return subscribe(req, res, code, 'display', null);
+        if (action === 'rtc' && method === 'POST') {
+          const m = await rtcMessage(req, base);
+          need(m.to && g.students(code).some(x => x.id === m.to), 'الطالب غير موجود في الحصة.', 404);
+          return send(res, {ok: true, delivered: relay(code, m.to, {from: 'teacher', type: m.type, data: m.data})});
+        }
         if (action === 'command' && method === 'POST') {
           const body = await json(req, base, 65536);
           const next = teacherCommand(s.state, s.plan, body); g.saveState(code, next); broadcast(code);

@@ -7,6 +7,7 @@ import {openTextPicker} from './text-library.js';
 import {speakingMs} from './narrator-scripts.js';
 import {formatNumber} from './science-shadow-model.js';
 import {activityOf, segmentLabel, bigOf, textOf, quickParams} from './activities.js';
+import {teacherVoice} from './group-voice.js';
 
 const app = document.getElementById('gl-app'), code = app.dataset.code, base = '/teach/live/' + code;
 const $ = x => document.getElementById(x);
@@ -261,7 +262,8 @@ function homeworkButtons() {
 function renderSide() {
   $('gl-count').textContent = `(${formatNumber(view.students.length)})`;
   $('gl-count').classList.toggle('has-students', view.students.length > 0);
-  $('gl-students').replaceChildren(...(view.students.length ? view.students.map(st => el('li', {}, el('span', {text: st.name}),
+  const talking = new Set(voice.speaking());
+  $('gl-students').replaceChildren(...(view.students.length ? view.students.map(st => el('li', {class: talking.has(st.id) ? 'is-talking' : ''}, el('span', {text: (talking.has(st.id) ? '🎤 ' : '') + st.name}),
     el('button', {type: 'button', class: 'quiet', 'aria-label': 'إخراج ' + st.name, onclick: async () => { if (!confirm(`إخراج ${st.name} من الحصة؟`)) return; try { await post('/remove', {student: st.id}); } catch (e) { status(e.message, true); } }}, 'إخراج'))) : [el('li', {class: 'gl-empty', text: 'بانتظار انضمام الطلاب برمز الحصة.'})]));
   const hw = plan.steps.find(s => s.type === 'homework');
   $('gl-homework').replaceChildren(...(hw ? [homeworkButtons(), el('ul', {class: 'gl-hw'}, view.students.map(st => {
@@ -324,8 +326,25 @@ function renderSnippets(s) {
   box.replaceChildren(el('span', {class: 'gl-snip-label', text: 'نصوص جاهزة:'}), ...list.map(t => el('button', {type: 'button', class: 'gl-snip', onclick: () => tools.prepareSnippet(t)}, t)));
 }
 
+// ---- live voice: the teacher decides who is heard ----
+const voice = teacherVoice({base, onChange: () => { renderVoice(); if (view) renderSide(); }});
+function renderVoice() {
+  const v = view?.voice || {teacher: false, mics: true}, talking = voice.speaking().length;
+  $('gl-voice').textContent = voice.on ? '🎙 صوتي: يُسمع الآن' : '🎙 صوتي: مغلق';
+  $('gl-voice').setAttribute('aria-pressed', String(voice.on)); $('gl-voice').classList.toggle('is-on', voice.on);
+  $('gl-mics').textContent = (v.mics ? '🎤 مايك الطلاب: مسموح' : '🔇 مايك الطلاب: مغلق') + (talking ? ` (${formatNumber(talking)} يتحدث)` : '');
+  $('gl-mics').setAttribute('aria-pressed', String(v.mics));
+}
+$('gl-voice').addEventListener('click', async () => {
+  try { await voice.setMic(!voice.on); await command({op: 'voice', teacher: voice.on}); } catch (e) { status(e.message || 'تعذّر فتح المايك.', true); }
+  renderVoice();
+});
+$('gl-mics').addEventListener('click', () => command({op: 'voice', mics: !(view?.voice?.mics ?? true)}));
+
 // ---- connection ----
 const plansReady = fetch(base + '/plan').then(r => r.json()).then(p => { plan = p; });
 const events = new EventSource(base + '/events');
-events.addEventListener('view', async ev => { await plansReady; view = JSON.parse(ev.data); status(view.state.live ? 'متصل. أنت تقود الحصة.' : 'العرض متوقف للطلاب.'); render(); });
+events.addEventListener('view', async ev => { await plansReady; view = JSON.parse(ev.data); status(view.state.live ? 'متصل. أنت تقود الحصة.' : 'العرض متوقف للطلاب.'); render(); renderVoice(); });
+events.addEventListener('rtc', ev => voice.message(JSON.parse(ev.data)).catch(() => {}));
+window.__voice = voice; // read by the browser tests
 events.onerror = () => status('انقطع الاتصال. تجري إعادة المحاولة…', true);

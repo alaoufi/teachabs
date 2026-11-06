@@ -14,6 +14,9 @@ export function initialState(plan) {
 
 const current = (state, plan) => plan.steps[state.index];
 
+/** Live voice settings; older sessions without them start with the teacher silent and student mics allowed. */
+export const voiceOf = state => ({teacher: false, mics: true, ...(state.voice || {})});
+
 export const initialNarrator = () => ({visible: true, muted: false, segment: -1, target: 'screen', seq: 0});
 
 /** Move the shared scene to a narrated segment so everyone sees the sun where the narrator is talking about it. */
@@ -147,6 +150,12 @@ export function teacherCommand(state, plan, cmd) {
     case 'homework': need(['none', 'open', 'closed'].includes(cmd.status) && plan.steps.some(x => x.type === 'homework'), 'لا يوجد واجب في الدرس.'); s.homework = cmd.status; return s;
     case 'publish-evaluation': need(typeof cmd.on === 'boolean', 'قيمة غير صالحة.'); s.evaluationPublished = cmd.on; return s;
     case 'live': need(typeof cmd.on === 'boolean', 'قيمة غير صالحة.'); s.live = cmd.on; return s;
+    case 'voice': { // live voice: the teacher's own microphone and whether students may use theirs
+      s.voice ||= voiceOf(state);
+      if (Object.hasOwn(cmd, 'teacher')) { need(typeof cmd.teacher === 'boolean', 'قيمة غير صالحة.'); s.voice.teacher = cmd.teacher; }
+      if (Object.hasOwn(cmd, 'mics')) { need(typeof cmd.mics === 'boolean', 'قيمة غير صالحة.'); s.voice.mics = cmd.mics; }
+      return s;
+    }
     default: throw new UserError('أمر غير معروف.');
   }
 }
@@ -205,12 +214,12 @@ export function teacherView(state, plan, students, responses) {
     return [s.id, {answers, submitted: Object.keys(answers).length, ...scoreOf(hw, answers)}];
   })) : {};
   const ev = evaluationStep(plan), evaluations = ev ? Object.fromEntries(responses.filter(r => r.kind === 'evaluation').map(r => [r.student, r.data])) : {};
-  return {role: 'teacher', state, act: step.type === 'interactive' ? actOf(state, step) : null, current: step.id, students, results, homework, evaluations};
+  return {role: 'teacher', state, voice: voiceOf(state), act: step.type === 'interactive' ? actOf(state, step) : null, current: step.id, students, results, homework, evaluations};
 }
 
 export function publicView(state, plan, student, responses, studentNames = {}) {
   const step = current(state, plan), shown = state.live && state.shown;
-  const view = {role: student ? 'student' : 'display', live: state.live, title: plan.title, index: state.index, total: plan.steps.length, shown, seq: state.seq};
+  const view = {role: student ? 'student' : 'display', live: state.live, title: plan.title, index: state.index, total: plan.steps.length, shown, seq: state.seq, voice: voiceOf(state)};
   if (shown) {
     const revealed = state.revealed[step.id] || [];
     view.step = {id: step.id, type: step.type, title: step.title, key: `${step.id}:${revealed.join(',')}`};

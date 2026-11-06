@@ -5,6 +5,7 @@ import {speakingMs} from './narrator-scripts.js';
 import {attachBoardTools} from './group-board-tools.js';
 import {formatNumber} from './science-shadow-model.js';
 import {activityOf} from './activities.js';
+import {studentVoice} from './group-voice.js';
 
 const app = document.getElementById('gl-app'), code = app.dataset.code, role = app.dataset.role, student = role === 'student';
 const $ = x => document.getElementById(x);
@@ -139,6 +140,7 @@ async function render() {
     await narrator(view.narrator);
   }
   renderAnswers(); await renderHomework(); renderEvaluation();
+  if (student) studentChrome();
   if (view.narrate && view.narrate.seq > lastNarration) {
     lastNarration = view.narrate.seq;
     try {
@@ -148,12 +150,53 @@ async function render() {
   }
 }
 
+// ---- the student's own screen: board over everything, microphone, writing sheet, leave with confirmation ----
+let entered = !student, sheetKey = '';
+const voice = student ? studentVoice({base: classBase, onChange: () => studentChrome()}) : null;
+function openSheet(open) {
+  $('gl-sheet').hidden = !open; $('gl-write').setAttribute('aria-expanded', String(open)); app.classList.toggle('sheet-open', open);
+}
+function studentChrome() {
+  if (!view) return;
+  const writable = [$('gl-answer'), $('gl-hw'), $('gl-eval')].filter(b => b && !b.hidden);
+  $('gl-sheet-empty').hidden = writable.length > 0;
+  // A new thing to write (questions opened, homework assigned, evaluation published) opens the sheet once.
+  const key = [view.step?.type === 'questions' && view.open ? view.step.id : '', view.homework?.status === 'open' ? view.homework.step : '', view.evaluation ? 'e' : ''].join('|');
+  const fresh = key !== sheetKey && key.replace(/\|/g, '') !== ''; sheetKey = key;
+  $('gl-write-dot').hidden = !writable.length;
+  if (fresh && entered) openSheet(true);
+  const v = view.voice || {mics: true};
+  if (!v.mics && voice.on) voice.setMic(false).catch(() => {});
+  $('gl-mic').disabled = !v.mics || !view.live;
+  $('gl-mic').setAttribute('aria-pressed', String(voice.on)); $('gl-mic').classList.toggle('is-on', voice.on);
+  $('gl-mic').querySelector('span').textContent = !v.mics ? 'المايك مغلق' : voice.on ? 'أغلق المايك' : 'المايك';
+  $('gl-ended').hidden = view.live || !entered;
+  if (!view.live) $('gl-ended-text').textContent = view.homework?.status === 'open' ? 'شكرًا لك! الواجب متاح في «كتابة».' : 'شكرًا لك!';
+}
+if (student) {
+  $('gl-enter').addEventListener('click', () => {
+    entered = true; $('gl-start').hidden = true; app.classList.add('is-in');
+    if ('speechSynthesis' in window) speechSynthesis.speak(new SpeechSynthesisUtterance('')); // unlock speech on this tap
+    voice.resume(); voice.hello(); studentChrome();
+  });
+  $('gl-mic').addEventListener('click', async () => {
+    try { await voice.setMic(!voice.on); status(voice.on ? 'المايك مفتوح: المعلم يسمعك.' : 'أُغلق المايك.'); }
+    catch (e) { status(e.message || 'لم يُسمح بالمايك.', true); }
+    studentChrome();
+  });
+  $('gl-write').addEventListener('click', () => openSheet($('gl-sheet').hidden));
+  $('gl-sheet-close').addEventListener('click', () => openSheet(false));
+  const leave = () => { voice.setMic(false).catch(() => {}); location.href = '/join'; };
+  $('gl-leave').addEventListener('click', () => { if (confirm(view?.live ? 'هل تريد مغادرة الحصة؟ ستغلق السبورة.' : 'إغلاق الحصة؟')) leave(); });
+  $('gl-ended-close').addEventListener('click', () => { if (view?.homework?.status === 'open') { $('gl-ended').hidden = true; openSheet(true); } else if (confirm('إغلاق الحصة؟')) leave(); });
+}
+
 $('gl-audio')?.addEventListener('click', async () => {
   $('gl-audio').hidden = true;
   if (pendingNarration) { const n = pendingNarration; pendingNarration = null; if (!await playNarration(n)) status('تعذّر تشغيل الشرح على هذا الجهاز.', true); }
   else if ('speechSynthesis' in window) speechSynthesis.speak(new SpeechSynthesisUtterance(''));
 });
-if ($('gl-audio')) $('gl-audio').hidden = false;
+if ($('gl-audio') && !student) $('gl-audio').hidden = false; // the display screen needs one tap to allow sound
 $('gl-full')?.addEventListener('click', () => document.documentElement.requestFullscreen?.());
 
 let queue = Promise.resolve();
@@ -163,5 +206,10 @@ events.addEventListener('view', ev => {
   const next = JSON.parse(ev.data);
   queue = queue.then(() => ready).then(async () => { view = next; status(student ? 'متصل بالحصة.' : 'شاشة العرض متصلة.'); await render(); }).catch(e => status(e.message, true));
 });
-events.addEventListener('removed', () => { events.close(); status('أخرجك المعلم من الحصة.', true); $('gl-board').hidden = true; });
+events.addEventListener('removed', () => { events.close(); status('أخرجك المعلم من الحصة.', true); $('gl-board').hidden = true; if (student) voice.setMic(false).catch(() => {}); });
 events.onerror = () => status('انقطع الاتصال. تجري إعادة المحاولة…', true);
+if (student) {
+  events.addEventListener('rtc', ev => voice.message(JSON.parse(ev.data)).catch(() => {}));
+  events.onopen = () => { if (entered) voice.hello(); }; // after a reconnect the teacher rebuilds the audio link
+  window.__voice = voice; // read by the browser tests
+}

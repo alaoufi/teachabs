@@ -44,7 +44,7 @@ const assert = require('node:assert/strict'), fs = require('node:fs'), path = re
       const c = await browser.newContext({viewport: {width: 390, height: 844}, isMobile: true, hasTouch: true}); c.setDefaultTimeout(15000);
       const p = await c.newPage(); watch(p);
       await p.addInitScript(() => { window.__played = 0; const play = HTMLMediaElement.prototype.play; HTMLMediaElement.prototype.play = function () { window.__played++; return play.call(this); }; });
-      await p.goto(base + '/join?code=' + code); await p.getByLabel('اسمك الأول').fill(name); await p.getByRole('button', {name: 'دخول الحصة'}).click();
+      await p.goto(base + '/join?code=' + code); await p.getByLabel('اسمك الأول').fill(name); await p.getByRole('button', {name: 'دخول الحصة'}).click(); await p.waitForFunction(() => window.__voice); await p.locator('#gl-enter').click(); // the entry card opens the board
       await p.waitForURL(new RegExp('/class/' + code)); students.push(p);
     }
     await t.waitForFunction(() => document.querySelectorAll('#gl-students li').length === 3);
@@ -100,7 +100,7 @@ const assert = require('node:assert/strict'), fs = require('node:fs'), path = re
     await t.locator('#gl-panel').getByRole('button', {name: 'افتح الإجابة للطلاب'}).click();
     const choices = [1, 1, 0];
     for (const [i, p] of students.entries()) {
-      await p.waitForSelector('#gl-answer fieldset:not([disabled])');
+      await p.waitForSelector('#gl-answer fieldset:not([disabled])'); // the «كتابة» sheet opens by itself when the teacher opens the questions
       await p.locator('#gl-answer fieldset').nth(0).locator('.gl-choice').nth(choices[i]).click();
       await p.waitForSelector('#gl-answer .gl-sent');
     }

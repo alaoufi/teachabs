@@ -6,7 +6,7 @@ import {CURRICULUM_G4_T1, CURRICULUM_SOURCE, curriculumLessons} from './public/c
 
 const TOOL_BUTTONS = [['select', '➤', 'تحريك', 'V'], ['hand', '✋', 'يد', 'H'], ['pen', '✎', 'قلم', 'P'], ['brush', '🖌', 'فرشاة', 'B'], ['marker', '▮', 'تظليل', 'M'], ['text', 'ت', 'كتابة', 'T'], ['eraser', '⌫', 'ممحاة', 'E']];
 
-const css = '<link rel="stylesheet" href="/group-lesson.css?v=3">';
+const css = '<link rel="stylesheet" href="/group-lesson.css?v=4">';
 const dateText = t => new Intl.DateTimeFormat('ar-SA', {dateStyle: 'medium', timeStyle: 'short', timeZone: 'Asia/Riyadh'}).format(t);
 
 export function plansPage(plans, sessions) {
@@ -71,7 +71,7 @@ export function teacherPage(code, title, base) {
   return `${css}<section class="gl-wrap gl-teacher gl-present" dir="rtl" id="gl-app" data-code="${e(code)}" data-role="teacher">
   <header class="gl-bar gl-bar-top">
    <div class="gl-bar-title"><h1>${e(title)}</h1><button type="button" class="gl-code-chip" id="gl-code" data-join="${e(join)}" title="انسخ رابط الطلاب: ${e(join)}">الرمز <b class="gl-code">${e(code)}</b></button><span id="gl-status" class="gl-status-dot" role="status" aria-live="polite">جارٍ الاتصال…</span></div>
-   <div class="gl-bar-actions"><a class="outline gl-mini" href="/teach/live/${e(code)}/display" target="_blank" rel="noopener" title="افتح على السبورة الذكية أو جهاز العرض">🖥 شاشة العرض</a><button type="button" class="outline gl-mini" id="gl-drawer-btn" aria-expanded="false" aria-controls="gl-drawer">👥 الطلاب والنتائج <span id="gl-count"></span></button><a class="quiet gl-mini" href="/guide" target="_blank" rel="noopener">الدليل</a><button type="button" class="quiet gl-mini" id="gl-live">إنهاء العرض</button></div>
+   <div class="gl-bar-actions"><a class="outline gl-mini" href="/teach/live/${e(code)}/display" target="_blank" rel="noopener" title="افتح على السبورة الذكية أو جهاز العرض">🖥 شاشة العرض</a><button type="button" id="gl-voice" class="outline gl-mini" aria-pressed="false" title="صوتك يصل إلى أجهزة الطلاب">🎙 صوتي: مغلق</button><button type="button" id="gl-mics" class="outline gl-mini" aria-pressed="true" title="هل يستطيع الطلاب فتح المايك؟">🎤 مايك الطلاب: مسموح</button><button type="button" class="outline gl-mini" id="gl-drawer-btn" aria-expanded="false" aria-controls="gl-drawer">👥 الطلاب والنتائج <span id="gl-count"></span></button><a class="quiet gl-mini" href="/guide" target="_blank" rel="noopener">الدليل</a><button type="button" class="quiet gl-mini" id="gl-live">إنهاء العرض</button></div>
   </header>
   <nav class="gl-bar gl-bar-steps" aria-label="تسلسل الدرس">
    <button type="button" id="gl-prev" class="gl-mini" title="السابق (PageUp)">→</button>
@@ -93,7 +93,7 @@ export function teacherPage(code, title, base) {
    <details class="gl-keys"><summary>اختصارات لوحة المفاتيح</summary><p>V تحريك · H يد · P قلم · B فرشاة · M تظليل · T كتابة · E ممحاة · + و − تكبير وتصغير · 0 ملاءمة · Ctrl+Z تراجع · PageDown أو ← للخطوة التالية، و PageUp أو → للسابقة (تناسب أجهزة التحكم بالعرض) · Esc إلغاء.</p></details>
    <p class="gl-note">في الفصل الحضوري يُسمع صوت المعلم مباشرة. البث الصوتي المباشر عن بُعد لعدة طلاب غير متوفر بعد.</p>
   </aside>
- </section><script type="module" src="/group-teacher.js?v=3"></script>`;
+ </section><script type="module" src="/group-teacher.js?v=4"></script>`;
 }
 
 export function displayPage(code, title) {
@@ -103,19 +103,31 @@ export function displayPage(code, title) {
    <p id="gl-status" class="gl-status-dot" role="status" aria-live="polite">جارٍ الاتصال…</p>
    <span class="gl-show-actions"><button type="button" id="gl-audio" class="outline gl-mini" hidden>تفعيل صوت الشرح على هذه الشاشة</button><button type="button" id="gl-full" class="outline gl-mini">⛶ ملء الشاشة</button></span></header>
   ${boardShell()}<p id="gl-wait" class="gl-wait" hidden></p>
- </section><script type="module" src="/group-student.js?v=2"></script>`;
+ </section><script type="module" src="/group-student.js?v=3"></script>`;
 }
 
 export function studentPage(code, name, title) {
-  // The board floats on top: it stays in view while the student scrolls to answer, and can fill the screen.
-  return `${css}<section class="gl-wrap gl-student" dir="rtl" id="gl-app" data-code="${e(code)}" data-role="student">
-  <div class="gl-top gl-top-student"><div><span class="gl-hello">مرحبًا ${e(name)}</span><h1>${e(title)}</h1></div><div class="gl-actions"><span class="gl-progress" id="gl-progress"></span><button type="button" id="gl-audio" class="outline" hidden>تفعيل صوت الشرح</button></div></div>
+  // Nothing but the board: it pops up over everything. A slim bar holds the microphone, «كتابة» (answers and
+  // homework open in a sheet over the board) and ✕ to leave, which asks first. The teacher controls the rest.
+  return `${css}<section class="gl-wrap gl-student gl-solo" dir="rtl" id="gl-app" data-code="${e(code)}" data-role="student">
+  <div class="gl-entry" id="gl-start" role="dialog" aria-modal="true" aria-labelledby="gl-start-title"><div class="gl-start-card"><p class="gl-hello">مرحبًا ${e(name)}</p><h1 id="gl-start-title">${e(title)}</h1>
+   <button type="button" class="btn" id="gl-enter">ادخل الحصة</button><p class="gl-hint">تفتح السبورة على الشاشة كلها، ويُسمع صوت المعلم.</p></div></div>
   ${boardShell('', true)}<p id="gl-wait" class="gl-wait" hidden></p>
-  <p id="gl-status" class="gl-status gl-status-small" role="status" aria-live="polite">جارٍ الاتصال…</p>
-  <section class="gl-answer" id="gl-answer" hidden aria-label="أجب عن الأسئلة"></section>
-  <section class="gl-homework" id="gl-hw" hidden aria-label="الواجب"></section>
-  <section class="gl-myeval" id="gl-eval" hidden aria-label="تقييمي"></section>
- </section><script type="module" src="/group-student.js?v=2"></script>`;
+  <nav class="gl-sbar" aria-label="أدوات الطالب">
+   <button type="button" class="gl-sbtn" id="gl-mic" aria-pressed="false">🎤 <span>المايك</span></button>
+   <button type="button" class="gl-sbtn" id="gl-write" aria-expanded="false" aria-controls="gl-sheet">✏️ <span>كتابة</span><b class="gl-dot" id="gl-write-dot" hidden></b></button>
+   <span id="gl-status" class="gl-status-dot" role="status" aria-live="polite">جارٍ الاتصال…</span>
+   <button type="button" class="gl-sbtn" id="gl-audio" hidden>🔈 <span>استمع</span></button>
+   <button type="button" class="gl-sbtn gl-leave" id="gl-leave" aria-label="مغادرة الحصة">✕</button>
+  </nav>
+  <section class="gl-sheet" id="gl-sheet" hidden aria-label="الكتابة والإجابات"><div class="gl-sheet-head"><b>✏️ كتابة</b><button type="button" class="outline gl-mini" id="gl-sheet-close">↓ العودة إلى السبورة</button></div>
+   <p class="gl-hint" id="gl-sheet-empty">لا توجد أسئلة الآن. سيفتحها المعلم.</p>
+   <section class="gl-answer" id="gl-answer" hidden aria-label="أجب عن الأسئلة"></section>
+   <section class="gl-homework" id="gl-hw" hidden aria-label="الواجب"></section>
+   <section class="gl-myeval" id="gl-eval" hidden aria-label="تقييمي"></section></section>
+  <div class="gl-ended" id="gl-ended" hidden role="alertdialog" aria-modal="true" aria-labelledby="gl-ended-title"><div class="gl-start-card"><h2 id="gl-ended-title">انتهت الحصة</h2><p id="gl-ended-text">شكرًا لك!</p>
+   <button type="button" class="btn" id="gl-ended-close">إغلاق</button></div></div>
+ </section><script type="module" src="/group-student.js?v=3"></script>`;
 }
 
 export function joinPage(code) {

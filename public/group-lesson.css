@@ -424,3 +424,70 @@ body:has(.gl-show) main{width:100%;max-width:none;margin:0;padding:0}
 .gl-content .gl-scene svg{width:auto;max-width:100%;height:auto;max-height:100%}
 .gl-content .gl-facts{flex:none;margin:0;font-size:clamp(13px,1.4vw,18px);line-height:1.4}
 @media(max-width:760px){.gl-content .gl-facts{display:none}.gl-content .gl-scene svg{width:100%;max-height:none}}
+
+/* ===== stage 044: the student's board pops up over everything; teacher's board fixed on phones ===== */
+body:has(.gl-solo){overflow:hidden}
+.gl-solo{position:fixed;inset:0;z-index:1000;max-width:none;margin:0;display:grid;grid-template-rows:minmax(0,1fr) auto;gap:6px;
+ padding:6px 6px calc(6px + env(safe-area-inset-bottom));background:linear-gradient(180deg,#e9f0ee,#f7f5ef);overflow:hidden}
+.gl-solo .gl-stage{position:relative!important;top:auto;min-height:0;container-type:size;display:flex;flex-direction:column;align-items:center;justify-content:center;
+ margin:0;padding:0 0 12px!important;background:none;box-shadow:none;perspective:1400px}
+.gl-solo .gl-board,.gl-solo .gl-stage.is-max .gl-board{width:min(100cqw - 4px,(100cqh - 64px) * 1.6667)!important;margin:0;flex:none}
+.gl-solo .gl-stage:has(> .gl-narrator) .gl-board{width:min(100cqw - 4px,(100cqh - 150px) * 1.6667)!important}
+.gl-solo .gl-narrator{width:min(100cqw - 4px,(100cqh - 150px) * 1.6667)!important;margin-top:4px;flex:none}
+.gl-solo .gl-stage>.gl-zoom{position:static;margin-top:6px;box-shadow:none}
+.gl-solo [data-zoom=max]{display:none}
+.gl-solo .gl-stage::after{position:absolute;bottom:0;margin:0;width:min(70cqw,(100cqh - 64px) * 1.4)}
+.gl-solo .gl-stage::before{display:none}
+.gl-solo>.gl-wait{grid-row:1;align-self:center;justify-self:center;font-size:clamp(18px,4vw,28px);text-align:center;margin:0}
+.gl-solo:has(> .gl-wait:not([hidden])) .gl-stage{display:none}
+.gl-sbar{display:flex;align-items:center;gap:8px;background:#fffefb;border:1px solid var(--line);border-radius:18px;padding:6px 8px;box-shadow:0 4px 14px #0b1f2a1f;min-width:0}
+.gl-wrap .gl-sbtn{min-height:50px;min-width:50px;border-radius:16px;font-size:17px;font-weight:700;padding:4px 14px;display:inline-flex;align-items:center;gap:6px;position:relative;flex:none}
+.gl-wrap .gl-sbtn.is-on{background:#c0392b;color:#fff;border-color:#c0392b;animation:gl-live 1.4s ease-in-out infinite}
+@keyframes gl-live{50%{box-shadow:0 0 0 6px #c0392b33}}
+.gl-sbtn:disabled{opacity:.5}
+.gl-sbar .gl-status-dot{flex:1 1 auto;min-width:0;font-size:12.5px}
+.gl-wrap .gl-leave{margin-inline-start:auto;font-size:20px;color:#8a2a1a}
+.gl-dot{position:absolute;top:6px;inset-inline-end:6px;width:11px;height:11px;border-radius:50%;background:#e8890c;box-shadow:0 0 0 2px #fff}
+.gl-sheet{position:fixed;inset-inline:0;bottom:0;z-index:1010;max-height:78dvh;overflow:auto;background:#fffefb;border-radius:22px 22px 0 0;
+ box-shadow:0 -12px 32px #0b1f2a40;padding:8px 14px calc(16px + env(safe-area-inset-bottom));animation:gl-sheet-in .25s ease-out}
+@keyframes gl-sheet-in{from{transform:translateY(40px);opacity:.4}to{transform:none;opacity:1}}
+.gl-sheet-head{display:flex;justify-content:space-between;align-items:center;position:sticky;top:-8px;background:#fffefb;padding:6px 0;z-index:1;font-size:17px}
+.gl-solo .gl-sheet .gl-answer,.gl-solo .gl-sheet .gl-homework,.gl-solo .gl-sheet .gl-myeval{margin:6px 0;border:0;padding:0;box-shadow:none}
+.gl-entry,.gl-ended{position:fixed;inset:0;z-index:1020;background:#0b1f2ad9;display:grid;place-items:center;padding:16px}
+.gl-start-card{background:#fffefb;border-radius:22px;padding:22px 26px;max-width:420px;width:100%;text-align:center;box-shadow:0 20px 50px #0006}
+.gl-start-card h1,.gl-start-card h2{margin:4px 0 14px;font-size:24px}.gl-start-card .btn{font-size:19px;min-height:54px;padding:8px 34px}
+.gl-start-card .gl-hint{font-size:13px;color:var(--muted);margin:10px 0 0}
+@media(prefers-reduced-motion:reduce){.gl-wrap .gl-sbtn.is-on,.gl-sheet{animation:none}}
+.gl-students li.is-talking{background:#fdecea;border-radius:8px;font-weight:700}
+.gl-wrap #gl-voice.is-on{background:#c0392b;color:#fff;border-color:#c0392b}
+
+/* teacher on a phone: same one-screen layout, the board never scrolls away; bars scroll sideways instead */
+@media(max-width:760px){
+ .gl-present{height:100vh;height:100dvh;overflow:hidden;grid-template-rows:auto auto minmax(0,1fr) auto;padding:4px 4px calc(4px + env(safe-area-inset-bottom));gap:4px}
+ .gl-present .gl-stage{container-type:size;padding-bottom:10px}
+ .gl-present .gl-board{width:min(100cqw - 4px,(100cqh - 16px) * 1.6667)!important}
+ .gl-present .gl-stage:has(> .gl-narrator) .gl-board,.gl-present .gl-narrator{width:min(100cqw - 4px,(100cqh - 96px) * 1.6667)!important}
+ .gl-present .gl-board{border-width:6px}
+ .gl-present .gl-stage::after{width:min(70cqw,(100cqh - 16px) * 1.4)}
+ .gl-present .gl-bar{padding:3px 6px;border-radius:12px}
+ .gl-present .gl-bar-top,.gl-present .gl-bar-actions,.gl-present .gl-bar-title{flex-wrap:nowrap}
+ .gl-present .gl-bar-top{overflow-x:auto;scrollbar-width:none}
+ .gl-present .gl-bar-title h1{font-size:15px!important;max-width:34vw}
+ .gl-present .gl-status-dot{display:none}
+ .gl-present nav.gl-bar-steps{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none}
+ .gl-present .gl-quick,.gl-present .gl-quick .gl-narr-quick,.gl-present .gl-quick .gl-row{flex-wrap:nowrap}
+ .gl-present .gl-bar-steps .gl-vis{display:none}
+ .gl-present footer.gl-bar,.gl-present .gl-tools{flex-wrap:nowrap}
+ .gl-present .gl-bar-bottom{overflow-x:auto;scrollbar-width:none}
+ .gl-wrap .gl-mini{min-height:34px;font-size:13px;padding:2px 8px}
+}
+.gl-sbar{flex-wrap:nowrap}
+.gl-sbar .gl-status-dot{flex:1 1 0;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+.gl-solo .gl-stage::after{position:static;margin:-2px auto 0}
+@media(max-width:420px){.gl-wrap .gl-sbtn{padding:4px 10px;font-size:15px;min-height:48px}.gl-sbar{gap:5px}}
+.gl-present .gl-bar-top a,.gl-present .gl-bar-top button{white-space:nowrap}
+@media(max-width:760px){
+ .gl-present .gl-bar-title,.gl-present .gl-bar-actions{flex:none}
+ .gl-present .gl-bar-title h1{display:none}
+ .gl-present .gl-stage::after{position:static;margin:-2px auto 0}
+}

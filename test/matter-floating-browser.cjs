@@ -29,7 +29,7 @@ const assert = require('node:assert/strict'), fs = require('node:fs'), path = re
     const display = await tc.newPage(); watch(display); await display.goto(base + `/teach/live/${code}/display`);
     const sc = await browser.newContext({viewport: {width: 390, height: 844}, isMobile: true, hasTouch: true}); sc.setDefaultTimeout(15000);
     const s = await sc.newPage(); watch(s);
-    await s.goto(base + '/join?code=' + code); await s.getByLabel('اسمك الأول').fill('نورة'); await s.getByRole('button', {name: 'دخول الحصة'}).click();
+    await s.goto(base + '/join?code=' + code); await s.getByLabel('اسمك الأول').fill('نورة'); await s.getByRole('button', {name: 'دخول الحصة'}).click(); await s.waitForFunction(() => window.__voice); await s.locator('#gl-enter').click(); // the entry card opens the board
     await s.waitForSelector('#gl-content .gl-page svg');
     assert.equal(await s.locator('body > header').isVisible(), false, 'site header hidden for students');
     await t.locator('#gl-steps li[data-type=interactive] button').click(); await s.waitForSelector('#gl-content .matter-scene');
@@ -76,17 +76,12 @@ const assert = require('node:assert/strict'), fs = require('node:fs'), path = re
     await t.locator('#gl-steps li').nth(3).locator('button').click();
     await t.locator('#gl-panel').getByRole('button', {name: 'افتح الإجابة للطلاب'}).click();
     await s.waitForSelector('#gl-answer fieldset:not([disabled])');
-    await s.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
-    await s.waitForTimeout(300);
-    const floating = await s.evaluate(() => ({stageTop: document.querySelector('.gl-stage').getBoundingClientRect().top, scrolled: scrollY, answerVisible: document.querySelector('#gl-answer').getBoundingClientRect().top < innerHeight}));
-    assert.ok(floating.scrolled > 0 && Math.abs(floating.stageTop) < 2 && floating.answerVisible, JSON.stringify(floating));
+    // The board stays fixed over everything; the answers open in the «كتابة» sheet over it.
+    const solo = await s.evaluate(() => ({fixed: getComputedStyle(document.querySelector('#gl-app')).position, sheet: !document.querySelector('#gl-sheet').hidden, scrolled: scrollY}));
+    assert.deepEqual(solo, {fixed: 'fixed', sheet: true, scrolled: 0});
     await s.screenshot({path: path.join(out, 'floating-board-answering.png')});
-    await s.locator('[data-zoom=max]').click();
-    const max = await s.evaluate(() => { const st = document.querySelector('.gl-stage').getBoundingClientRect(); return {cls: document.querySelector('.gl-stage').className, w: st.width, h: st.height}; });
-    assert.ok(max.cls.includes('is-max') && max.w >= 389 && max.h >= 843, JSON.stringify(max));
-    await s.screenshot({path: path.join(out, 'floating-board-max.png')});
-    await s.locator('[data-zoom=max]').click();
-    results.push('student board floats on top while answering, and opens to full screen and back');
+    await s.locator('#gl-sheet-close').click(); await s.waitForSelector('#gl-sheet', {state: 'hidden'});
+    results.push('student board stays fixed over everything; the answers open in a sheet over it and close back to the board');
     assert.equal(await s.evaluate(() => document.documentElement.scrollWidth > innerWidth + 1), false);
     for (const p of [t, display, s]) assert.equal(await p.locator('#gl-status.is-error').count(), 0, await p.locator('#gl-status').textContent());
     assert.deepEqual(errors, []);
