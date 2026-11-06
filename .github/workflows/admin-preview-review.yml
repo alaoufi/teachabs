@@ -20,9 +20,10 @@ concurrency:
 jobs:
   native-review:
     # The user's approval covers this branch's initial review, not future pushes.
-    if: github.repository == 'alaoufi/teachabs' && github.event.repository.private == false && github.event.created == true
+    if: github.repository == 'alaoufi/teachabs' && github.event.repository.private == false && github.event.created == true && github.run_attempt == 1
     runs-on: ubuntu-24.04
-    timeout-minutes: 35
+    # Phase limits total 35 minutes; reserve ample time for stop/ACL restore/upload.
+    timeout-minutes: 50
     env:
       REVIEW_SOURCE: 72cda6b1b90977d50a90c28bff5de36065f9e01e
       REVIEW_APK_SHA256: 79e8113e809cd6945f5ae5dc4185063c1e1aafd65ef51cedeadcc52247bb54b3
