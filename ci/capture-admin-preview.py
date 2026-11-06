@@ -155,7 +155,7 @@ def main():
     original = {}
     mutated = False
     remote_created = False
-    remote = "/sdcard/Download/teachabs-review-" + str(os.getpid()) + "-" + str(time.time_ns())
+    remote = "/data/local/tmp/teachabs-review-" + str(os.getpid()) + "-" + str(time.time_ns())
 
     def save():
         temp = args.output / "capture-report.json.tmp"
@@ -283,7 +283,8 @@ def main():
         grouped = {}
         for case in report["cases"]:
             if case["status"] == "completed":
-                signature = [(n["text"], n["content-desc"], n["bounds"]) for n in case["positions"]["top"]["textNodes"]]
+                signature = [(n["text"], n["content-desc"], n["bounds"]) for n in case["positions"]["top"]["textNodes"]
+                             if n["package"] == PACKAGE]
                 grouped.setdefault((case["widthDp"], case["route"]), {})[case["fontScale"]] = signature
         report["geometryComparisons"] = [
             {"widthDp": width, "route": route, "scale": scale,
