@@ -3,6 +3,7 @@ import { adminService } from './admin-service.mjs';
 import {serveAsset} from './asset-response.mjs';
 import { demoHub } from './demo.mjs';
 import { classroomLab } from './classroom-lab.mjs';
+import { scienceShadowLesson, SCIENCE_SHADOW_ROUTE } from './science-lesson.mjs';
 import http from 'node:http';
 import { readFile } from 'node:fs/promises';
 import { pathToFileURL } from 'node:url';
@@ -23,6 +24,9 @@ files['/place-client.js']='text/javascript; charset=utf-8';
 files['/classroom-lab.js']='text/javascript; charset=utf-8';
 files['/classroom-lab-model.js']='text/javascript; charset=utf-8';
 files['/classroom-lab.css']='text/css; charset=utf-8';
+files['/science-shadow.js']='text/javascript; charset=utf-8';
+files['/science-shadow-model.js']='text/javascript; charset=utf-8';
+files['/science-shadow.css']='text/css; charset=utf-8';
 async function fields(req){
   if(req.headers['content-type']?.split(';')[0]!=='application/x-www-form-urlencoded')throw new UserError('صيغة نموذج غير صالحة.',415);
   const chunks=[];let length=0;
@@ -72,6 +76,11 @@ export function createApp(store,{origin=process.env.APP_ORIGIN}={}) {
           res.setHeader('Content-Security-Policy',"default-src 'self'; script-src 'self'; connect-src 'none'; img-src 'self' data: blob:; frame-src 'none'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'; object-src 'none'");
           res.setHeader('Permissions-Policy','camera=(), microphone=(), display-capture=()');
           return html('مختبر الفصل التعليمي',classroomLab());
+        }
+        if(route===SCIENCE_SHADOW_ROUTE){
+          res.setHeader('Content-Security-Policy',"default-src 'self'; script-src 'self'; connect-src 'none'; img-src 'self' data:; frame-src 'none'; frame-ancestors 'none'; base-uri 'none'; form-action 'none'; object-src 'none'");
+          res.setHeader('Permissions-Policy','camera=(), microphone=(), display-capture=(), geolocation=()');
+          return html('الضوء والظل · علوم الصف الرابع',scienceShadowLesson());
         }
         if(route==='/demo')return html('شاشات التجربة',demoHub(u,q.role));
         if(/^\/board-assets\/[A-Za-z0-9_./-]+$/.test(route)&&!route.includes('..')){
