@@ -49,6 +49,7 @@ export function adminService(store) {
       }
       if(path==='/admin/school/grades'){admin.addSchoolGrade(u.id,{grade:Number(data.grade)});return redirect('/admin/school');}
       if(path==='/admin/school/classes'){admin.addSchoolClass(u.id,data);return redirect('/admin/school');}
+      if(path==='/admin/school/classes/update'){admin.updateSchoolClass(u.id,{...data,revision:Number(data.revision)});return redirect('/admin/school');}
       if(path==='/admin/school/teachers'){admin.assignSchoolTeacher(u.id,data);return redirect('/admin/school');}
       if(path==='/admin/school/students'){admin.assignSchoolStudent(u.id,data);return redirect('/admin/school');}
       if(path==='/admin/school/supervisors'){admin.assignSchoolSupervisor(u.id,data);return redirect('/admin/school');}

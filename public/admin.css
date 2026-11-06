@@ -149,3 +149,26 @@ body:has(.adm) main{margin-top:0;padding-top:20px;padding-bottom:36px}
 @media(max-width:700px){body:has(.adm) main{padding-top:12px}.adm .adm-masthead{padding:16px;margin-bottom:18px;gap:12px;border-radius:18px}.adm .adm-brand{font-size:17px;gap:9px}.adm .adm-brand-mark{width:39px;height:39px;border-radius:12px}.adm .adm-session{gap:8px;max-width:none}.adm .adm-session-name{display:none}.adm .adm-session .btn{padding:8px 12px;font-size:13px}.adm .adm-agent-card{padding:16px}.adm .adm-agent-grid{gap:16px}}
 @media(max-width:360px){.adm .adm-brand{font-size:15px}.adm .adm-brand-mark{width:33px;height:33px}.adm .adm-brand small{font-size:11px}.adm .adm-agent-head{flex-wrap:wrap}.adm .adm-agent-head .adm-badge{margin-inline-start:49px}}
 @media print{.adm .adm-session{display:none}.adm .adm-masthead{background:white;color:#173e34;border-color:#cedacf;box-shadow:none}.adm .adm-brand{color:#173e34}.adm .adm-brand small{color:#52685e}.adm .adm-agent-grid{display:block}.adm .adm-agent-card{margin-bottom:18px;box-shadow:none;break-inside:avoid}}
+
+/* Administration 011: organizational class records, not the teaching room. */
+.adm .school-class-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;margin-bottom:18px}
+.adm .school-class-card{display:block;padding:16px;border:1px solid #d1dfd5;border-radius:16px;background:#fffefb;box-shadow:0 4px 0 #e0e9e1}
+.adm .school-class-top{display:flex;align-items:center;gap:10px}
+.adm .school-class-top>div{flex:1;min-width:0}
+.adm .school-class-top h3{font-size:17px;margin:0}
+.adm .school-class-top small{display:block;margin-top:3px;font-size:12px;color:#617565}
+.adm .school-class-top .adm-badge{white-space:normal;font-size:10px}
+.adm .school-class-mark{display:grid;place-items:center;width:37px;height:37px;flex:none;border-radius:11px;background:#e5edf5;color:#3c628d;box-shadow:0 3px 0 #cedbe8}
+.adm .school-class-mark svg{width:21px;height:21px}
+.adm .school-class-edit{margin-top:14px;border-top:1px solid #e1e8dd}
+.adm .school-class-edit summary{display:flex;align-items:center;justify-content:space-between;min-height:44px;padding:10px 0 3px;cursor:pointer;font-size:13px;font-weight:650;list-style:none}
+.adm .school-class-edit summary::-webkit-details-marker{display:none}
+.adm .school-class-edit summary::after{content:'+';font-size:20px;font-weight:400}
+.adm .school-class-edit[open] summary::after{content:'−'}
+.adm .school-class-edit>.adm-form{display:grid;grid-template-columns:1fr;margin:12px 0;gap:10px}
+.adm .school-class-edit>.adm-form>.btn{width:auto;justify-self:start;background:#155c4d;color:white;border-color:#155c4d}
+.adm .school-class-edit>p{font-size:12px;line-height:1.8;margin:12px 0}
+.adm .school-class-state .adm-form{margin:0;display:block}
+.adm .school-class-state .btn{background:#f4f0e6;color:#76562e;border-color:#d6c8ad;font-size:13px;min-height:44px;box-shadow:none}
+@media(max-width:960px){.adm .school-class-grid{grid-template-columns:1fr}}
+@media(max-width:390px){.adm .school-class-top{flex-wrap:wrap}.adm .school-class-top .adm-badge{margin-inline-start:47px}.adm .school-class-card{padding:14px}.adm .school-class-edit>.adm-form>.btn,.adm .school-class-state .btn{width:100%}}
