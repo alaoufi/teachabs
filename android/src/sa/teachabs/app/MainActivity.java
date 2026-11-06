@@ -5,6 +5,7 @@ import android.app.Activity;
 import android.app.DownloadManager;
 import android.content.ActivityNotFoundException;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
 import android.net.Uri;
@@ -36,6 +37,7 @@ public class MainActivity extends Activity {
     static final String HOME = "https://abdulrahman-edu-trial.onrender.com/";
     static final String HOST = "abdulrahman-edu-trial.onrender.com";
     static final int FILE_REQUEST = 41, MIC_REQUEST = 42;
+    static final String VERSION = "0.3";
 
     WebView web;
     ProgressBar progress;
@@ -64,7 +66,7 @@ public class MainActivity extends Activity {
         s.setLoadWithOverviewMode(true);
         s.setUseWideViewPort(true);
         s.setSupportZoom(false);
-        s.setUserAgentString(s.getUserAgentString() + " TeachabsApp/0.2");
+        s.setUserAgentString(s.getUserAgentString() + " TeachabsApp/" + VERSION + "");
         CookieManager.getInstance().setAcceptCookie(true);
         CookieManager.getInstance().setAcceptThirdPartyCookies(web, false);
 
@@ -133,8 +135,12 @@ public class MainActivity extends Activity {
             Toast.makeText(this, "جارٍ تنزيل " + name, Toast.LENGTH_SHORT).show();
         });
 
+        // A new app version never shows pages cached by an older one.
+        SharedPreferences prefs = getSharedPreferences("app", MODE_PRIVATE);
+        if (!VERSION.equals(prefs.getString("version", ""))) { web.clearCache(true); web.clearHistory(); prefs.edit().putString("version", VERSION).apply(); }
+        s.setCacheMode(WebSettings.LOAD_NO_CACHE); // a trial site changes often: always load the latest
         if (saved != null) web.restoreState(saved);
-        else web.loadUrl(HOME);
+        else showStart();
     }
 
     @Override
@@ -159,6 +165,9 @@ public class MainActivity extends Activity {
     @Override
     protected void onSaveInstanceState(Bundle out) { super.onSaveInstanceState(out); web.saveState(out); }
 
+    /** The app's own start screen: teacher straight to «دروسي», student to the class code. Served as the site's origin. */
+    void showStart() { web.loadDataWithBaseURL(HOME, START, "text/html", "utf-8", null); }
+
     @Override
     public void onBackPressed() {
         if (web.canGoBack()) web.goBack(); else super.onBackPressed();
@@ -169,6 +178,16 @@ public class MainActivity extends Activity {
 
     @Override
     protected void onResume() { super.onResume(); web.onResume(); }
+
+    static final String START = "<!doctype html><html lang=ar dir=rtl><head><meta charset=utf-8><meta name=viewport content='width=device-width,initial-scale=1'><title>احتراف التدريس</title>"
+        + "<style>body{margin:0;font-family:sans-serif;background:linear-gradient(160deg,#155c4d,#0f3d34);color:#fff;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px;box-sizing:border-box}"
+        + ".c{width:100%;max-width:420px;text-align:center}h1{font-size:30px;margin:6px 0 4px}p{opacity:.85;margin:0 0 26px}img{width:84px;height:84px;border-radius:20px;background:#fff}"
+        + "form,a{display:block;margin:12px 0}button,a{width:100%;box-sizing:border-box;font-size:22px;font-weight:700;padding:20px;border-radius:18px;border:0;text-decoration:none;cursor:pointer}"
+        + ".t{background:#fff;color:#155c4d}.s{background:#e8890c;color:#fff}small{display:block;margin-top:26px;opacity:.7}</style></head><body><div class=c>"
+        + "<img src='/icon-192.png' alt=''><h1>احتراف التدريس</h1><p>السبورة الواحدة للحصة</p>"
+        + "<form method=post action='/demo/start'><input type=hidden name=role value=teacher><input type=hidden name=next value='/teach/plans'><button class=t>👩‍🏫 أنا المعلم</button></form>"
+        + "<a class=s href='/join'>🎒 أنا الطالب</a>"
+        + "<small>الإصدار " + VERSION + " · نسخة تجريبية</small></div></body></html>";
 
     static final String OFFLINE = "<!doctype html><html lang=ar dir=rtl><meta name=viewport content='width=device-width,initial-scale=1'>"
         + "<body style='font-family:sans-serif;background:#faf8f2;color:#163d34;display:flex;align-items:center;justify-content:center;min-height:90vh;text-align:center;padding:20px'>"
