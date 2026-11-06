@@ -90,10 +90,15 @@ jobs:
             -no-window -no-audio -no-boot-anim -no-snapshot -gpu swiftshader \
             -accel off -memory 2048 -cores 2 -camera-back none -camera-front none \
             > "$RUNNER_TEMP/native-review-diagnostics/emulator.log" 2>&1 &
-          echo "EMULATOR_PID=$!" >> "$GITHUB_ENV"
+          emulator_pid=$!
+          echo "EMULATOR_PID=$emulator_pid" >> "$GITHUB_ENV"
           ADB="$ANDROID_HOME/platform-tools/adb"
           deadline=$((SECONDS + 900))
           while [ "$SECONDS" -lt "$deadline" ]; do
+            if ! kill -0 "$emulator_pid" 2>/dev/null; then
+              tail -n 80 "$RUNNER_TEMP/native-review-diagnostics/emulator.log" >&2
+              exit 1
+            fi
             boot=$(timeout 15 "$ADB" -s emulator-5554 shell getprop sys.boot_completed 2>/dev/null | tr -d '\r' || true)
             if [ "$boot" = 1 ]; then
               "$ADB" -s emulator-5554 shell input keyevent 82
