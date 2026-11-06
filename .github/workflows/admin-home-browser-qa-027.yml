@@ -1,0 +1,105 @@
+name: Synthetic administration home guide QA 027
+run-name: Browser-only home guide QA 027 · ${{ github.sha }}
+
+on:
+  push:
+    branches:
+      - codex/admin-home-browser-qa-027
+
+permissions:
+  contents: read
+
+jobs:
+  browser:
+    if: github.repository == 'alaoufi/teachabs' && github.event.repository.private == false && github.event.created == true && github.event.deleted == false && github.run_attempt == 1
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    env:
+      EXPECTED_APP_REVISION: 30c0c89e3a8d909852674a7890a504780917ce15
+    steps:
+      - name: Check out the exact isolated QA commit
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 2
+
+      - name: Verify unchanged application source
+        shell: bash
+        run: |
+          set -euo pipefail
+          export QA_OUTPUT_DIR="$RUNNER_TEMP/admin-home-browser-qa-027"
+          echo "QA_OUTPUT_DIR=$QA_OUTPUT_DIR" >> "$GITHUB_ENV"
+          test "$(git rev-parse HEAD^)" = "$EXPECTED_APP_REVISION"
+          python3 - <<'PY'
+          import os, pathlib, subprocess
+          allowed = {'.github/workflows/admin-home-browser-qa-027.yml', 'ci/home-browser-qa-027/review_browser.cjs', 'ci/home-browser-qa-027/README.md'}
+          changed = set(subprocess.check_output(['git','diff','--name-only',os.environ['EXPECTED_APP_REVISION'],'HEAD'],text=True).splitlines())
+          assert changed == allowed, f'Unexpected changed paths: {sorted(changed)}'
+          out = pathlib.Path(os.environ['QA_OUTPUT_DIR']); out.mkdir(parents=True,exist_ok=True)
+          (out/'source-revision.txt').write_text('Application: '+os.environ['EXPECTED_APP_REVISION']+'\nQA: '+os.environ['GITHUB_SHA']+'\nBrowser screenshots are not Android validation.\n')
+          PY
+
+      - name: Set up official Node 24
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: '24'
+          package-manager-cache: false
+
+      - name: Run dependency-free administration and school suite
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --test test/admin*.test.mjs test/school*.test.mjs 2>&1 | tee "$QA_OUTPUT_DIR/source-tests.log"
+
+      - name: Validate synthetic supervisor model and supplied regression source
+        run: node ci/home-browser-qa-027/review_browser.cjs --check
+
+      - name: Use preinstalled Chrome and isolated pinned Playwright
+        shell: bash
+        run: |
+          set -euo pipefail
+          browser="$(command -v google-chrome || command -v chromium || command -v chromium-browser || true)"
+          test -n "$browser" || { echo 'No preinstalled Chrome/Chromium; stopping without installing or changing security settings.'; exit 1; }
+          echo "QA_BROWSER_PATH=$browser" >> "$GITHUB_ENV"
+          "$browser" --version
+          node --version
+          PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1 npm install --prefix "$RUNNER_TEMP/home-qa-playwright" --ignore-scripts --no-audit --no-fund --package-lock=false --registry=https://registry.npmjs.org 'playwright@1.62.0'
+          node -e "require('node:assert/strict').equal(require(process.argv[1]).version,'1.62.0')" "$RUNNER_TEMP/home-qa-playwright/node_modules/playwright/package.json"
+
+      - name: Run one sandbox-enabled synthetic browser session
+        shell: bash
+        run: |
+          set -euo pipefail
+          runtime="$(mktemp -d "$RUNNER_TEMP/home-guide-runtime-XXXXXX")"
+          trap 'rm -rf "$runtime"' EXIT
+          mkdir -p "$runtime/config" "$runtime/cache" "$runtime/data"
+          env -i PATH="$PATH" LANG=C.UTF-8 HOME="$runtime" QA_RUNTIME_HOME="$runtime" \
+            XDG_CONFIG_HOME="$runtime/config" XDG_CACHE_HOME="$runtime/cache" XDG_DATA_HOME="$runtime/data" \
+            QA_OUTPUT_DIR="$QA_OUTPUT_DIR" QA_BROWSER_PATH="$QA_BROWSER_PATH" \
+            PLAYWRIGHT_MODULE="$RUNNER_TEMP/home-qa-playwright/node_modules/playwright" \
+            node ci/home-browser-qa-027/review_browser.cjs
+
+      - name: Save screenshots and exact results for three days
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: admin-home-browser-qa-027-${{ github.sha }}
+          path: ${{ runner.temp }}/admin-home-browser-qa-027/
+          retention-days: 3
+          if-no-files-found: warn
+          include-hidden-files: false
+
+      - name: Record browser-only limits
+        if: always()
+        shell: bash
+        run: |
+          {
+            echo '## Administration home guide browser QA 027'
+            echo "Application source: $EXPECTED_APP_REVISION"
+            echo "QA source: $GITHUB_SHA"
+            echo 'Only the initial creation of this isolated branch may run this job, once.'
+            echo 'Synthetic in-memory records; the browser visits only a loopback app. External and mutating page requests are blocked.'
+            echo 'Chromium sandbox remains enabled. A sandbox launch failure stops testing without changing permissions or security settings.'
+            echo 'Read browser-report.json for passed, failed, and unexecuted checks. Partial screenshots do not imply a complete pass.'
+            echo 'No public preview endpoint, real database, production login, deployment, KVM, emulator, or Android runtime test.'
+          } >> "$GITHUB_STEP_SUMMARY"
