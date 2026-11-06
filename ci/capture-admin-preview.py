@@ -30,14 +30,15 @@ def require(condition, message):
         raise RuntimeError(message)
 
 
-def run(*args, binary=False, timeout=90):
+def run(*args, binary=False, timeout=90, merge_stderr=False):
     result = subprocess.run(args, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
                             timeout=timeout, check=False)
     if result.returncode:
         raise RuntimeError(f"Command failed ({result.returncode}): {args!r}: "
                            + result.stderr.decode("utf-8", "replace")
                            + result.stdout.decode("utf-8", "replace"))
-    return result.stdout if binary else result.stdout.decode("utf-8", "replace").strip()
+    output = result.stdout + (result.stderr if merge_stderr else b"")
+    return output if binary else output.decode("utf-8", "replace").strip()
 
 
 def sdk_tool(name):
@@ -170,11 +171,42 @@ def main():
                 "density": device("shell", "wm", "density"),
                 "fontScale": device("shell", "settings", "get", "system", "font_scale")}
 
+    dump_invocation = 0
+
     def dump(name, case):
+        nonlocal dump_invocation
+        dump_invocation += 1
+        invocation = dump_invocation
         try:
-            device("shell", "uiautomator", "dump", remote + "/tree.xml")
+            attempts = case.setdefault("xmlDumpAttempts", [])
+            for attempt in range(1, 4):
+                # Unique paths ensure a previous successful tree cannot masquerade
+                # as this attempt when the command exits zero without writing XML.
+                remote_xml = f"{remote}/{name}-dump{invocation}-attempt{attempt}.xml"
+                record = {"position": name, "invocation": invocation, "attempt": attempt, "remoteXml": remote_xml}
+                attempts.append(record)
+                try:
+                    output = device("shell", "uiautomator", "dump", remote_xml,
+                                    timeout=30, merge_stderr=True)
+                    record["output"] = output
+                except BaseException as error:
+                    record["error"] = str(error)
+                    raise
+                save()
+                lower = output.lower()
+                transient = ("null root node" in lower or "could not get idle state" in lower)
+                denied = any(word in lower for word in ("permission denied", "access denied", "securityexception"))
+                if transient and not denied and attempt < 3:
+                    record["retryReason"] = "Explicit transient UIAutomator root/idle diagnostic"
+                    time.sleep(2)
+                    continue
+                require(not transient and not denied,
+                        "UIAutomator did not produce a usable tree: " + output)
+                require("UI hierchary dumped to:" in output or "UI hierarchy dumped to:" in output,
+                        "UIAutomator did not confirm XML output; diagnostic: " + repr(output))
+                break
             path = args.output / (name + ".xml")
-            device("pull", remote + "/tree.xml", str(path))
+            device("pull", remote_xml, str(path), timeout=20)
             ET.parse(path)  # Malformed XML also leaves this position unconfirmed.
             return path
         except BaseException as xml_error:
@@ -234,7 +266,7 @@ def main():
             device("shell", "wm", "size", f"{physical}x2400")
             for scale in SCALES:
                 device("shell", "settings", "put", "system", "font_scale", scale)
-                time.sleep(0.6)
+                time.sleep(3)
                 actual = settings()
                 require(effective(actual["size"], "size") == f"{physical}x2400"
                         and effective(actual["density"], "density") == "480"
@@ -247,7 +279,9 @@ def main():
                     report["cases"].append(case)
                     save()
                     device("shell", "am", "force-stop", PACKAGE)
-                    device("shell", "am", "start", "-W", "-n", PACKAGE + "/.PreviewActivity", "--es", "preview_route", route)
+                    case["activityStartOutput"] = device("shell", "am", "start", "-W", "-n", PACKAGE + "/.PreviewActivity", "--es", "preview_route", route)
+                    # Activity launch completion is not WebView/document readiness.
+                    time.sleep(3)
                     confirmed = False
                     for attempt in range(4):
                         time.sleep(0.5)
