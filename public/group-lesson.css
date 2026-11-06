@@ -519,3 +519,30 @@ body:has(.gl-solo){overflow:hidden}
  .gl-present footer.gl-bar .gl-snippets{flex:1 1 100%;width:100%;flex-wrap:wrap;justify-content:center;gap:4px}
  .gl-present footer.gl-bar .gl-snippets .gl-snip{min-height:30px;font-size:12px;padding:2px 8px}
 }
+
+/* ===== stage 046: compact lesson planner — tighter lines and cards, small add buttons ===== */
+#planner{line-height:1.45}
+#planner .gl-plan{gap:6px}
+#planner .pl-step{padding:4px 10px;border-radius:12px}
+#planner .pl-step summary{min-height:38px;gap:8px;font-size:15px;flex-wrap:nowrap}
+#planner .pl-step summary>:last-child{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#planner .pl-num{width:26px;height:26px;font-size:13px}
+#planner .pl-type{font-size:12px;padding:1px 8px;white-space:nowrap;flex:none}
+#planner .pl-body{margin-top:6px;padding-top:6px}
+#planner .pl-field{margin:4px 0;gap:2px;font-size:13px}
+#planner .pl-q,#planner .pl-item{padding:6px 8px;margin:6px 0}
+#planner .gl-add{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:6px;margin:10px 0;padding:8px}
+#planner .gl-add button{min-height:36px;padding:2px 8px;font-size:13px;white-space:nowrap}
+#planner .gl-top{gap:6px;margin-bottom:6px}
+#planner .gl-top h1{font-size:clamp(20px,5vw,30px);margin:2px 0}
+#planner .gl-top .gl-actions{gap:6px}
+#planner .gl-top .gl-actions .btn,#planner .gl-top .gl-actions .outline{min-height:36px;padding:4px 12px;font-size:14px}
+#planner .gl-status{margin:4px 0;padding:6px 10px;font-size:13px}
+@media(max-width:760px){#planner .pl-field input,#planner .pl-field select,#planner .pl-field textarea{min-height:38px;padding:6px 10px;font-size:15px}}
+/* planner header: title on its own row, subject and grade side by side; less space everywhere */
+#planner .gl-meta{display:grid;grid-template-columns:1fr 1fr;gap:4px 8px;margin:4px 0 8px}
+#planner .gl-meta>:first-child{grid-column:1/-1}
+#planner .gl-note{font-size:12.5px;line-height:1.5;margin:4px 0}
+#planner .eyebrow{font-size:12px}
+body:has(#planner) main{padding-top:10px}
+body:has(#planner) .demo{margin-bottom:8px;padding:6px 10px}
