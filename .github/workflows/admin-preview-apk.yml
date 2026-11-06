@@ -44,11 +44,10 @@ jobs:
           "$JAVA_HOME_17_X64/bin/java" -version
           node --version
 
-      - name: Install locked test dependencies without lifecycle scripts
-        run: npm ci --ignore-scripts --no-audit --no-fund
-
-      - name: Run source tests
-        run: npm test
+      # The offline generator and these tests use Node built-ins only.
+      # Keep unrelated classroom dependencies and their lockfile untouched.
+      - name: Run administration, school and offline-preview tests
+        run: node --test test/admin*.test.mjs test/school*.test.mjs
 
       - name: Build the isolated offline preview
         shell: bash
