@@ -4,7 +4,7 @@ run-name: Native Android review · ${{ github.sha }}
 on:
   push:
     branches:
-      - codex/admin-kvm-review-approved-015
+      - codex/admin-kvm-review-approved-017
     paths:
       - .github/workflows/admin-preview-review.yml
       - ci/capture-admin-preview.py
@@ -23,7 +23,7 @@ jobs:
     if: github.repository == 'alaoufi/teachabs' && github.event.repository.private == false && github.event.created == true && github.run_attempt == 1
     runs-on: ubuntu-24.04
     # Phase limits total 50 minutes; reserve time for stop/ACL restore/upload.
-    # This prepared branch does not match the trigger above. A new approval is required before another KVM run.
+    # This separately approved attempt is limited to initial creation and cannot rerun.
     timeout-minutes: 60
     env:
       REVIEW_SOURCE: 72cda6b1b90977d50a90c28bff5de36065f9e01e
