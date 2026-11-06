@@ -43,11 +43,13 @@ public class MainActivity extends Activity {
     static final String HOME = "https://abdulrahman-edu-trial.onrender.com/";
     static final String HOST = "abdulrahman-edu-trial.onrender.com";
     static final int FILE_REQUEST = 41, MIC_REQUEST = 42;
-    static final String VERSION = "0.6";
+    static final String VERSION = "0.7";
 
     WebView web;
     ProgressBar progress;
     LinearLayout loading;
+    TextView label;
+    final Runnable slowNote = () -> label.setText("الخادم يستيقظ بعد خمول… قد يستغرق حتى دقيقة");
     final Handler ui = new Handler(Looper.getMainLooper());
     final Runnable showLoading = () -> loading.setVisibility(View.VISIBLE);
     ValueCallback<Uri[]> pendingFiles;
@@ -68,7 +70,7 @@ public class MainActivity extends Activity {
         loading.setOrientation(LinearLayout.VERTICAL); loading.setGravity(Gravity.CENTER);
         loading.setBackgroundColor(Color.argb(150, 11, 31, 42));
         ProgressBar spin = new ProgressBar(this);
-        TextView label = new TextView(this); label.setText("جارٍ التحميل…"); label.setTextColor(Color.WHITE); label.setTextSize(18); label.setPadding(0, 24, 0, 0);
+        label = new TextView(this); label.setText("جارٍ التحميل…"); label.setTextColor(Color.WHITE); label.setTextSize(18); label.setPadding(0, 24, 0, 0);
         loading.addView(spin); loading.addView(label);
         loading.setVisibility(View.GONE);
         root.addView(loading, new FrameLayout.LayoutParams(-1, -1));
@@ -98,9 +100,9 @@ public class MainActivity extends Activity {
                 return true;
             }
             @Override
-            public void onPageStarted(WebView view, String url, Bitmap icon) { progress.setVisibility(View.VISIBLE); ui.removeCallbacks(showLoading); ui.postDelayed(showLoading, 350); }
+            public void onPageStarted(WebView view, String url, Bitmap icon) { progress.setVisibility(View.VISIBLE); ui.removeCallbacks(showLoading); ui.removeCallbacks(slowNote); label.setText("جارٍ التحميل…"); ui.postDelayed(showLoading, 250); ui.postDelayed(slowNote, 5000); }
             @Override
-            public void onPageFinished(WebView view, String url) { progress.setVisibility(View.GONE); ui.removeCallbacks(showLoading); loading.setVisibility(View.GONE); CookieManager.getInstance().flush(); }
+            public void onPageFinished(WebView view, String url) { progress.setVisibility(View.GONE); ui.removeCallbacks(showLoading); ui.removeCallbacks(slowNote); loading.setVisibility(View.GONE); CookieManager.getInstance().flush(); }
             @Override
             public void onReceivedError(WebView view, WebResourceRequest req, WebResourceError err) {
                 if (!req.isForMainFrame()) return;
@@ -202,11 +204,16 @@ public class MainActivity extends Activity {
         + "<style>body{margin:0;font-family:sans-serif;background:linear-gradient(160deg,#155c4d,#0f3d34);color:#fff;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px;box-sizing:border-box}"
         + ".c{width:100%;max-width:420px;text-align:center}h1{font-size:30px;margin:6px 0 4px}p{opacity:.85;margin:0 0 26px}img{width:84px;height:84px;border-radius:20px;background:#fff}"
         + "form,a{display:block;margin:12px 0}button,a{width:100%;box-sizing:border-box;font-size:22px;font-weight:700;padding:20px;border-radius:18px;border:0;text-decoration:none;cursor:pointer}"
-        + ".t{background:#fff;color:#155c4d}.s{background:#e8890c;color:#fff}small{display:block;margin-top:26px;opacity:.7}</style></head><body><div class=c>"
+        + ".t{background:#fff;color:#155c4d}.s{background:#e8890c;color:#fff}small{display:block;margin-top:18px;opacity:.7}.st{margin:18px 0 0;font-size:16px;opacity:.9}.st.ok{color:#9fe0b4}.busy{opacity:.8}</style></head><body><div class=c>"
         + "<img src='/icon-192.png' alt=''><h1>احتراف التدريس</h1><p>السبورة الواحدة للحصة</p>"
         + "<form method=post action='/demo/start'><input type=hidden name=role value=teacher><input type=hidden name=next value='/teach/plans'><button class=t>👩‍🏫 أنا المعلم</button></form>"
         + "<a class=s href='/join'>🎒 أنا الطالب</a>"
-        + "<small>الإصدار " + VERSION + " · نسخة تجريبية</small></div></body></html>";
+        + "<p id=st class=st>⏳ جارٍ تجهيز الخادم…</p>"
+        + "<small>الإصدار " + VERSION + " · نسخة تجريبية</small></div>"
+        // Wake the trial server while the user reads the screen; show it is ready; give instant feedback on a tap.
+        + "<script>var st=document.getElementById('st'),t0=Date.now(),slow=setTimeout(function(){st.textContent='⏳ الخادم يستيقظ بعد خمول، قد يستغرق حتى دقيقة…'},5000);"
+        + "fetch('/join',{cache:'no-store'}).then(function(){clearTimeout(slow);st.textContent='✓ جاهز';st.className='st ok'}).catch(function(){clearTimeout(slow);st.textContent='⚠ تعذّر الاتصال، تأكد من الإنترنت'});"
+        + "document.querySelectorAll('button,a').forEach(function(b){b.addEventListener('click',function(){b.classList.add('busy');b.textContent='⏳ جارٍ الفتح…'})});</script></body></html>";
 
     static final String OFFLINE = "<!doctype html><html lang=ar dir=rtl><meta name=viewport content='width=device-width,initial-scale=1'>"
         + "<body style='font-family:sans-serif;background:#faf8f2;color:#163d34;display:flex;align-items:center;justify-content:center;min-height:90vh;text-align:center;padding:20px'>"
