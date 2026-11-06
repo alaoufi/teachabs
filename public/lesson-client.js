@@ -1,5 +1,6 @@
 import {attachProfessionalBoard} from './board-loader.js';
 import { attachPlaceBoard } from './place-client.js?v=place2';
+import { attachShadowActivity } from './shadow-client.js?v=class2';
 const $ = id => document.getElementById(id);
 const seat=$('classroom').dataset.seat;
 const client=crypto.randomUUID();
@@ -23,6 +24,7 @@ async function send(kind,payload,generation=''){
   if(response.headers.get('content-type')?.startsWith('application/json'))return response.json();
 }
 const placeConnected=attachPlaceBoard(seat,signals,send);
+const shadowConnected=attachShadowActivity(seat,signals,send);
 attachProfessionalBoard(seat,signals,send,client,$('classroom').dataset.subject,Number($('classroom').dataset.grade));
 function resetPeer(){
   if(connection){connection.onconnectionstatechange=null;connection.ontrack=null;connection.close();}
@@ -42,7 +44,7 @@ function stopDevices(){
   $('local').srcObject=null;$('local').hidden=true;
 }
 function closeLesson(message){
-  placeConnected(false);
+  placeConnected(false);shadowConnected(false);
   ended=true;present=false;signals.close();resetPeer();stopDevices();status(message);
   if($('erase'))$('erase').disabled=true;
 }
@@ -156,7 +158,7 @@ async function receive({pair:generation,description}){
 }
 const mediaError=()=>hint('تعذّر اتصال الصوت والصورة. يمكنك متابعة العمل على السبورة أو إعادة فتح الفصل.');
 signals.addEventListener('presence',ev=>{
-  placeConnected(true);
+  placeConnected(true);shadowConnected(true);
   present=true;for(const kind of ['audio','video'])controlState(kind);
   if($('erase'))$('erase').disabled=false;
   connect(JSON.parse(ev.data).pair).catch(mediaError);
@@ -165,7 +167,7 @@ signals.addEventListener('sdp',ev=>receive(JSON.parse(ev.data)).catch(mediaError
 signals.addEventListener('closed',ev=>closeLesson(JSON.parse(ev.data)));
 signals.onerror=()=>{
   if(ended)return;
-  placeConnected(false);
+  placeConnected(false);shadowConnected(false);
   present=false;resetPeer();stopDevices();if($('erase'))$('erase').disabled=true;
   status('انقطع الاتصال بالفصل. جارٍ إعادة الاتصال…');
 };

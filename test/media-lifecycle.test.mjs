@@ -8,7 +8,7 @@ test('background stops active media and rejects a late permission result',async(
   const node=id=>{if(!nodes.has(id))nodes.set(id,{dataset:{seat:'teacher'},setAttribute(){},addEventListener(){},play(){return Promise.resolve();}});return nodes.get(id);};
   let resolveMedia;const requested=[];
   const document={hidden:false,getElementById:node,addEventListener:(name,fn)=>listeners[name]=fn};
-  const context={document,window:{addEventListener(){}},crypto:{randomUUID:()=> 'test-client'},location:{pathname:'/lesson/preview',search:''},URLSearchParams,EventSource:class{},MediaStream:class{},navigator:{mediaDevices:{getUserMedia:constraints=>{requested.push(JSON.parse(JSON.stringify(constraints)));return new Promise(r=>resolveMedia=r)}}},attachProfessionalBoard:()=>{},attachPlaceBoard:()=>()=>{}};
+  const context={document,window:{addEventListener(){}},crypto:{randomUUID:()=> 'test-client'},location:{pathname:'/lesson/preview',search:''},URLSearchParams,EventSource:class{},MediaStream:class{},navigator:{mediaDevices:{getUserMedia:constraints=>{requested.push(JSON.parse(JSON.stringify(constraints)));return new Promise(r=>resolveMedia=r)}}},attachProfessionalBoard:()=>{},attachPlaceBoard:()=>()=>{},attachShadowActivity:()=>()=>{}};
   const source=readFileSync(new URL('../public/lesson-client.js',import.meta.url),'utf8').replace(/^import .*\r?\n/gm,'').split('function newPeer')[0];
   runInNewContext(source+'\npresent=true;globalThis.api={toggle,tracks};',context);
   let stopped=0;

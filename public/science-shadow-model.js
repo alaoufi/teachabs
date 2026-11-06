@@ -157,15 +157,15 @@ function skyColors(elevation) {
 const PANEL = {wood: 'fill="#9c6b3f" stroke="#6d4523"', paper: 'fill="#fff6d8" fill-opacity="0.8" stroke="#c9b37a"', glass: 'fill="#bfe6f7" fill-opacity="0.45" stroke="#6fb2d1"'};
 
 /** Static SVG markup (numbers and fixed strings only) used by the server render and the client. */
-export function renderScene(input) {
+export function renderScene(input, {hideShadow = false} = {}) {
   const s = lessonState(input), g = sceneGeometry(s), {width, height, ground, cx, radius} = SCENE, sky = skyColors(s.elevation);
-  const r = v => Math.round(v * 10) / 10, half = 7, shadowVisible = s.length >= 0.05;
+  const r = v => Math.round(v * 10) / 10, half = 7, shadowVisible = !hideShadow && s.length >= 0.05;
   // A ground strip from the panel's base to the tip, thinning slightly with distance like a real shadow.
   const shadow = shadowVisible ? `<polygon class="shadow" points="${cx},${ground + 1} ${r(g.tipX)},${ground + 3} ${r(g.tipX)},${ground + 11} ${cx},${ground + 15}" fill="#1d2b36" fill-opacity="${s.darkness}"/>` : '';
-  const ray = shadowVisible ? `<line class="ray" x1="${r(g.sunX)}" y1="${r(g.sunY)}" x2="${r(g.tipX)}" y2="${ground + 6}" stroke="#e8890c" stroke-width="2" stroke-dasharray="7 6"/>` : `<line class="ray" x1="${cx}" y1="${r(g.sunY)}" x2="${cx}" y2="${r(g.top)}" stroke="#e8890c" stroke-width="2" stroke-dasharray="7 6"/>`;
-  const lengthLabel = shadowVisible ? `<text x="${r((cx + g.tipX) / 2)}" y="${ground + 34}" class="scene-label" text-anchor="middle">الظل ${formatNumber(s.length)} م</text>` : `<text x="${cx}" y="${ground + 34}" class="scene-label" text-anchor="middle">لا يكاد يظهر ظل</text>`;
+  const ray = hideShadow ? '' : shadowVisible ? `<line class="ray" x1="${r(g.sunX)}" y1="${r(g.sunY)}" x2="${r(g.tipX)}" y2="${ground + 6}" stroke="#e8890c" stroke-width="2" stroke-dasharray="7 6"/>` : `<line class="ray" x1="${cx}" y1="${r(g.sunY)}" x2="${cx}" y2="${r(g.top)}" stroke="#e8890c" stroke-width="2" stroke-dasharray="7 6"/>`;
+  const lengthLabel = hideShadow ? `<text x="${cx}" y="${ground + 34}" class="scene-label" text-anchor="middle">أين سيكون الظل؟ توقّع أولًا</text>` : shadowVisible ? `<text x="${r((cx + g.tipX) / 2)}" y="${ground + 34}" class="scene-label" text-anchor="middle">الظل ${formatNumber(s.length)} م</text>` : `<text x="${cx}" y="${ground + 34}" class="scene-label" text-anchor="middle">لا يكاد يظهر ظل</text>`;
   const side = s.sun === 'west' ? 1 : -1, markX = cx + side * 22;
-  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${width} ${height}" class="shadow-scene" direction="ltr" role="img" aria-label="الشمس عند ارتفاع ${formatNumber(s.elevation)} درجة، وطول الظل ${formatNumber(s.length)} متر ${DIRECTION_TEXT[s.shadow]}">
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${width} ${height}" class="shadow-scene" direction="ltr" role="img" aria-label="${hideShadow ? `الشمس عند ارتفاع ${formatNumber(s.elevation)} درجة. الظل مخفي حتى يكشفه المعلم.` : `الشمس عند ارتفاع ${formatNumber(s.elevation)} درجة، وطول الظل ${formatNumber(s.length)} متر ${DIRECTION_TEXT[s.shadow]}`}">
 <defs><linearGradient id="sky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${sky.top}"/><stop offset="1" stop-color="${sky.bottom}"/></linearGradient><radialGradient id="glow"><stop offset="0" stop-color="#fff3b0" stop-opacity="0.9"/><stop offset="1" stop-color="#ffd23f" stop-opacity="0"/></radialGradient></defs>
 <rect width="${width}" height="${ground}" fill="url(#sky)"/>
 <path d="M ${cx - radius} ${ground} A ${radius} ${radius} 0 0 1 ${cx + radius} ${ground}" fill="none" stroke="#ffffff" stroke-opacity="0.7" stroke-width="1.5" stroke-dasharray="3 7"/>

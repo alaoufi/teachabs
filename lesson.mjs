@@ -7,6 +7,8 @@ import { subjects, UserError } from './store.mjs';
 import { e } from './views.mjs';
 import { advancePlace, initialPlace, visiblePlace } from './place-value.mjs';
 import { placeBoard, resultCard } from './place-views.mjs';
+import { shadowAllowed, changeShadow, visibleShadow } from './shadow-activity.mjs';
+import { shadowPanel } from './shadow-views.mjs';
 
 const EARLY_ENTRY = 10 * 60_000;
 const isOpen = row => row?.status==='confirmed' && row.childStatus!=='suspended' && row.parentStatus!=='suspended' && Date.now()>=row.start-EARLY_ENTRY &&
@@ -32,7 +34,7 @@ function lobby(user, teacherEntry=false) {
 function classroom({seat, booking, preview}) {
   const name = seat === 'teacher' ? 'المعلم' : 'الطالب';
   const back = preview ? '/lesson' : '/booking/' + booking.id;
-  return `<link rel="stylesheet" href="/lesson.css?v=lessons1"><section id="classroom" data-seat="${seat}" data-grade="${preview?0:booking.grade}" data-subject="${preview?'preview':e(booking.subject)}">
+  return `<link rel="stylesheet" href="/lesson.css?v=class2"><section id="classroom" data-seat="${seat}" data-grade="${preview?0:booking.grade}" data-subject="${preview?'preview':e(booking.subject)}">
     <div class="lesson-head"><div><div class="eyebrow"><i></i>${preview?'تجربة محلية بمقعدين':'الحصة الفردية'}</div>
     <h1>${preview?'الفصل التجريبي':'حصة '+e(subjects[booking.subject])}</h1>
     <p>${preview?'أنت في مقعد '+name:e(booking.childName)+' مع '+e(booking.teacherName)+' · مقعد '+name} · التسجيل متوقف</p></div>
@@ -40,17 +42,22 @@ function classroom({seat, booking, preview}) {
     <noscript><p class="error">افتح الحصة في المتصفح مع تفعيل جافاسكربت لتشغيل السبورة والاتصال.</p></noscript>
     <div class="lesson-status"><strong id="status" role="status">جارٍ فتح الفصل…</strong>
     ${preview?'<a class="textlink" target="_blank" rel="noopener" href="/lesson/preview?seat='+opposite(seat)+'">فتح نافذة '+(seat==='teacher'?'الطالب':'المعلم')+'</a>':''}</div>
-    <div class="lesson-grid"><section class="panel"><div class="lesson-head"><h2>السبورة المشتركة</h2>
+    <div class="lesson-flow">
+    <section class="panel class-voice" aria-labelledby="voice-title"><div class="voice-row"><div><h2 id="voice-title">صوت الحصة</h2>
+    <p>${seat==='teacher'?'شغّل الميكروفون واشرح بصوتك وأنت تحرك النشاط وتكتب على السبورة.':'استمع لشرح معلمك، وشغّل الميكروفون عندما تريد أن تجيب.'}</p></div>
+    <div class="devices"><button id="mic" class="outline" disabled aria-pressed="false">تشغيل الميكروفون</button>
+    <button id="cam" class="outline" disabled aria-pressed="false">تشغيل الكاميرا</button><button id="play" class="quiet" hidden>سماع الطرف الآخر</button></div></div>
+    <p id="hint" aria-live="polite">يظل الميكروفون والكاميرا مغلقين حتى تشغّلهما بنفسك.</p>
+    <details class="class-video"><summary>الصورة — اختيارية</summary><div class="screen"><video id="remote" autoplay playsinline></video><span>الطرف الآخر</span></div>
+    <video id="local" muted autoplay playsinline hidden></video></details>
+    ${preview?'<small>عند التجربة على جهاز واحد، استخدم سماعات وجرّب الكاميرا من نافذة واحدة كل مرة.</small>':''}</section>
+    ${preview||booking.subject==='science'?'<section class="panel class-activity"><details open><summary>نشاط الدرس: الضوء والظل</summary>'+shadowPanel(seat)+'</details></section>':''}
+    ${preview||booking.subject==='math'?'<section class="panel class-activity"><details><summary>نشاط الآحاد والعشرات</summary>'+placeBoard(seat,preview)+'</details></section>':''}
+    <section class="panel class-board"><div class="lesson-head"><h2>السبورة المشتركة</h2>
     ${seat==='teacher'?'<button type="button" class="quiet" id="erase" hidden disabled>مسح السبورة</button>':''}</div>
-    <p>أدوات الرسم والأشكال والنص والصور، مع مكتبة وسائل ومحرر معادلات. يستخدم الطالب العرض حتى يسمح المعلم بالتحرير.</p>
-    <link rel="stylesheet" href="/board-assets/board.css"><div id="board-pro"></div><svg id="board" hidden viewBox="0 0 1000 600"></svg></section>
-    <section class="panel"><details><summary>نشاط الآحاد والعشرات</summary>${preview||booking.subject==='math'?placeBoard(seat,preview):'هذا النشاط لحصص الرياضيات.'}</details></section>
-    <section class="panel"><details><summary>الصوت والصورة — اختياريان</summary><div class="screen"><video id="remote" autoplay playsinline></video><span>الطرف الآخر</span></div>
-    <video id="local" muted autoplay playsinline hidden></video><div class="devices"><button id="mic" class="outline" disabled aria-pressed="false">تشغيل الميكروفون</button>
-    <button id="cam" class="outline" disabled aria-pressed="false">تشغيل الكاميرا</button></div>
-    <button id="play" class="quiet" hidden>سماع الطرف الآخر</button><p id="hint" aria-live="polite">يظل الميكروفون والكاميرا مغلقين حتى تشغّلهما بنفسك.</p>
-    ${preview?'<small>عند التجربة على جهاز واحد، استخدم سماعات وجرّب الكاميرا من نافذة واحدة كل مرة.</small>':''}</details></section></div>
-    </section><script type="module" src="/lesson-client.js?v=board1"></script>`;
+    <p>للشرح والكتابة مع النشاط: أدوات الرسم والأشكال والنص والصور، مع مكتبة وسائل ومحرر معادلات. يستخدم الطالب العرض حتى يسمح المعلم بالتحرير.</p>
+    <link rel="stylesheet" href="/board-assets/board.css"><div id="board-pro"></div><svg id="board" hidden viewBox="0 0 1000 600"></svg></section></div>
+    </section><script type="module" src="/lesson-client.js?v=class2"></script>`;
 }
 
 export function lessonService(store) {
@@ -100,6 +107,7 @@ export function lessonService(store) {
       const state=(preview?room.place:store.placeActivity(key))??initialPlace();
       output(peer,'place',visiblePlace(state,seat));
     }
+    if(shadowAllowed(context))output(peer,'shadow',visibleShadow(room.shadow,seat));
     const other=room.peers[opposite(seat)];
     room.pair=other?randomUUID():null;
     output(peer,'presence',{pair:room.pair});
@@ -125,6 +133,12 @@ export function lessonService(store) {
       const next=preview?(room.place=update(room.place)):store.changePlace(key,update);
       for(const [role,peer] of Object.entries(room.peers))output(peer,'place',visiblePlace(next,role));
       return visiblePlace(next,seat);
+    }
+    if(data.kind==='shadow'){
+      requireState(shadowAllowed(context),'نشاط الظل لحصص العلوم فقط.',403);
+      room.shadow=changeShadow(room.shadow,seat,payload);
+      for(const [role,peer] of Object.entries(room.peers))output(peer,'shadow',visibleShadow(room.shadow,role));
+      return visibleShadow(room.shadow,seat);
     }
     if (data.kind==='stroke') {
       requireState(Array.isArray(payload) && payload.length>0 && payload.length<=256 &&

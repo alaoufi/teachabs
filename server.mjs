@@ -26,6 +26,7 @@ files['/classroom-lab.js']='text/javascript; charset=utf-8';
 files['/classroom-lab-model.js']='text/javascript; charset=utf-8';
 files['/classroom-lab.css']='text/css; charset=utf-8';
 files['/science-shadow.js']='text/javascript; charset=utf-8';
+files['/shadow-client.js']='text/javascript; charset=utf-8';
 files['/science-shadow-model.js']='text/javascript; charset=utf-8';
 files['/science-shadow.css']='text/css; charset=utf-8';
 async function fields(req){
