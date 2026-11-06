@@ -514,3 +514,8 @@ body:has(.gl-solo){overflow:hidden}
  .gl-present .gl-steps-strip .gl-num{width:22px;height:22px;font-size:11px}
  .gl-present::after{content:"↻ أدر الجوال أفقيًا لسبورة أكبر";font-size:12px;color:var(--muted);text-align:center}
 }
+@media(max-width:760px) and (orientation:portrait){
+ .gl-present footer.gl-bar.gl-bar-bottom{flex-wrap:wrap;justify-content:center;align-items:flex-start}
+ .gl-present footer.gl-bar .gl-snippets{flex:1 1 100%;width:100%;flex-wrap:wrap;justify-content:center;gap:4px}
+ .gl-present footer.gl-bar .gl-snippets .gl-snip{min-height:30px;font-size:12px;padding:2px 8px}
+}
