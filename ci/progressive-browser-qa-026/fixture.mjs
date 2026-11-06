@@ -1,0 +1,62 @@
+import {openStore} from '../../store.mjs';
+import {createApp} from '../../server.mjs';
+import {writeFileSync,mkdirSync} from 'node:fs';
+import {resolve,join} from 'node:path';
+import {createHash} from 'node:crypto';
+import assert from 'node:assert/strict';
+const SOURCE='117f9fa0007d3a70c46aa6fd21361908c85278f9';
+if(!process.env.QA_OUTPUT_DIR)throw new Error('QA_OUTPUT_DIR must be temporary');
+const output=resolve(process.env.QA_OUTPUT_DIR);mkdirSync(output,{recursive:true});
+const store=openStore(':memory:'),a=store.admin,ids=a.demo(),actor=ids.supervisor;
+const gradeId=a.addSchoolGrade(actor,{grade:4}),gradeOneId=a.addSchoolGrade(actor,{grade:1});
+const legacyTrackId=a.school(actor).grades.find(x=>x.id===gradeId).track_id;
+const makeClass=(name,capacity=8,g=gradeId)=>a.addSchoolClass(actor,{gradeId:g,name,capacity});
+const classId=makeClass('الفصل التجريبي المشترك LongClassName ١');
+const classTwoId=makeClass('الفصل التجريبي المشترك LongClassName ٢');
+const fullId=makeClass('فصل مكتمل السعة',1),raceId=makeClass('فصل آخر مقعد',1),batchId=makeClass('فصل دفعة محدودة',1);
+const archivedId=makeClass('فصل مؤرشف');a.updateSchoolClass(actor,{classId:archivedId,name:'فصل مؤرشف',state:'archived',revision:0});
+const gradeOneClassId=makeClass('الأول أ · سياق مختلف',8,gradeOneId);
+const pathId=a.addSchoolTrack(actor,{name:'المسار التعليمي الدولي ذو الاسم الطويل المشترك Alpha ١',educationType:'private',curriculumName:'المنهج التجريبي International Curriculum للاختبار فقط 2026'});
+const secondPathId=a.addSchoolTrack(actor,{name:'المسار التعليمي الدولي ذو الاسم الطويل المشترك Alpha ٢'});
+const unsupportedPrimaryId=a.addSchoolClass(actor,{trackId:pathId,levelKey:'primary:4',name:'رابع هيكلي فقط',capacity:8});
+const middleId=a.addSchoolClass(actor,{trackId:pathId,levelKey:'middle:2',name:'المتوسط ب · هيكل فقط',capacity:8});
+const secondaryId=a.addSchoolClass(actor,{trackId:pathId,levelKey:'secondary:3',name:'الثانوي ج · هيكل فقط',capacity:8});
+const teacherId=a.createTeacher(actor,{name:'المعلم التجريبي ذو الاسم الطويل المشترك Mathematics ١',email:'qa-good@example.invalid',subjects:['math'],grades:[4],language:'ar'}).id;
+const wrongTeacherId=a.createTeacher(actor,{name:'معلم صف أول فقط',email:'qa-wrong-grade@example.invalid',subjects:['math'],grades:[1],language:'ar'}).id;
+const wrongSubjectTeacherId=a.createTeacher(actor,{name:'معلم علوم فقط',email:'qa-wrong-subject@example.invalid',subjects:['science'],grades:[4],language:'ar'}).id;
+const agent=a.switchDemo(actor,'registration_agent');
+const {id:parent}=store.registration.addParent(agent,{name:'ولي أمر اصطناعي للفحص',email:'qa-parent@example.invalid'});
+store.registration.setStatus(agent,{kind:'parent',id:parent,status:'active'});
+const child=(name,grade=4)=>store.registration.addChild(agent,{parent,name,grade});
+const students={first:child('طالب تجريبي نشط أول'),second:child('طالب تجريبي نشط ثان'),third:child('طالب تجريبي نشط ثالث'),fourth:child('طالب تجريبي نشط رابع'),raceOne:child('طالب تنافس أول'),raceTwo:child('طالب تنافس ثان'),batchOne:child('طالب دفعة أول'),batchTwo:child('طالب دفعة ثان'),suspended:child('طالب موقوف مرشح'),otherGrade:child('طالب صف مختلف',1),member:child('عضو هذا الفصل'),otherMember:child('عضو فصل آخر'),suspendedMember:child('عضو موقوف محتفظ بمقعد'),fullMember:child('عضو الفصل المكتمل')};
+for(const [name,cls] of [['member',classId],['suspendedMember',classId],['otherMember',classTwoId],['fullMember',fullId]])a.assignSchoolStudent(actor,{classId:cls,childId:students[name]});
+for(const name of ['suspended','suspendedMember'])store.registration.setStatus(agent,{kind:'child',id:students[name],status:'suspended'});
+const other=a.demo(),foreignStudent=a.registration(other.supervisor).find(c=>c.grade===4);
+const readonly=a.members(actor).find(m=>m.id===ids.education);a.updateMember(actor,readonly.id,{...readonly,permissions:['school.read']});
+const metadata={source:SOURCE,synthetic:true,persistence:false,base:'http://127.0.0.1:4827',gradeId,gradeOneId,legacyTrackId,classId,classTwoId,fullId,raceId,batchId,archivedId,gradeOneClassId,pathId,secondPathId,unsupportedPrimaryId,middleId,secondaryId,teacherId,wrongTeacherId,wrongSubjectTeacherId,students,foreignStudent:{id:foreignStudent.id,name:foreignStudent.name}};
+// Full fixture preflight uses the exact application models, not unchecked raw SQL.
+const school=a.school(actor);
+assert.equal(school.classes.find(c=>c.id===classId).studentCount,2);
+assert.equal(school.classes.find(c=>c.id===fullId).seatsAvailable,0);
+assert.equal(school.classes.find(c=>c.id===archivedId).state,'archived');
+assert.equal(school.classes.find(c=>c.id===unsupportedPrimaryId).assignmentSupported,false);
+assert.equal(school.students.find(c=>c.id===students.suspended).status,'suspended');
+assert.equal(school.students.some(c=>c.id===foreignStudent.id),false);
+assert.equal(a.school(ids.education).students.length,0);
+if(process.argv.includes('--check')){console.log('All synthetic classes, tracks, teachers, parent, children, roles and memberships passed model preflight.');store.close();process.exit(0);}
+const base=metadata.base,server=createApp(store,{origin:base}),original=server.listeners('request')[0];
+const sessions={supervisor:store.session(actor),readonly:store.session(ids.education),foreign:store.session(other.supervisor)};
+server.removeAllListeners('request');
+server.on('request',(req,res)=>{
+ if(req.url==='/__qa/state'&&req.method==='GET'){
+  const school=a.school(actor),audit=a.auditLog(actor);
+  res.writeHead(200,{'content-type':'application/json','cache-control':'no-store'});
+  res.end(JSON.stringify({fingerprint:createHash('sha256').update(JSON.stringify({school,audit})).digest('hex'),school,auditCount:audit.length}));return;
+ }
+ const role=req.headers['x-qa-role']||'supervisor';
+ if(role==='anonymous')delete req.headers.cookie;else req.headers.cookie='ks='+(sessions[role]||sessions.readonly);
+ delete req.headers['x-qa-role'];original(req,res);
+});
+writeFileSync(join(output,'fixture-metadata.json'),JSON.stringify(metadata,null,2));
+server.listen(4827,'127.0.0.1',()=>console.log('Loopback-only in-memory progressive fixture ready'));
+for(const signal of ['SIGTERM','SIGINT'])process.on(signal,()=>{server.closeAllConnections();server.close(()=>{store.close();process.exit(0);});});
