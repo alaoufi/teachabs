@@ -1,0 +1,142 @@
+name: Review offline administration APK on Android
+run-name: Native Android review · ${{ github.sha }}
+
+on:
+  push:
+    branches:
+      - codex/admin-cloud-build-014
+    paths:
+      - .github/workflows/admin-preview-review.yml
+      - ci/capture-admin-preview.py
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: admin-native-review-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  native-review:
+    if: github.repository == 'alaoufi/teachabs' && github.event.repository.private == false
+    runs-on: ubuntu-24.04
+    timeout-minutes: 50
+    env:
+      REVIEW_SOURCE: 72cda6b1b90977d50a90c28bff5de36065f9e01e
+      REVIEW_APK_SHA256: 79e8113e809cd6945f5ae5dc4185063c1e1aafd65ef51cedeadcc52247bb54b3
+      EMULATOR_IMAGE: system-images;android-34;google_apis;x86_64
+    steps:
+      - name: Check out review tooling
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Download the exact existing review candidate
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: admin-preview-72cda6b1b90977d50a90c28bff5de36065f9e01e
+          run-id: 42217465919
+          github-token: ${{ github.token }}
+          path: ${{ runner.temp }}/review-candidate/
+
+      - name: Confirm exact APK bytes and initialize evidence directories
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/native-review-diagnostics" "$RUNNER_TEMP/review-avds"
+          APK="$RUNNER_TEMP/review-candidate/teachabs-admin-preview-${REVIEW_SOURCE:0:12}.apk"
+          echo "$REVIEW_APK_SHA256  $APK" | sha256sum --check -
+          echo "REVIEW_APK=$APK" >> "$GITHUB_ENV"
+          echo "ANDROID_AVD_HOME=$RUNNER_TEMP/review-avds" >> "$GITHUB_ENV"
+          echo "JAVA_HOME=$JAVA_HOME_17_X64" >> "$GITHUB_ENV"
+          echo "$JAVA_HOME_17_X64/bin" >> "$GITHUB_PATH"
+          {
+            echo "ImageOS=$ImageOS ImageVersion=$ImageVersion"
+            id
+            ls -l /dev/kvm || true
+            echo 'Software CPU emulation only: no KVM permission or security setting changes.'
+          } > "$RUNNER_TEMP/native-review-diagnostics/host.txt"
+
+      - name: Install official emulator packages only if licenses are already accepted
+        shell: bash
+        run: |
+          set -euo pipefail
+          SDKMANAGER="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
+          # Closed stdin never accepts a new agreement. Do not use --licenses or yes.
+          timeout 600 "$SDKMANAGER" --install emulator "$EMULATOR_IMAGE" </dev/null \
+            > "$RUNNER_TEMP/native-review-diagnostics/sdk-install.log" 2>&1
+          test -x "$ANDROID_HOME/emulator/emulator"
+          test -f "$ANDROID_HOME/system-images/android-34/google_apis/x86_64/package.xml"
+          "$ANDROID_HOME/emulator/emulator" -version > "$RUNNER_TEMP/native-review-diagnostics/emulator-version.txt" 2>&1
+
+      - name: Create disposable emulator and boot without KVM
+        shell: bash
+        run: |
+          set -euo pipefail
+          # This answers only the custom hardware-profile question, not a license prompt.
+          printf 'no\n' | "$ANDROID_HOME/cmdline-tools/latest/bin/avdmanager" create avd \
+            --name teachabs-review --package "$EMULATOR_IMAGE" --device pixel_2 \
+            > "$RUNNER_TEMP/native-review-diagnostics/avd-create.log" 2>&1
+          nohup "$ANDROID_HOME/emulator/emulator" @teachabs-review -port 5554 \
+            -no-window -no-audio -no-boot-anim -no-snapshot -gpu swiftshader \
+            -accel off -memory 2048 -cores 2 -camera-back none -camera-front none \
+            > "$RUNNER_TEMP/native-review-diagnostics/emulator.log" 2>&1 &
+          echo "EMULATOR_PID=$!" >> "$GITHUB_ENV"
+          ADB="$ANDROID_HOME/platform-tools/adb"
+          deadline=$((SECONDS + 900))
+          while [ "$SECONDS" -lt "$deadline" ]; do
+            boot=$(timeout 15 "$ADB" -s emulator-5554 shell getprop sys.boot_completed 2>/dev/null | tr -d '\r' || true)
+            if [ "$boot" = 1 ]; then
+              "$ADB" -s emulator-5554 shell input keyevent 82
+              "$ADB" -s emulator-5554 shell getprop > "$RUNNER_TEMP/native-review-diagnostics/device-properties.txt"
+              exit 0
+            fi
+            sleep 10
+          done
+          echo 'Software emulator did not finish booting within 15 minutes.' >&2
+          exit 1
+
+      - name: Capture all 171 native route and accessibility configurations
+        shell: bash
+        run: |
+          timeout --signal=INT 1200 python3 ci/capture-admin-preview.py \
+            --serial emulator-5554 --apk "$REVIEW_APK" \
+            --expected-revision "$REVIEW_SOURCE" \
+            --output "$RUNNER_TEMP/admin-native-evidence"
+
+      - name: Collect diagnostics and stop disposable emulator
+        if: always()
+        shell: bash
+        run: |
+          mkdir -p "$RUNNER_TEMP/native-review-diagnostics"
+          timeout 20 "$ANDROID_HOME/platform-tools/adb" -s emulator-5554 logcat -d \
+            > "$RUNNER_TEMP/native-review-diagnostics/logcat.txt" 2>&1 || true
+          timeout 10 "$ANDROID_HOME/platform-tools/adb" -s emulator-5554 emu kill || true
+          if [ -n "${EMULATOR_PID:-}" ]; then kill "$EMULATOR_PID" 2>/dev/null || true; fi
+
+      - name: Save native evidence and partial failure diagnostics
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: native-admin-review-${{ github.sha }}
+          path: |
+            ${{ runner.temp }}/admin-native-evidence/
+            ${{ runner.temp }}/native-review-diagnostics/
+          retention-days: 3
+          if-no-files-found: error
+          include-hidden-files: false
+
+      - name: Record review limits
+        if: always()
+        shell: bash
+        run: |
+          {
+            echo '## Native APK review evidence, not release approval'
+            echo "APK source: $REVIEW_SOURCE"
+            echo "APK SHA-256: $REVIEW_APK_SHA256"
+            echo 'The exact existing APK is used without enabling JavaScript or WebView debugging.'
+            echo 'Read capture-report.json for completed cases and failures. Partial evidence is not a pass.'
+            echo 'Accessibility rectangles are not glyph measurements. Screenshots need visual review.'
+            echo 'No KVM permissions, security settings, paid resources, persistent credentials or new SDK licenses are changed.'
+          } >> "$GITHUB_STEP_SUMMARY"
