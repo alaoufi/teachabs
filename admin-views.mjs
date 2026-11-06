@@ -160,7 +160,7 @@ function schoolClassCard(p,c){
  return `<article class="school-class-card" data-class-id="${e(c.id)}"><div class="school-class-top"><span class="school-class-mark" aria-hidden="true">${icon('registration')}</span><div class="school-class-title"><h3>${e(c.name)}</h3><small>${e(schoolLevelLabel(c.stage,c.grade))}</small><small>${e(c.trackName)}</small></div>${badge(archived?'مؤرشف':!c.assignmentSupported?'بانتظار ربط التسجيل':c.capacity===null?'السعة غير محددة':c.seatsAvailable===0?'مكتمل العدد':'متاح للإسناد',archived||!c.assignmentSupported?'adm-neutral':'')}</div><div class="school-capacity-summary"><span>الطلاب: <strong>${num(c.studentCount)}</strong></span><span>السعة: <strong>${c.capacity===null?'غير محددة':num(c.capacity)}</strong></span>${c.capacity!==null?`<span>المتاح: <strong>${num(c.seatsAvailable)}</strong></span>`:''}</div>${controls}</article>`;
 }
 
-export function adminSchool(p,s,selection){
+export function adminSchool(p,s,selection,classTeachers=null){
  const selected=schoolSelection(s,selection),selectedTrack=s.tracks.find(t=>t.id===selected.trackId),selectedGrade=s.grades.find(g=>g.track_id===selected.trackId&&g.stage===selected.stage&&g.grade===selected.grade),selectedClass=s.classes.find(c=>c.id===selected.classId);
  const selectedClasses=s.classes.filter(c=>c.track_id===selected.trackId&&c.stage===selected.stage&&c.grade===selected.grade);
  const compatibleContext=selectedTrack?.legacy===1&&selected.stage==='primary';
@@ -191,7 +191,11 @@ export function adminSchool(p,s,selection){
    classContent+=stepPanel('طلاب هذا الفصل',note('تظهر هنا عضوية هذا الفصل وحده. الطالب الملحق بفصل آخر لا يظهر ضمن المرشحين، ولا يُنقل تلقائيًا.')+memberRows)+stepPanel('إضافة طلاب لهذا الفصل',add);
   }
   if(can(p,'school.teachers')||can(p,'school.individuals')){
-   const teacherRows=s.teacherAssignments.filter(row=>row.class_id===c.id),teacherForm=available&&s.teachers.length?form('/admin/school/teachers',identity+choose('subject','المادة',subjects)+choose('teacherId','المعلم',opts(s.teachers))+submit('إسناد معلم الفصل')):note('إسناد المعلم يحتاج فصلًا نشطًا متوافقًا مع التسجيل وتخصصات المعلمين.');
+   const teacherRows=s.teacherAssignments.filter(row=>row.class_id===c.id);
+   const subjectFilter=available?getForm(schoolContextFields(selected)+identity+choose('subject','المادة',subjects,classTeachers?.subject||'')+submit('عرض المعلمين المتوافقين')):'';
+   const candidateMessage=classTeachers?.reason==='assigned'?'توجد لهذه المادة عضوية معلم فصل قائمة. أزل الإسناد صراحة قبل اختيار بديل؛ لا نغيّره تلقائيًا.':classTeachers?.reason==='individual-conflict'?'لا يوجد معلم متاح يتوافق مع الإسنادات الفردية الحالية لهذه المادة. راجعها صراحة قبل إسناد معلم للفصل.':'لا يوجد معلم نشط معتمد لهذا الصف وهذه المادة. راجع تخصصات المعلمين في الشؤون التعليمية.';
+   const teacherPicker=classTeachers?.classId===c.id?(classTeachers.teachers.length?form('/admin/school/teachers',identity+hidden('subject',classTeachers.subject)+choose('teacherId','المعلم المعتمد للصف والمادة',opts(classTeachers.teachers))+submit('إسناد معلم الفصل')):note(candidateMessage)):note('اختر المادة لعرض المعلمين النشطين المعتمدين للصف والمادة فقط.');
+   const teacherForm=available?subjectFilter+teacherPicker:note('إسناد المعلم يحتاج فصلًا نشطًا متوافقًا مع التسجيل وتخصصات المعلمين.');
    const direct=can(p,'school.individuals')&&available&&selectedGrade?href('/admin/school/assignments?'+new URLSearchParams({gradeId:selectedGrade.id}),'إسناد معلم لطالب أو مجموعة من طلاب الصف','btn quiet'):'';
    classContent+=stepPanel('إسناد المعلمين حسب المادة',(can(p,'school.teachers')?teacherForm+(teacherRows.length?teacherRows.map(row=>`<article><p>${e(subjects[row.subject])} — ${e(row.name)}</p>${schoolRemove('teacher',{classId:c.id,subject:row.subject,teacherId:row.teacher})}</article>`).join(''):note('لا توجد إسنادات معلمين لهذا الفصل بعد.')):'')+direct);
   }
@@ -204,6 +208,10 @@ export function adminSchool(p,s,selection){
  return shell(p,'school','الصفوف والفصول','اختر المسار، ثم المرحلة والصف، ثم افتح الفصل أو أضفه.',
   '<details class="school-guide"><summary>'+infoIcon()+' دليل الاستخدام</summary><ol><li>اختر المسار أولًا. تظهر قائمة المرحلة بعده، ثم الصف، ثم الفصل. تغيير اختيار أعلى يمسح ما بعده.</li><li>المراحل والصفوف ثابتة. يمكنك إضافة أي عدد من الفصول باسم وسعة محددين لكل فصل.</li><li>افتح الفصل لترى أعضاءه وتضيف من طلاب الصف غير الملحقين. أو حدد الطلاب أولًا ثم اختر فصلهم.</li><li>كل طالب يظهر داخل فصله فقط، ولا ننقل الإسنادات تلقائيًا. تُرفض الدفعة كلها عند التعارض أو نقص السعة.</li><li>إسناد المعلم مرتبط بالمادة. قبل إزالة عضوية طالب، أزل إسناداته الفردية صراحة. الطالب غير النشط يحتفظ بمقعده حتى إزالة عضويته.</li></ol><p>نوع التعليم منفصل عن النظام أو المنهج. المسارات والمراحل الجديدة تحتاج ربطًا صريحًا بالتسجيل والتخصصات. هذه السجلات لا تنشئ حجوزات أو حصصًا جماعية ولا تغيّر الفصل الافتراضي.</p></details>'+
   '<div class="school-setup-grid school-path-flow">'+panels+'</div>');
+}
+
+export function adminEnrollmentError(p,message,destination){
+ return shell(p,'school','مراجعة إضافة الطلاب','تعذّر إكمال الإضافة.',note(e(message),true)+href(destination,'العودة والمتابعة','btn')+`<p class="adm-help">ستعود إلى الفصل نفسه بقائمة محدثة. راجع الإتاحة والسعة وحدد الطلاب مجددًا؛ لا تُعاد محاولة الإضافة تلقائيًا.</p>`);
 }
 
 export function adminSchoolEnrollment(p,s,selection){

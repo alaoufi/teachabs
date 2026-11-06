@@ -86,8 +86,9 @@ export function createSchoolIndividuals({db,one,all,run,transaction,requireAcces
    run('DELETE FROM school_teacher_students WHERE id=?',row.id);audit(a,'school.individuals.removed',row.id,{childId:row.child,subject:row.subject,teacherId:row.teacher,classId:row.class_id});
   });
  }
- const assertClassTeacherCompatible=(classId,subject,teacherId)=>check(!one('SELECT id FROM school_teacher_students WHERE class_id=? AND subject=? AND teacher<>? LIMIT 1',classId,subject,teacherId),'يوجد طالب مسند فرديًا لمعلم آخر في المادة نفسها. أزل الإسناد الفردي صراحة قبل تغيير معلم الفصل.',409);
+ const classTeacherCompatible=(classId,subject,teacherId)=>!one('SELECT id FROM school_teacher_students WHERE class_id=? AND subject=? AND teacher<>? LIMIT 1',classId,subject,teacherId);
+ const assertClassTeacherCompatible=(classId,subject,teacherId)=>check(classTeacherCompatible(classId,subject,teacherId),'يوجد طالب مسند فرديًا لمعلم آخر في المادة نفسها. أزل الإسناد الفردي صراحة قبل تغيير معلم الفصل.',409);
  const assertStudentRemovable=(childId,classId)=>check(!one('SELECT id FROM school_teacher_students WHERE child=? AND class_id=? LIMIT 1',childId,classId),'للطالب إسنادات فردية مرتبطة بهذا الفصل. أزلها من «إسناد المعلمين للطلاب» أولًا ثم أزل عضويته؛ لن تُحذف تلقائيًا.',409);
  const assertStudentEnrollmentCompatible=(childId,classId)=>check(!one('SELECT d.id FROM school_teacher_students d LEFT JOIN school_teacher_assignments t ON t.class_id=? AND t.subject=d.subject WHERE d.child=? AND (d.class_id<>? OR (t.teacher IS NOT NULL AND t.teacher<>d.teacher)) LIMIT 1',classId,childId,classId),'إسنادات الطالب الفردية لا تطابق الفصل أو معلم مادته. راجعها قبل تغيير عضويته.',409);
- return {schoolTeacherStudents,assignSchoolTeacherStudents,removeSchoolTeacherStudent,assertClassTeacherCompatible,assertStudentRemovable,assertStudentEnrollmentCompatible};
+ return {schoolTeacherStudents,assignSchoolTeacherStudents,removeSchoolTeacherStudent,classTeacherCompatible,assertClassTeacherCompatible,assertStudentRemovable,assertStudentEnrollmentCompatible};
 }

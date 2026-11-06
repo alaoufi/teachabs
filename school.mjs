@@ -6,7 +6,7 @@ const validStudentId=value=>typeof value==='string'&&/^[\da-f]{8}-[\da-f]{4}-[\d
 export const SCHOOL_PERMISSIONS={'school.individuals':'إسناد المعلمين للطلاب فرديًا أو جماعيًا','school.read':'عرض الصفوف والفصول','school.tracks':'إضافة المسارات التعليمية','school.capacity':'تعديل سعة الفصول','school.structure':'إنشاء الصفوف والفصول','school.lifecycle':'تعديل وأرشفة سجلات الفصول','school.teachers':'إسناد معلمي الفصول','school.students':'إسناد الطلاب للفصول','school.supervision':'إسناد المعلمين للمشرفين'};
 export function createSchoolStore({db,one,all,run,transaction,requireAccess,audit,check,subjects}){
  ensureSchoolSchema({db,one,all,run,transaction});
- const {assertClassTeacherCompatible,assertStudentRemovable,assertStudentEnrollmentCompatible,...individuals}=createSchoolIndividuals({db,one,all,run,transaction,requireAccess,audit,check,subjects});
+ const {classTeacherCompatible,assertClassTeacherCompatible,assertStudentRemovable,assertStudentEnrollmentCompatible,...individuals}=createSchoolIndividuals({db,one,all,run,transaction,requireAccess,audit,check,subjects});
  const classSelect="SELECT c.*,g.grade,g.scope,g.stage,g.track_id,t.name trackName,t.education_type educationType,t.curriculum_name curriculumName,t.legacy legacyTrack,COALESCE(l.state,'active') state,COALESCE(l.revision,0) revision,k.capacity,(SELECT COUNT(*) FROM school_student_assignments x WHERE x.class_id=c.id) studentCount FROM school_classes c JOIN school_grades g ON g.id=c.grade_id JOIN school_tracks t ON t.id=g.track_id AND t.scope=g.scope LEFT JOIN school_class_lifecycle l ON l.class_id=c.id LEFT JOIN school_class_capacity k ON k.class_id=c.id";
  const classroom=(a,id)=>{const c=one(classSelect+' WHERE c.id=? AND g.scope=?',id,a.scope);check(c,'الفصل غير متاح.',404);return c;};
  const validCapacity=value=>Number.isSafeInteger(value)&&value>=1;
@@ -87,6 +87,15 @@ export function createSchoolStore({db,one,all,run,transaction,requireAccess,audi
   audit(a,'school.class.updated',c.id,{before:{name:c.name,state:c.state},after:{name,state}});
   return {id:c.id,revision:c.revision+1};
  });}
+ function schoolClassTeachers(actor,{classId,subject}){
+  const a=requireAccess(actor,'school.teachers');check(validStudentId(classId),'اختر الفصل من القائمة.');const c=classroom(a,classId);
+  check(c.state==='active','الفصل مؤرشف. أعد إتاحته قبل الإسناد.',409);requireCompatible(c);
+  check(typeof subject==='string'&&Object.hasOwn(subjects,subject),'اختر مادة صحيحة.');
+  if(one('SELECT 1 FROM school_teacher_assignments WHERE class_id=? AND subject=?',classId,subject))return {classId,subject,teachers:[],reason:'assigned'};
+  const qualified=all("SELECT u.id,u.name,u.subjects,u.grades FROM users u LEFT JOIN account_status s ON s.user=u.id WHERE u.scope=? AND u.role='teacher' AND COALESCE(s.status,'active')='active' ORDER BY u.name,u.id",a.scope).filter(t=>JSON.parse(t.subjects||'[]').includes(subject)&&JSON.parse(t.grades||'[]').includes(c.grade));
+  const teachers=qualified.filter(t=>classTeacherCompatible(classId,subject,t.id)).map(({id,name})=>({id,name}));
+  return {classId,subject,teachers,reason:teachers.length?'':qualified.length?'individual-conflict':'no-qualified'};
+ }
  function assignSchoolTeacher(actor,{classId,teacherId,subject}){return write(actor,'school.teachers',a=>{const c=classroom(a,classId),t=teacher(a,teacherId);check(c.state==='active','الفصل مؤرشف. أعد إتاحته قبل الإسناد.',409);requireCompatible(c);check(Object.hasOwn(subjects,subject)&&JSON.parse(t.subjects||'[]').includes(subject)&&JSON.parse(t.grades||'[]').includes(c.grade),'المادة أو الصف خارج تخصص المعلم.');check(!one('SELECT teacher FROM school_teacher_assignments WHERE class_id=? AND subject=?',classId,subject),'يوجد إسناد لهذه المادة. أزله أولًا.',409);assertClassTeacherCompatible(classId,subject,teacherId);run('INSERT INTO school_teacher_assignments VALUES(?,?,?)',classId,subject,teacherId);audit(a,'school.teacher.assigned',classId,{subject,teacherId});});}
  function assignSchoolStudent(actor,{classId,childId}){return write(actor,'school.students',a=>{const c=classroom(a,classId),ch=one("SELECT ch.* FROM children ch JOIN users p ON p.id=ch.parent LEFT JOIN child_status s ON s.child=ch.id WHERE ch.id=? AND p.scope=? AND COALESCE(s.status,'active')='active'",childId,a.scope);check(c.state==='active','الفصل مؤرشف. أعد إتاحته قبل الإسناد.',409);check(ch,'الطالب غير متاح.',404);requireCompatible(c);check(ch.grade===c.grade,'صف الطالب لا يطابق الفصل.');check(!one('SELECT child FROM school_student_assignments WHERE child=?',childId),'الطالب مسند لفصل بالفعل. أزل الإسناد أولًا.',409);check(c.capacity!==null,'لم تُحدد سعة الفصل. اطلب من صاحب الصلاحية تحديدها قبل إسناد طالب جديد.',409);check(c.studentCount<c.capacity,'اكتملت سعة الفصل. لا يمكن إضافة طالب قبل تعديل الحد الأقصى أو إزالة إسناد.',409);assertStudentEnrollmentCompatible(childId,classId);run('INSERT INTO school_student_assignments VALUES(?,?)',childId,classId);audit(a,'school.student.assigned',childId,{classId});});}
  function assignSchoolSupervisor(actor,{teacherId,supervisorId}){return write(actor,'school.supervision',a=>{teacher(a,teacherId);check(one('SELECT u.id FROM users u JOIN admin_members m ON m.user=u.id WHERE u.id=? AND u.scope=? AND m.active=1',supervisorId,a.scope),'المشرف غير متاح.',404);check(!one('SELECT teacher FROM school_supervision WHERE teacher=?',teacherId),'المعلم مسند لمشرف بالفعل. أزل الإسناد أولًا.',409);run('INSERT INTO school_supervision VALUES(?,?)',teacherId,supervisorId);audit(a,'school.supervisor.assigned',teacherId,{supervisorId});});}
@@ -97,5 +106,5 @@ export function createSchoolStore({db,one,all,run,transaction,requireAccess,audi
   for(const childId of childIds)assignSchoolStudent(actor,{classId,childId});
   return {assigned:childIds.length};
  });}
- return {...individuals,school,initializeSchoolLegacyTrack,addSchoolTrack,addSchoolGrade,addSchoolClass,updateSchoolClassCapacity,updateSchoolClass,assignSchoolTeacher,assignSchoolStudent,assignSchoolStudents,assignSchoolSupervisor,removeSchoolAssignment};
+ return {...individuals,school,initializeSchoolLegacyTrack,addSchoolTrack,addSchoolGrade,addSchoolClass,updateSchoolClassCapacity,updateSchoolClass,schoolClassTeachers,assignSchoolTeacher,assignSchoolStudent,assignSchoolStudents,assignSchoolSupervisor,removeSchoolAssignment};
 }
