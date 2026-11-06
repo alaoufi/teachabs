@@ -58,6 +58,14 @@ jobs:
             echo 'Software CPU emulation only: no KVM permission or security setting changes.'
           } > "$RUNNER_TEMP/native-review-diagnostics/host.txt"
 
+      - name: Install missing emulator runtime library from Ubuntu repositories
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo apt-get update -qq > "$RUNNER_TEMP/native-review-diagnostics/apt-update.log" 2>&1
+          sudo apt-get install -y --no-install-recommends libpulse0 \
+            > "$RUNNER_TEMP/native-review-diagnostics/apt-install.log" 2>&1
+
       - name: Install official emulator packages only if licenses are already accepted
         shell: bash
         run: |
