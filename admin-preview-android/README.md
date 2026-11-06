@@ -1,10 +1,10 @@
-# Administration offline design preview 013
+# Administration offline design review 014
 
-This is a **read-only design preview**, not a connected administrative app. It has 19 synthetic screens from the administration branch, including the compact floating hub, fields, classroom-record cards, permissions and agents. Every screen states that it is a preview with no saving and no server connection. Inputs and action buttons are disabled. Navigation, scrolling, native details/help disclosures and Android Back work.
+This is a **read-only review candidate**, not a connected administrative app. Do not deliver it as corrected until native Android visual review passes. See ADMIN-REVIEW-014.md in the repository root for the release gate and emulator capture procedure. It has 19 synthetic screens from the administration branch, including the compact floating hub, fields, classroom-record cards, permissions and agents. Every screen states that it is a preview with no saving and no server connection. Inputs and action buttons are disabled. Navigation, scrolling, native details/help disclosures and Android Back work.
 
 ## Isolation
 - Separate Android application ID: `app.teachabs.adminpreview`.
-- App label: `الإدارة · معاينة`; version `0.1.3-preview` (13).
+- App label: `الإدارة · معاينة`; version `0.1.4-review` (14).
 - No Android permissions, including no INTERNET permission. No account, location, storage, camera or microphone access.
 - WebView disables JavaScript, file/content access, DOM storage, form storage, cookies and network loads. It serves GET requests only from a fixed exact allowlist of packaged assets at a reserved `.invalid` origin. That name is not a live service and is never fetched.
 - The generator opens only `:memory:` with synthetic demo records. It removes hidden tokens/fields, replaces forms with non-submitting groups, disables action buttons and fields, and replaces non-packaged links with disabled text.
@@ -38,7 +38,7 @@ Before delivery, verify the APK signature, application ID, version, absence of p
 - Node generation/security tests pass. The full suite is recorded in the stage 013 handoff.
 - Independent review checked synthetic-only generation, allowed routes, disabled actions, network restrictions and separate app identity.
 - The source author environment has no Android SDK/compiler, so no APK build or Android runtime success is claimed until the isolated desktop build verifies them.
-- Browser QA passed the parent administration version 012 at 320/390/768/1280. This iteration additionally balances the last four mobile tiles into two rows of two and clarifies “التعليم” in the guide; recheck those changes visually.
+- Browser QA passed the parent administration version 012 at 320/390/768/1280. Review 014 changes narrow-screen card layout and typography throughout administration. The earlier browser result is not approval of these changes or Android rendering.
 
 ## Numbered recovery
-Base: `23b68b198e37c33170dc066f04920f70a943ca9b` (administration 012). Changes are confined to this standalone preview directory, a preview test, and a small administration view/CSS refinement. No PR, merge, Render operation or production deployment is part of this package. Preview assets/builds are generated and ignored by Git; the complete generator and build source are retained on the administration branch.
+Review base: `6537b609441fbe4639c7d51c6cd0bee2b4cc2d5b` (preview 013). Changes are confined to this standalone preview directory, a preview test, and a small administration view/CSS refinement. No PR, merge, Render operation or production deployment is part of this package. Preview assets/builds are generated and ignored by Git; the complete generator and build source are retained on the administration branch.

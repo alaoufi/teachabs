@@ -247,3 +247,72 @@ body:has(.adm) main{margin-top:0;padding-top:20px;padding-bottom:36px}
  .adm .adm-hub .adm-section-grid:has(>.adm-section-card:nth-child(10):last-child)>.adm-section-card:nth-last-child(-n+4){grid-column:span 3}
  .adm .adm-hub .adm-section-card:only-child{grid-column:1/-1;width:100%;max-width:180px;justify-self:center}
 }
+
+/* Administration 014: readable card titles at narrow widths and larger text. */
+.adm :is(h1,h2,h3){overflow-wrap:break-word;word-break:normal;hyphens:none}
+.adm .school-class-top{display:grid;grid-template-columns:34px minmax(0,1fr);align-items:start;gap:5px 9px}
+.adm .school-class-top>.school-class-mark{grid-column:1;grid-row:1;width:34px;height:34px}
+.adm .school-class-top>.school-class-title{grid-column:2;grid-row:1}
+.adm .school-class-top h3{font-size:15px;line-height:1.55;font-weight:650}
+.adm .school-class-top small{font-size:12px;line-height:1.6;margin-top:2px}
+.adm .school-class-top>.adm-badge{grid-column:2;grid-row:2;justify-self:start;margin:2px 0 0;max-width:100%;font-size:11px;line-height:1.6;padding:3px 8px}
+.adm .school-class-edit{margin-top:10px}.adm .school-class-edit>p{margin:8px 0;line-height:1.65}
+.adm .school-class-card{padding:12px}
+.adm .adm-agent-head{display:grid;grid-template-columns:39px minmax(0,1fr);align-items:start;gap:5px 9px}
+.adm .adm-agent-head>.adm-avatar{grid-column:1;grid-row:1}
+.adm .adm-agent-head>div{grid-column:2;grid-row:1}
+.adm .adm-agent-head>.adm-badge{grid-column:2;grid-row:2;justify-self:start;margin:2px 0 0;max-width:100%;font-size:11px;line-height:1.6}
+.adm .adm-agent-head h2{font-size:15px;line-height:1.55}
+.adm .adm-agent-head p{font-size:12px;line-height:1.65}
+.adm .adm-audit-top{align-items:start;flex-wrap:wrap}
+.adm .adm-audit-top h2{flex:1 1 200px;min-width:0}
+.adm .adm-audit-top time{white-space:normal;line-height:1.6}
+.adm .adm-support-top{align-items:start;flex-wrap:wrap}
+.adm .adm-support-badges{min-width:0}.adm .adm-support-badges .adm-badge{white-space:normal;max-width:100%}
+.adm .adm-field,.adm .adm-check,.adm summary{overflow-wrap:break-word;word-break:normal}
+@media(max-width:700px){
+ .adm{font-size:14px;line-height:1.65}
+ .adm .adm-workspace{padding:10px}.adm .adm-workspace .adm-heading h1{font-size:21px;line-height:1.5}
+ .adm .adm-workspace .adm-heading p{font-size:13px;line-height:1.65}
+ .adm .adm-heading-icon{width:34px;height:34px}.adm .adm-heading-icon svg{width:23px;height:23px}
+ .adm .adm-panel{padding:12px}.adm .adm-panel-head h2,.adm .school-step-head h2{font-size:16px;line-height:1.55}
+ .adm .school-step-head,.adm .school-step-body{padding:10px}
+ .adm .school-class-card{padding:12px}.adm .school-class-top h3{font-size:15px}
+ .adm .school-class-top>.adm-badge{margin-inline-start:0}
+ .adm .adm-note{font-size:12px;line-height:1.7;padding:8px 10px;margin-bottom:10px}
+ .adm .adm-record{display:grid;grid-template-columns:34px minmax(0,1fr);align-items:start;gap:7px 9px;padding:12px 0}
+ .adm .adm-record>.adm-avatar,.adm .adm-record>.adm-ledger-sign,.adm .adm-record>.adm-card-icon{grid-column:1;grid-row:1;width:34px;height:34px;font-size:17px}
+ .adm .adm-record-main{grid-column:2;grid-row:1;overflow-wrap:break-word}
+ .adm .adm-record :is(h2,h3){font-size:15px;line-height:1.55}
+ .adm .adm-record p,.adm .adm-record small{font-size:12px;line-height:1.65}
+ .adm .adm-record>.adm-amount{grid-column:2;justify-items:start;gap:4px}
+ .adm .adm-record>.adm-badge{grid-column:2;justify-self:start;white-space:normal;max-width:100%}
+ .adm .adm-record-actions{grid-column:1/-1;display:flex;flex-direction:row;justify-content:flex-start;align-items:center;width:auto;padding:4px 0 0;gap:8px}
+ .adm .adm-record-actions .adm-badge{white-space:normal}
+ .adm .adm-record-actions .btn,.adm .adm-record-actions .outline{min-height:44px;font-size:13px;line-height:1.6}
+ .adm .adm-task .adm-form{grid-template-columns:1fr}
+ .adm .adm-task .adm-field{font-size:13px}.adm .adm-task .btn{width:auto;justify-self:start;font-size:13px;min-height:44px}
+ .adm .adm-task h3,.adm .adm-teacher h3,.adm .adm-library-card h3,.adm .adm-support-ticket h3,.adm .adm-audit-event h2{font-size:15px;line-height:1.55}
+ .adm .adm-agent-card,.adm .adm-support-ticket,.adm .adm-library-card{padding:12px}
+ .adm .adm-agent-head{margin-bottom:12px;padding-bottom:10px}
+ .adm .adm-agent-head>.adm-badge{margin-inline-start:0}
+ .adm .adm-workspace .adm-stats strong{font-size:19px;line-height:1.5}
+ .adm .adm-section-guide ol{font-size:13px;line-height:1.75;margin:10px 12px}
+ .adm .adm-form-grid,.adm .school-step .adm-form{gap:8px 10px}
+ .adm .adm-form-actions{gap:8px}
+}
+@media(max-width:480px){
+ .adm .school-step .adm-form,.adm .school-class-edit>.adm-form{grid-template-columns:1fr}
+ .adm .adm-student-grid,.adm .adm-teachers,.adm .adm-agent-grid,.adm .adm-library-grid{grid-template-columns:1fr}
+ .adm .adm-hub .adm-section-card h2{font-size:14px;line-height:1.6}
+}
+@media(max-width:480px){
+ .adm .adm-hub .adm-section-card{grid-column:span 3}
+ .adm .adm-hub .adm-section-card:only-child{grid-column:1/-1}
+}
+@media(max-width:480px){
+ .adm .adm-workspace .adm-stats{grid-template-columns:1fr;gap:8px}
+ .adm .adm-workspace .adm-stats>div{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:2px 10px;padding:10px 12px}
+ .adm .adm-workspace .adm-stats strong{margin:0;font-size:18px;overflow-wrap:normal;white-space:nowrap}
+ .adm .adm-workspace .adm-stats small{grid-column:2;font-size:12px}
+}

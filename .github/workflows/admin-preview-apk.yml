@@ -49,6 +49,15 @@ jobs:
       - name: Run administration, school and offline-preview tests
         run: node --test test/admin*.test.mjs test/school*.test.mjs
 
+      - name: Inspect existing emulator capabilities without changing access
+        shell: bash
+        run: |
+          id
+          ls -l /dev/kvm || true
+          if [ -r /dev/kvm ] && [ -w /dev/kvm ]; then echo 'KVM_ACCESS=available'; else echo 'KVM_ACCESS=unavailable'; fi
+          find "$ANDROID_HOME/system-images" -maxdepth 4 -name package.xml -print 2>/dev/null || true
+          "$ANDROID_HOME/emulator/emulator" -version || true
+
       - name: Build the isolated offline preview
         shell: bash
         run: |
