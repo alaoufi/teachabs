@@ -15,6 +15,9 @@ import android.os.Environment;
 import android.view.View;
 import android.view.WindowManager;
 import android.webkit.CookieManager;
+import android.webkit.JavascriptInterface;
+import java.net.HttpURLConnection;
+import java.net.URL;
 import android.webkit.PermissionRequest;
 import android.webkit.URLUtil;
 import android.webkit.ValueCallback;
@@ -43,7 +46,7 @@ public class MainActivity extends Activity {
     static final String HOME = "https://abdulrahman-edu-trial.onrender.com/";
     static final String HOST = "abdulrahman-edu-trial.onrender.com";
     static final int FILE_REQUEST = 41, MIC_REQUEST = 42;
-    static final String VERSION = "0.7";
+    static final String VERSION = "0.8";
 
     WebView web;
     ProgressBar progress;
@@ -91,6 +94,7 @@ public class MainActivity extends Activity {
         CookieManager.getInstance().setAcceptCookie(true);
         CookieManager.getInstance().setAcceptThirdPartyCookies(web, false);
 
+        web.addJavascriptInterface(new Bridge(), "App");
         web.setWebViewClient(new WebViewClient() {
             @Override
             public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest req) {
@@ -186,8 +190,38 @@ public class MainActivity extends Activity {
     @Override
     protected void onSaveInstanceState(Bundle out) { super.onSaveInstanceState(out); web.saveState(out); }
 
-    /** The app's own start screen: teacher straight to «دروسي», student to the class code. Served as the site's origin. */
-    void showStart() { web.loadDataWithBaseURL(HOME, START, "text/html", "utf-8", null); }
+    /** The app's own start screen: its buttons ask the app (not the page) to open the site, so a tap always does something. */
+    void showStart() { web.loadDataWithBaseURL(HOME, START, "text/html", "utf-8", null); warmUp(); }
+
+    volatile String serverState = "waiting";
+    /** Wakes the trial server in the background (it sleeps when idle) so the first tap opens quickly. */
+    void warmUp() {
+        serverState = "waiting";
+        new Thread(() -> {
+            String state = "error";
+            try {
+                HttpURLConnection c = (HttpURLConnection) new URL(HOME + "join").openConnection();
+                c.setConnectTimeout(90000); c.setReadTimeout(90000);
+                if (c.getResponseCode() < 500) state = "ready";
+                c.disconnect();
+            } catch (Exception e) { state = "error"; }
+            serverState = state;
+        }).start();
+    }
+
+    /** Called by the start screen. Only two fixed destinations. */
+    class Bridge {
+        @JavascriptInterface public String state() { return serverState; }
+        @JavascriptInterface public String version() { return VERSION; }
+        @JavascriptInterface public void go(String who) {
+            ui.post(() -> {
+                label.setText("جارٍ الفتح…"); loading.setVisibility(View.VISIBLE);
+                ui.removeCallbacks(slowNote); ui.postDelayed(slowNote, 5000);
+                web.loadUrl(HOME + ("teacher".equals(who) ? "start/teacher" : "join"));
+            });
+        }
+        @JavascriptInterface public void retry() { ui.post(() -> warmUp()); }
+    }
 
     @Override
     public void onBackPressed() {
@@ -203,17 +237,18 @@ public class MainActivity extends Activity {
     static final String START = "<!doctype html><html lang=ar dir=rtl><head><meta charset=utf-8><meta name=viewport content='width=device-width,initial-scale=1'><title>احتراف التدريس</title>"
         + "<style>body{margin:0;font-family:sans-serif;background:linear-gradient(160deg,#155c4d,#0f3d34);color:#fff;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px;box-sizing:border-box}"
         + ".c{width:100%;max-width:420px;text-align:center}h1{font-size:30px;margin:6px 0 4px}p{opacity:.85;margin:0 0 26px}img{width:84px;height:84px;border-radius:20px;background:#fff}"
-        + "form,a{display:block;margin:12px 0}button,a{width:100%;box-sizing:border-box;font-size:22px;font-weight:700;padding:20px;border-radius:18px;border:0;text-decoration:none;cursor:pointer}"
-        + ".t{background:#fff;color:#155c4d}.s{background:#e8890c;color:#fff}small{display:block;margin-top:18px;opacity:.7}.st{margin:18px 0 0;font-size:16px;opacity:.9}.st.ok{color:#9fe0b4}.busy{opacity:.8}</style></head><body><div class=c>"
+        + "button{display:block;width:100%;box-sizing:border-box;font-size:22px;font-weight:700;padding:20px;margin:12px 0;border-radius:18px;border:0;cursor:pointer}"
+        + ".t{background:#fff;color:#155c4d}.s{background:#e8890c;color:#fff}button:active{transform:scale(.98)}small{display:block;margin-top:18px;opacity:.7}"
+        + ".st{margin:18px 0 0;font-size:16px;opacity:.9}.st.ok{color:#9fe0b4}.st.bad{color:#ffc9b8}</style></head><body><div class=c>"
         + "<img src='/icon-192.png' alt=''><h1>احتراف التدريس</h1><p>السبورة الواحدة للحصة</p>"
-        + "<form method=post action='/demo/start'><input type=hidden name=role value=teacher><input type=hidden name=next value='/teach/plans'><button class=t>👩‍🏫 أنا المعلم</button></form>"
-        + "<a class=s href='/join'>🎒 أنا الطالب</a>"
+        + "<button class=t onclick=\"App.go('teacher')\">👩‍🏫 أنا المعلم</button>"
+        + "<button class=s onclick=\"App.go('student')\">🎒 أنا الطالب</button>"
         + "<p id=st class=st>⏳ جارٍ تجهيز الخادم…</p>"
         + "<small>الإصدار " + VERSION + " · نسخة تجريبية</small></div>"
-        // Wake the trial server while the user reads the screen; show it is ready; give instant feedback on a tap.
-        + "<script>var st=document.getElementById('st'),t0=Date.now(),slow=setTimeout(function(){st.textContent='⏳ الخادم يستيقظ بعد خمول، قد يستغرق حتى دقيقة…'},5000);"
-        + "fetch('/join',{cache:'no-store'}).then(function(){clearTimeout(slow);st.textContent='✓ جاهز';st.className='st ok'}).catch(function(){clearTimeout(slow);st.textContent='⚠ تعذّر الاتصال، تأكد من الإنترنت'});"
-        + "document.querySelectorAll('button,a').forEach(function(b){b.addEventListener('click',function(){b.classList.add('busy');b.textContent='⏳ جارٍ الفتح…'})});</script></body></html>";
+        + "<script>var st=document.getElementById('st'),n=0;setInterval(function(){var s=App.state();n++;"
+        + "if(s=='ready'){st.textContent='✓ جاهز، اختر';st.className='st ok'}"
+        + "else if(s=='error'){st.innerHTML='⚠ تعذّر الوصول للخادم. <u onclick=App.retry()>إعادة المحاولة</u>';st.className='st bad'}"
+        + "else if(n>10){st.textContent='⏳ الخادم يستيقظ بعد خمول، قد يستغرق حتى دقيقة…'}},500)</script></body></html>";
 
     static final String OFFLINE = "<!doctype html><html lang=ar dir=rtl><meta name=viewport content='width=device-width,initial-scale=1'>"
         + "<body style='font-family:sans-serif;background:#faf8f2;color:#163d34;display:flex;align-items:center;justify-content:center;min-height:90vh;text-align:center;padding:20px'>"

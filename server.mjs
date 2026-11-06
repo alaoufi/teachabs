@@ -95,6 +95,13 @@ export function createApp(store,{origin=process.env.APP_ORIGIN}={}) {
           return html('الضوء والظل · علوم الصف الرابع',scienceShadowLesson());
         }
         if(route==='/demo')return html('شاشات التجربة',demoHub(u,q.role));
+        // The Android app's «أنا المعلم»: opens the trial teacher straight into «دروسي» (trial data only; a real account is never replaced).
+        if(route==='/start/teacher'){
+          if(u?.role==='teacher')return redirect('/teach/plans');
+          if(u&&!u.scope)return redirect('/app');
+          limit(req,'demo',15);
+          return enter(u?.role==='parent'?store.switchTour(u.id):store.tour().teacher,'/teach/plans');
+        }
         if(/^\/board-assets\/[A-Za-z0-9_./-]+$/.test(route)&&!route.includes('..')){
           const ext=route.split('.').pop();const type={js:'text/javascript',css:'text/css',woff2:'font/woff2',png:'image/png'}[ext];if(!type)throw new UserError('Not found',404);
           const asset=await readFile(new URL('./public'+route,import.meta.url));return await serveAsset(req,res,asset,type,/^\/board-assets\/(chunks|assets)\/[^/]+-[A-Z0-9]{8}\.[a-z0-9]+$/.test(route));
