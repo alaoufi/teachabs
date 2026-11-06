@@ -88,7 +88,7 @@ export function applyCamera(camera, c, {animate = true} = {}) {
  * content: the public (or teacher) step. options.teacher shows hidden board items dimmed;
  * options.shadow is the activity state to draw; options.display is the questions display.
  */
-export function renderStep(container, content, {teacher = false, revealed = null, shadow = null, display = null} = {}) {
+export function renderStep(container, content, {teacher = false, revealed = null, shadow = null, display = null, places = {}} = {}) {
   if (!content) { container.replaceChildren(); delete container.dataset.step; return; }
   const title = el('h2', {class: 'gl-step-title', text: content.title});
   if (content.type !== 'interactive') { container.replaceChildren(); delete container.dataset.step; }
@@ -127,7 +127,10 @@ export function renderStep(container, content, {teacher = false, revealed = null
         ? el('figure', {class: 'gl-item gl-item-image'}, el('img', {src: item.image, alt: item.caption || 'صورة مجهزة'}), item.caption ? el('figcaption', {text: item.caption}) : null)
         : el('div', {class: 'gl-item gl-item-text', text: item.text});
       if (hidden) { card.classList.add('is-hidden'); card.append(el('span', {class: 'gl-badge', text: 'مخفي عن الطلاب'})); }
-      grid.append(card);
+      card.dataset.item = item.id;
+      const at = places?.[item.id];
+      if (at) { card.classList.add('is-placed'); card.style.left = at.x / 10 + '%'; card.style.top = at.y / 6 + '%'; container.append(card); }
+      else grid.append(card);
     }
     if (!content.items.length) grid.append(el('p', {class: 'gl-wait-inline', text: 'سيعرض المعلم العناصر هنا.'}));
     container.append(title, grid);

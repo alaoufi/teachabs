@@ -15,7 +15,7 @@ export function plansPage(plans, sessions) {
    <form method="post" action="/teach/plans/${p.id}/start"><button class="btn">بدء الحصة</button></form></div></li>`).join('') : '<li class="gl-empty">لا توجد دروس بعد. ابدأ بالنموذج الجاهز ثم عدّله.</li>';
   const live = sessions.length ? `<h2>حصص سابقة وجارية</h2><ul class="gl-list">${sessions.map(s => `<li class="gl-row"><div><b>${e(s.title)}</b><small>الرمز ${e(s.code)} · ${dateText(s.created)} · ${s.live ? 'جارية' : 'انتهى العرض'}</small></div><a class="outline" href="/teach/live/${e(s.code)}">فتح إدارة الحصة</a></li>`).join('')}</ul>` : '';
   return `${css}<section class="gl-wrap" dir="rtl"><div class="section-head welcome-panel"><div class="eyebrow">الحصة الجماعية</div><h1>دروسي</h1>
-  <p>رتّب درسك قبل الحصة بالتسلسل: ${STEP_ORDER.map(t => STEP_TYPES[t].short).join(' ← ')}. أثناء الحصة تتحكم بما يظهر للطلاب وما يختفي.</p></div>
+  <p>رتّب درسك قبل الحصة بالتسلسل: ${STEP_ORDER.map(t => STEP_TYPES[t].short).join(' ← ')}. أثناء الحصة تتحكم بما يظهر للطلاب وما يختفي. <a class="textlink" href="/guide">دليل الاستخدام</a></p></div>
   <div class="gl-actions"><form method="post" action="/teach/plans/new"><button class="btn">درس جديد من النموذج الجاهز (الضوء والظل)</button></form>
   <button type="button" class="outline" id="plans-import-btn">استيراد درس من ملف</button><input type="file" id="plans-import" accept=".json,application/json" hidden></div>
   <p id="plans-status" class="gl-status" role="status" aria-live="polite" hidden></p>
@@ -26,7 +26,7 @@ export function plansPage(plans, sessions) {
 export function plannerPage(id, title) {
   return `${css}<section class="gl-wrap" dir="rtl" id="planner" data-id="${e(id)}">
   <div class="gl-top"><div><div class="eyebrow">ترتيب الدرس قبل الحصة</div><h1 id="pl-heading">${e(title)}</h1></div>
-  <div class="gl-actions"><a class="outline" href="/teach/plans">دروسي</a><button type="button" class="outline" id="pl-export">تنزيل الدرس كملف</button><button type="button" class="outline" id="pl-import-btn">استيراد من ملف</button><input type="file" id="pl-import" accept=".json,application/json" hidden><button type="button" class="btn" id="pl-save">حفظ الدرس</button></div></div>
+  <div class="gl-actions"><a class="textlink" href="/guide" target="_blank" rel="noopener">دليل الاستخدام</a><a class="outline" href="/teach/plans">دروسي</a><button type="button" class="outline" id="pl-export">تنزيل الدرس كملف</button><button type="button" class="outline" id="pl-import-btn">استيراد من ملف</button><input type="file" id="pl-import" accept=".json,application/json" hidden><button type="button" class="btn" id="pl-save">حفظ الدرس</button></div></div>
   <p id="pl-status" class="gl-status" role="status" aria-live="polite">جارٍ تحميل الدرس…</p>
   <div id="pl-draft" class="gl-draft" role="alert" hidden><span>يوجد تعديل محفوظ على هذا الجهاز لم يصل إلى الخادم.</span><button type="button" class="btn" id="pl-draft-restore">استعادة التعديل</button><button type="button" class="quiet" id="pl-draft-drop">تجاهل</button></div>
   <p class="gl-note">يحفظ هذا الجهاز مسودة تلقائية أثناء العمل. خادم التجربة قد يتوقف في أي وقت، فنزّل الدرس كملف بعد إنهائه واحتفظ به.</p>
@@ -47,7 +47,7 @@ export function teacherPage(code, title, base) {
   return `${css}<section class="gl-wrap gl-teacher" dir="rtl" id="gl-app" data-code="${e(code)}" data-role="teacher">
   <div class="gl-top gl-top-compact"><div><div class="eyebrow">إدارة الحصة الجماعية</div><h1>${e(title)}</h1>
    <p class="gl-join">رمز الحصة: <b class="gl-code">${e(code)}</b> · يدخل الطلاب من <a class="textlink" href="/join?code=${e(code)}" target="_blank" rel="noopener">${e(join)}</a></p></div>
-   <div class="gl-actions"><a class="outline" href="/teach/live/${e(code)}/display" target="_blank" rel="noopener">فتح شاشة العرض للسبورة الذكية ↗</a><button type="button" class="outline" id="gl-live">إنهاء العرض</button></div></div>
+   <div class="gl-actions"><a class="textlink" href="/guide" target="_blank" rel="noopener">دليل الاستخدام</a><a class="outline" href="/teach/live/${e(code)}/display" target="_blank" rel="noopener">فتح شاشة العرض للسبورة الذكية ↗</a><button type="button" class="outline" id="gl-live">إنهاء العرض</button></div></div>
   <p id="gl-status" class="gl-status" role="status" aria-live="polite">جارٍ الاتصال…</p>
   <div class="gl-layout">
    <nav class="gl-seq" aria-label="تسلسل الدرس"><h2>تسلسل الدرس</h2><ol id="gl-steps"></ol>

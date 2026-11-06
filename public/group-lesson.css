@@ -226,3 +226,15 @@ body:has(.gl-display) main{padding-top:10px}
 .gl-dialog input,.gl-dialog textarea{font:inherit;border:1px solid #b7ceca;border-radius:9px;padding:8px}
 .gl-dialog [hidden]{display:none!important}
 .gl-narr-quick{display:flex;flex-wrap:wrap;gap:6px;align-items:center;width:100%}.gl-narr-label{font-weight:700;color:#8a5a00;margin-inline-end:4px}
+/* stage 039: movable board cards and ink */
+.gl-item.is-placed{position:absolute;z-index:1;inline-size:30%;margin:0;box-shadow:0 8px 18px #0b1f2a33;transition:left .25s ease,top .25s ease}
+.gl-item.is-dragging{transition:none;box-shadow:0 14px 28px #0b1f2a55;outline:3px dashed #e8890c;cursor:grabbing;z-index:3}
+.gl-teacher .gl-board[data-tool=select] .gl-item{cursor:grab}
+.gl-ink .is-moving{opacity:.75}
+.gl-content[data-type=board]{position:absolute}
+.guide{max-width:920px;margin:auto;line-height:1.9}.guide-toc ol{columns:2;column-gap:24px;padding-inline-start:22px}.guide-toc a{font-weight:600}
+.guide-section{margin:14px 0;scroll-margin-top:12px}.guide-section h2{display:flex;gap:10px;align-items:center;font-size:20px;margin:0 0 6px}
+.guide-section h2 span{display:inline-grid;place-items:center;width:30px;height:30px;border-radius:50%;background:var(--forest);color:#fff;font-size:15px;flex:none}
+.guide-section li{margin:5px 0}.guide kbd{font-family:inherit;font-size:.85em;background:#fff;border:1px solid #b7ceca;border-bottom-width:3px;border-radius:6px;padding:0 6px;white-space:nowrap}
+.guide-foot{display:flex;gap:12px;flex-wrap:wrap;align-items:center;margin:16px 0}
+@media(max-width:600px){.guide-toc ol{columns:1}}

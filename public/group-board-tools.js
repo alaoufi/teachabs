@@ -136,9 +136,15 @@ export function attachBoardTools({mode, send = () => {}, items = () => [], canIn
       if (state.pendingText) { placeText(state.pendingText, point); state.pendingText = null; onStatus('وُضع النص الجاهز.'); }
       else openTextbox(e, point);
     } else if (tool === 'eraser' && inking) { e.preventDefault(); erased.clear(); gesture = {type: 'erase'}; eraseAt(point); }
-    else if (tool === 'select' && inking && hit(point)?.kind === 'text') {
+    else if (tool === 'select' && inking && hit(point)) {
+      // Move any drawn line or typed text: preview with a transform, send the offset once on release.
       e.preventDefault(); const it = hit(point), node = ink.querySelector(`[data-id="${it.id}"]`);
-      gesture = {type: 'move', it, node, start: point, origin: [it.x, it.y]};
+      node?.classList.add('is-moving'); gesture = {type: 'move', it, node, start: point};
+    } else if (tool === 'select' && teacher && e.target.closest('.gl-item[data-item]')) {
+      // Prepared board cards can be dragged anywhere on the board.
+      e.preventDefault(); const card = e.target.closest('.gl-item[data-item]'), r = card.getBoundingClientRect(), ir = ink.getBoundingClientRect();
+      const origin = [(r.left - ir.left) / ir.width * BOARD.width, (r.top - ir.top) / ir.height * BOARD.height];
+      card.classList.add('is-dragging'); gesture = {type: 'card', card, start: point, origin, width: r.width / ir.width * 100};
     } else if (state.camera.z > 1 || tool === 'hand') {
       e.preventDefault(); gesture = {type: 'pan', last: {x: e.clientX, y: e.clientY}}; board.classList.add('is-panning');
     }
@@ -160,8 +166,13 @@ export function attachBoardTools({mode, send = () => {}, items = () => [], canIn
       gesture.live = next;
     } else if (gesture.type === 'erase') eraseAt(toBoard(e));
     else if (gesture.type === 'move') {
-      const p = toBoard(e); gesture.to = [gesture.origin[0] + p[0] - gesture.start[0], gesture.origin[1] + p[1] - gesture.start[1]];
-      gesture.node.setAttribute('x', gesture.to[0]); gesture.node.setAttribute('y', gesture.to[1]);
+      const p = toBoard(e); gesture.d = [p[0] - gesture.start[0], p[1] - gesture.start[1]];
+      gesture.node?.setAttribute('transform', `translate(${gesture.d[0].toFixed(1)} ${gesture.d[1].toFixed(1)})`);
+    } else if (gesture.type === 'card') {
+      const p = toBoard(e), c = gesture.card;
+      gesture.to = [Math.max(0, Math.min(BOARD.width - 40, gesture.origin[0] + p[0] - gesture.start[0])), Math.max(0, Math.min(BOARD.height - 30, gesture.origin[1] + p[1] - gesture.start[1]))];
+      if (!c.classList.contains('is-placed')) { c.classList.add('is-placed'); c.style.inlineSize = gesture.width + '%'; }
+      c.style.left = gesture.to[0] / 10 + '%'; c.style.top = gesture.to[1] / 6 + '%'; c.style.right = 'auto';
     } else if (gesture.type === 'pan') {
       const u = unitsPerPixel();
       setCamera({...state.camera, x: state.camera.x - (e.clientX - gesture.last.x) * u, y: state.camera.y - (e.clientY - gesture.last.y) * u});
@@ -174,7 +185,8 @@ export function attachBoardTools({mode, send = () => {}, items = () => [], canIn
     const g = gesture; gesture = null; board.classList.remove('is-panning');
     if (!g) return;
     if (g.type === 'draw') { g.live.classList.remove('is-live'); if (g.points.length >= 2) { g.live.classList.add('is-pending'); send({op: 'stroke', tool: g.tool, size: state.size, color: state.color, points: g.points}); } else g.live.remove(); }
-    if (g.type === 'move' && g.to) send({op: 'move', id: g.it.id, x: g.to[0], y: g.to[1]});
+    if (g.type === 'move') { g.node?.classList.remove('is-moving'); if (g.d && Math.hypot(...g.d) > 0.5) send({op: 'move', id: g.it.id, dx: Math.round(g.d[0] * 10) / 10, dy: Math.round(g.d[1] * 10) / 10}); }
+    if (g.type === 'card') { g.card.classList.remove('is-dragging'); if (g.to) send({op: 'place', item: g.card.dataset.item, x: g.to[0], y: g.to[1]}); }
   }
   board.addEventListener('pointerup', end); board.addEventListener('pointercancel', end);
 

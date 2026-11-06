@@ -48,9 +48,10 @@ function renderBoard() {
     else if (d.mode === 'correct') display = {mode: 'correct', prompt: q.prompt, options: q.options, answer: q.answer};
     else { const a = r.answers[d.student]?.[q.id]; display = {mode: 'spotlight', prompt: q.prompt, answer: a ? (q.kind === 'choice' ? q.options[a.choice] : a.text) : null, name: d.named ? nameOf(d.student) : null}; }
   }
-  const key = JSON.stringify([s.id, revealed, view.state.shadow, display]);
+  const places = view.state.places?.[s.id] || {};
+  const key = JSON.stringify([s.id, revealed, view.state.shadow, display, places]);
   if (key !== contentKey) {
-    contentKey = key; renderStep($('gl-content'), content, {teacher: true, revealed, shadow: view.state.shadow, display});
+    contentKey = key; renderStep($('gl-content'), content, {teacher: true, revealed, shadow: view.state.shadow, display, places});
     if (s.id !== lastStep) { $('gl-content').classList.remove('gl-enter'); void $('gl-content').offsetWidth; $('gl-content').classList.add('gl-enter'); }
   }
   if (s.id !== lastStep) { lastStep = s.id; tools.resetForStep(); renderSnippets(s); }

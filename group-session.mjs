@@ -76,10 +76,28 @@ export function teacherCommand(state, plan, cmd) {
       return addInk(s, step, {kind: 'text', text, color: cmd.color, size: cmd.size ?? 'm', x: Math.round(cmd.x), y: Math.round(cmd.y)});
     }
     case 'move': {
-      const list = s.strokes[step.id] || [], item = list.find(i => i.id === cmd.id && i.kind === 'text');
-      need(item, 'النص غير موجود.', 404);
-      need(Number.isFinite(cmd.x) && Number.isFinite(cmd.y), 'موضع غير صالح.');
-      item.x = Math.round(Math.min(1000, Math.max(0, cmd.x))); item.y = Math.round(Math.min(600, Math.max(0, cmd.y))); return s;
+      const list = s.strokes[step.id] || [], item = list.find(i => i.id === cmd.id);
+      need(item, 'العنصر غير موجود.', 404);
+      const clampX = v => Math.round(Math.min(1000, Math.max(0, v)) * 10) / 10, clampY = v => Math.round(Math.min(600, Math.max(0, v)) * 10) / 10;
+      if (Number.isFinite(cmd.dx) && Number.isFinite(cmd.dy)) {
+        // Move any ink item by an offset, keeping it on the board.
+        if (item.kind === 'text') { item.x = clampX(item.x + cmd.dx); item.y = clampY(item.y + cmd.dy); }
+        else {
+          const xs = item.points.map(p => p[0]), ys = item.points.map(p => p[1]);
+          const dx = Math.min(1000 - Math.max(...xs), Math.max(-Math.min(...xs), cmd.dx)), dy = Math.min(600 - Math.max(...ys), Math.max(-Math.min(...ys), cmd.dy));
+          item.points = item.points.map(([x, y]) => [Math.round((x + dx) * 10) / 10, Math.round((y + dy) * 10) / 10]);
+        }
+        return s;
+      }
+      need(item.kind === 'text' && Number.isFinite(cmd.x) && Number.isFinite(cmd.y), 'موضع غير صالح.');
+      item.x = Math.round(clampX(cmd.x)); item.y = Math.round(clampY(cmd.y)); return s;
+    }
+    case 'place': {
+      need(step.type === 'board' && step.items.some(i => i.id === cmd.item), 'العنصر غير موجود في السبورة المجهزة.', 404);
+      s.places ||= {};
+      if (cmd.reset === true) { const p = {...(s.places[step.id] || {})}; delete p[cmd.item]; s.places[step.id] = p; return s; }
+      need(Number.isFinite(cmd.x) && Number.isFinite(cmd.y) && cmd.x >= 0 && cmd.x <= 1000 && cmd.y >= 0 && cmd.y <= 600, 'موضع غير صالح.');
+      s.places[step.id] = {...(s.places[step.id] || {}), [cmd.item]: {x: Math.round(cmd.x), y: Math.round(cmd.y)}}; return s;
     }
     case 'erase': {
       const list = s.strokes[step.id] || [];
@@ -183,6 +201,7 @@ export function publicView(state, plan, student, responses, studentNames = {}) {
     const revealed = state.revealed[step.id] || [];
     view.step = {id: step.id, type: step.type, title: step.title, key: `${step.id}:${revealed.join(',')}`};
     if (INKABLE.includes(step.type)) view.strokes = state.strokes[step.id] || [];
+    if (step.type === 'board') view.places = Object.fromEntries(Object.entries(state.places?.[step.id] || {}).filter(([id]) => revealed.includes(id)));
     view.camera = state.camera?.[step.id] || {z: 1, x: 0, y: 0};
     if (step.type === 'interactive') {
       view.shadow = visibleShadow(state.shadow, 'student'); view.explore = state.explore;

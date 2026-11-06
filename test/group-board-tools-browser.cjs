@@ -72,7 +72,12 @@ const assert = require('node:assert/strict'), fs = require('node:fs'), path = re
     const before = await s.locator('#gl-ink text', {hasText: 'شعاع الضوء'}).getAttribute('x');
     await drag([textBox.x + textBox.width / 2, textBox.y + textBox.height / 2], [textBox.x + textBox.width / 2 - 150, textBox.y + textBox.height / 2 + 120]);
     await s.waitForFunction(x => document.querySelector('#gl-ink text') && [...document.querySelectorAll('#gl-ink text')].find(n => n.textContent === 'شعاع الضوء').getAttribute('x') !== x, before);
-    results.push('text moved with the move tool');
+    // Drawn lines move too.
+    const penBox = await t.evaluate(() => { const r = document.querySelector('#gl-ink path.gl-pen').getBoundingClientRect(); return {x: r.x + r.width / 2, y: r.y + r.height / 2}; });
+    const penBefore = await s.locator('#gl-ink path.gl-pen').getAttribute('d');
+    await drag([penBox.x, penBox.y], [penBox.x - 60, penBox.y + 30]); // away from the eraser's path below
+    await s.waitForFunction(d => document.querySelector('#gl-ink path.gl-pen')?.getAttribute('d') !== d, penBefore);
+    results.push('text and a drawn line moved with the move tool');
 
     // Eraser removes the brush stroke; Ctrl+Z removes the last item.
     const count = async () => s.locator('#gl-ink path, #gl-ink text').count();
@@ -116,6 +121,19 @@ const assert = require('node:assert/strict'), fs = require('node:fs'), path = re
     await s.waitForSelector('#gl-content .gl-page svg');
     assert.ok(await s.locator('#gl-ink text').count() >= 1, 'ink stays with its step');
     results.push('PageDown/ArrowRight move between steps; ink and prepared texts belong to their step');
+
+    // Prepared board cards are dragged into place; students see the same layout.
+    await t.locator('body').press('PageDown'); await t.locator('body').press('PageDown');
+    await s.waitForFunction(() => document.querySelector('#gl-content').dataset.type === 'board');
+    await t.getByRole('button', {name: 'إظهار الكل'}).click();
+    await s.waitForFunction(() => document.querySelectorAll('.gl-item').length === 3);
+    await t.locator('body').press('v');
+    await t.locator('#gl-board').evaluate(e => e.scrollIntoView({block: 'center'}));
+    const card = await t.locator('.gl-item[data-item=n1]').boundingBox();
+    await drag([card.x + card.width / 2, card.y + card.height / 2], [card.x + card.width / 2 - 250, card.y + card.height / 2 + 160]);
+    await s.waitForFunction(() => document.querySelector('.gl-item[data-item=n1]')?.classList.contains('is-placed'));
+    await t.screenshot({path: path.join(out, 'board-cards-moved.png')});
+    results.push('prepared board card dragged into place and shown in the same place to the student');
 
     await s.screenshot({path: path.join(out, 'board-tools-student.png')});
     for (const w of [1400, 820, 390]) {

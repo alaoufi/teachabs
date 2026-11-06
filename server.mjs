@@ -6,6 +6,7 @@ import { demoHub } from './demo.mjs';
 import { classroomLab } from './classroom-lab.mjs';
 import { scienceShadowLesson, SCIENCE_SHADOW_ROUTE } from './science-lesson.mjs';
 import { lessonsIndex, LESSONS_ROUTE } from './interactive-lessons.mjs';
+import { guideHTML, GUIDE_TITLE } from './public/class-guide.js';
 import http from 'node:http';
 import { readFile } from 'node:fs/promises';
 import { pathToFileURL } from 'node:url';
@@ -28,7 +29,7 @@ files['/classroom-lab-model.js']='text/javascript; charset=utf-8';
 files['/classroom-lab.css']='text/css; charset=utf-8';
 files['/science-shadow.js']='text/javascript; charset=utf-8';
 files['/shadow-client.js']='text/javascript; charset=utf-8';
-for(const f of ['group-plan.js','group-view.js','group-ink.js','group-board-tools.js','group-plans.js','text-library.js','explain-texts.js','narrator-scripts.js','group-planner.js','group-teacher.js','group-student.js'])files['/'+f]='text/javascript; charset=utf-8';
+for(const f of ['class-guide.js','group-plan.js','group-view.js','group-ink.js','group-board-tools.js','group-plans.js','text-library.js','explain-texts.js','narrator-scripts.js','group-planner.js','group-teacher.js','group-student.js'])files['/'+f]='text/javascript; charset=utf-8';
 files['/group-lesson.css']='text/css; charset=utf-8';
 files['/science-shadow-model.js']='text/javascript; charset=utf-8';
 files['/science-shadow.css']='text/css; charset=utf-8';
@@ -85,6 +86,7 @@ export function createApp(store,{origin=process.env.APP_ORIGIN}={}) {
           return html('مختبر الفصل التعليمي',classroomLab());
         }
         if(route===LESSONS_ROUTE)return html('الدروس التفاعلية',lessonsIndex());
+        if(route==='/guide')return html(GUIDE_TITLE,'<link rel="stylesheet" href="/group-lesson.css?v=2">'+guideHTML());
         if(route===SCIENCE_SHADOW_ROUTE){
           res.setHeader('Content-Security-Policy',"default-src 'self'; script-src 'self'; connect-src 'none'; img-src 'self' data:; frame-src 'none'; frame-ancestors 'none'; base-uri 'none'; form-action 'none'; object-src 'none'");
           res.setHeader('Permissions-Policy','camera=(), microphone=(), display-capture=(), geolocation=()');

@@ -235,3 +235,33 @@ test('teacher text library and lesson import over HTTP', async t => {
   assert.equal((await fetch(base + '/teach/plans/import', json(teacher, {...defaultPlan(), steps: []}))).status, 400);
   assert.equal(store.group.plans(tour.teacher).length, 1);
 });
+
+test('moving: any ink item by an offset kept on the board, and prepared cards placed only by the teacher plan', () => {
+  let s = run(initialState(plan), {op: 'stroke', tool: 'brush', color: '#c0392b', points: [[100, 100], [200, 150]]}, {op: 'text', text: 'نص', x: 500, y: 300, color: '#c0392b'});
+  const [line, word] = s.strokes.curriculum;
+  s = run(s, {op: 'move', id: line.id, dx: 50, dy: -20}, {op: 'move', id: word.id, dx: -600, dy: 10});
+  assert.deepEqual(s.strokes.curriculum[0].points, [[150, 80], [250, 130]]);
+  assert.deepEqual([s.strokes.curriculum[1].x, s.strokes.curriculum[1].y], [0, 310]);
+  s = run(s, {op: 'move', id: line.id, dx: 5000, dy: 0});
+  assert.equal(Math.max(...s.strokes.curriculum[0].points.map(p => p[0])), 1000, 'stays inside the board');
+  assert.throws(() => run(s, {op: 'move', id: 'nope', dx: 1, dy: 1}));
+  const bi = plan.steps.findIndex(x => x.type === 'board');
+  assert.throws(() => run(s, {op: 'place', item: 'n1', x: 10, y: 10}), 'only on the board step');
+  s = run(s, {op: 'go', index: bi}, {op: 'place', item: 'n2', x: 600, y: 400});
+  assert.equal(publicView(s, plan, 'a', []).places.n2, undefined, 'a hidden card position is not sent');
+  s = run(s, {op: 'reveal', item: 'n2', show: true});
+  assert.deepEqual(publicView(s, plan, 'a', []).places, {n2: {x: 600, y: 400}});
+  for (const bad of [{op: 'place', item: 'zz', x: 1, y: 1}, {op: 'place', item: 'n2', x: 2000, y: 1}]) assert.throws(() => run(s, bad));
+  s = run(s, {op: 'place', item: 'n2', reset: true});
+  assert.deepEqual(publicView(s, plan, 'a', []).places, {});
+});
+
+test('user guide page is served and the markdown copy is in sync', async t => {
+  const {guideMarkdown, GUIDE} = await import('../public/class-guide.js');
+  const {readFileSync} = await import('node:fs');
+  assert.equal(readFileSync(new URL('../CLASS-BOARD-GUIDE.md', import.meta.url), 'utf8'), guideMarkdown(), 'regenerate CLASS-BOARD-GUIDE.md from public/class-guide.js');
+  const {base} = await server(t);
+  const html = await (await fetch(base + '/guide')).text();
+  for (const s of GUIDE) assert.ok(html.includes(`id="${s.id}"`), s.id);
+  assert.match(html, /<kbd>PageDown<\/kbd>/);
+});

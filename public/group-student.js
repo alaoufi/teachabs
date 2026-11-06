@@ -128,8 +128,8 @@ async function render() {
     if (student && view.step.type === 'interactive' && view.explore) { renderExplore(); renderKey = ''; }
     else {
       // Redraw content only when it changed, so camera moves and ink stay smooth.
-      const key = JSON.stringify([contentKey, view.shadow, view.display, content ? 1 : 0]);
-      if (key !== renderKey) { renderKey = key; renderStep($('gl-content'), content, {shadow: view.shadow, display: view.display}); }
+      const key = JSON.stringify([contentKey, view.shadow, view.display, view.places, content ? 1 : 0]);
+      if (key !== renderKey) { renderKey = key; renderStep($('gl-content'), content, {shadow: view.shadow, display: view.display, places: view.places}); }
       if (view.step.id !== shownStep) { shownStep = view.step.id; const c = $('gl-content'); c.classList.remove('gl-enter'); void c.offsetWidth; c.classList.add('gl-enter'); tools.resetForStep(); }
     }
     renderInk($('gl-ink'), view.strokes || []);
