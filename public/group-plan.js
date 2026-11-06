@@ -24,6 +24,8 @@ export const SUBJECTS = {science: 'العلوم', math: 'الرياضيات', ar
 export const ORIGINAL_PAGES = {
   'science-4-light': {title: 'علوم ٤ — الضوء والظل (صفحة أصلية للتجربة)', lines: ['الضوء والظل', 'ينتقل الضوء في خطوط مستقيمة.', 'عندما يحجب جسمٌ الضوء يتكون خلفه ظل.', 'يتغير طول الظل واتجاهه بتغير موقع مصدر الضوء.', 'سؤال: لماذا يكون ظلك طويلًا في الصباح الباكر؟']},
   'science-4-matter': {title: 'علوم ٤ — حالات المادة (صفحة أصلية للتجربة)', lines: ['حالات المادة', 'للمادة ثلاث حالات: صلبة وسائلة وغازية.', 'الماء يكون جليدًا صلبًا، أو ماءً سائلًا، أو بخارًا غازيًا.', 'التسخين والتبريد يغيّران حالة المادة.', 'سؤال: ماذا يحدث لمكعب الجليد في يوم حار؟']},
+  'science-4-cells': {title: 'علوم ٤ — الخلايا (صفحة أصلية للتجربة)', lines: ['الخلايا', 'كل مخلوق حي يتكون من خلية واحدة أو من خلايا كثيرة.', 'الخلية أصغر وحدة في بناء المخلوق الحي.', 'خلايا متشابهة ← نسيج ← عضو ← جهاز ← مخلوق حي.', 'سؤال: ما الذي تملكه الخلية النباتية ولا تملكه الحيوانية؟']},
+  'math-4-placevalue': {title: 'رياضيات ٤ — القيمة المنزلية (صفحة أصلية للتجربة)', lines: ['القيمة المنزلية ضمن مئات الألوف', 'منزلة الرقم تحدد قيمته في العدد.', 'كل منزلة قيمتها عشرة أمثال المنزلة التي على يمينها.', 'نكتب العدد بالصيغة القياسية: ٣٤٥٬٦٧٨', 'وبالصيغة التحليلية: ٣٠٠٠٠٠ + ٤٠٠٠٠ + ٥٠٠٠ + ٦٠٠ + ٧٠ + ٨']},
   'math-1-p1': {title: 'رياضيات ١ — نبني عددًا (صفحة أصلية للتجربة)', lines: ['نبني عددًا', 'ارسم ثلاث دوائر ثم أضف دائرتين بلون آخر.', 'صف ما فعلته. كم دائرة ترى الآن؟']},
   'math-1-p2': {title: 'رياضيات ١ — نقارن مجموعتين (صفحة أصلية للتجربة)', lines: ['نقارن مجموعتين', 'ارسم أربعة مربعات وست دوائر.', 'صل كل مربع بدائرة واشرح ما تلاحظه.']}
 };
@@ -158,11 +160,59 @@ export function publicStep(step, revealed = []) {
 
 export const RATING = ['', 'يحتاج دعمًا', 'مقبول', 'جيد', 'متميز'];
 
-/** Ready lesson templates for grade 4 science (original content; mapping to the official book not yet verified). */
+/** Ready lesson templates for grade 4 (original content). Cells and place value follow the 1447 AH Ministry book order; light and matter are not in term 1. */
 export const LESSON_TEMPLATES = {
-  light: {title: 'الضوء والظل', plan: () => defaultPlan()},
-  matter: {title: 'حالات المادة', plan: () => matterPlan()}
+  cells: {title: 'الخلايا', subject: 'science', plan: () => cellsPlan()},
+  placevalue: {title: 'القيمة المنزلية ضمن مئات الألوف', subject: 'math', plan: () => placeValuePlan()},
+  light: {title: 'الضوء والظل', subject: 'science', plan: () => defaultPlan()},
+  matter: {title: 'حالات المادة', subject: 'science', plan: () => matterPlan()}
 };
+
+/** Science 4, term 1, unit 1, chapter 1, lesson 1 (order from the 1447 AH Ministry book; content is original). */
+export function cellsPlan() {
+  return {version: 1, title: 'الخلايا', subject: 'science', grade: 4, steps: [
+    {id: 'curriculum', type: 'page', title: 'نقرأ صفحة الدرس', source: 'original', page: 'science-4-cells', narration: {mode: 'live'}, snippets: ['الخلية', 'النسيج', 'العضو', 'الجهاز الحيوي', 'النواة', 'جدار الخلية']},
+    {id: 'explain', type: 'interactive', title: 'نجرب: نكبّر حتى نرى الخلية', activity: 'cells', snippets: ['خلايا ← نسيج ← عضو ← جهاز', 'النباتية فقط: جدار وبلاستيدات خضراء'], narration: {mode: 'live'}},
+    {id: 'board-notes', type: 'board', title: 'نلخص على السبورة', narration: {mode: 'live'}, items: [
+      {id: 'n1', kind: 'text', text: 'الخلية أصغر وحدة في بناء المخلوق الحي.'},
+      {id: 'n2', kind: 'text', text: 'خلايا متشابهة ← نسيج ← عضو ← جهاز حيوي ← مخلوق حي.'},
+      {id: 'n3', kind: 'text', text: 'في الخليتين: غشاء خلوي ونواة وسيتوبلازم وميتوكندريا.'},
+      {id: 'n4', kind: 'text', text: 'النباتية فقط: جدار خلية وبلاستيدات خضراء وفجوة كبيرة.'}]},
+    {id: 'check', type: 'questions', title: 'أسئلة سريعة', narration: {mode: 'live'}, questions: [
+      {id: 'q1', kind: 'choice', prompt: 'أي جزء يتحكم في أنشطة الخلية؟', options: ['النواة', 'الفجوة', 'جدار الخلية'], answer: 0},
+      {id: 'q2', kind: 'choice', prompt: 'أي جزء يوجد في الخلية النباتية ولا يوجد في الحيوانية؟', options: ['الغشاء الخلوي', 'البلاستيدات الخضراء', 'الميتوكندريا'], answer: 1},
+      {id: 'q3', kind: 'choice', prompt: 'رتّب من الأصغر إلى الأكبر:', options: ['خلية ← نسيج ← عضو ← جهاز', 'عضو ← خلية ← جهاز ← نسيج', 'نسيج ← خلية ← عضو ← جهاز'], answer: 0},
+      {id: 'q4', kind: 'text', prompt: 'بكلماتك: لماذا تحتاج الخلية النباتية إلى البلاستيدات الخضراء؟'}]},
+    {id: 'homework', type: 'homework', title: 'واجب الدرس', instructions: 'ارسم خلية نباتية وخلية حيوانية، واكتب اسم كل جزء، ثم أجب.', narration: {mode: 'live'}, questions: [
+      {id: 'h1', kind: 'choice', prompt: 'ما الذي يدعم الخلية النباتية ويحميها؟', options: ['جدار الخلية', 'النواة', 'السيتوبلازم'], answer: 0},
+      {id: 'h2', kind: 'choice', prompt: 'القلب في جسم الإنسان:', options: ['خلية', 'نسيج', 'عضو'], answer: 2},
+      {id: 'h3', kind: 'text', prompt: 'اذكر شيئين تتشابه فيهما الخلية النباتية والحيوانية، وشيئًا تختلفان فيه.'}]},
+    {id: 'evaluate', type: 'evaluation', title: 'تقييم الطلاب', narration: {mode: 'live'}, criteria: ['المشاركة', 'فهم الدرس', 'الواجب']}
+  ]};
+}
+
+/** Math 4, term 1, chapter 1, lesson 1 (order from the 1447 AH Ministry book; content is original). */
+export function placeValuePlan() {
+  return {version: 1, title: 'القيمة المنزلية ضمن مئات الألوف', subject: 'math', grade: 4, steps: [
+    {id: 'curriculum', type: 'page', title: 'نقرأ صفحة الدرس', source: 'original', page: 'math-4-placevalue', narration: {mode: 'live'}, snippets: ['المنزلة', 'القيمة', 'الصيغة القياسية', 'الصيغة التحليلية', 'الألوف', 'الآحاد']},
+    {id: 'explain', type: 'interactive', title: 'نجرب: لوحة المنازل', activity: 'placevalue', snippets: ['كل منزلة = ١٠ أمثال التي على يمينها', 'الصفر يحفظ المنزلة الفارغة'], narration: {mode: 'live'}},
+    {id: 'board-notes', type: 'board', title: 'نلخص على السبورة', narration: {mode: 'live'}, items: [
+      {id: 'n1', kind: 'text', text: 'منزلة الرقم تحدد قيمته: ٤ في عشرات الألوف = ٤٠٬٠٠٠'},
+      {id: 'n2', kind: 'text', text: 'الألوف: مئات الألوف · عشرات الألوف · آحاد الألوف'},
+      {id: 'n3', kind: 'text', text: 'الآحاد: المئات · العشرات · الآحاد'},
+      {id: 'n4', kind: 'text', text: 'الصيغة التحليلية: ٢٠٠٠٠٠ + ٦٠٠٠ + ٣٠ = ٢٠٦٬٠٣٠'}]},
+    {id: 'check', type: 'questions', title: 'أسئلة سريعة', narration: {mode: 'live'}, questions: [
+      {id: 'q1', kind: 'choice', prompt: 'ما قيمة الرقم ٦ في العدد ٤٦٢٬٠٥١؟', options: ['٦٠٠', '٦٠٬٠٠٠', '٦٬٠٠٠'], answer: 1},
+      {id: 'q2', kind: 'choice', prompt: 'في أي منزلة يقع الرقم ٨ في العدد ٨٠٣٬٢١٤؟', options: ['مئات الألوف', 'عشرات الألوف', 'المئات'], answer: 0},
+      {id: 'q3', kind: 'choice', prompt: 'الصيغة القياسية للعدد ٧٠٠٠٠٠ + ٣٠٠٠ + ٥ هي:', options: ['٧٣٬٠٠٥', '٧٠٣٬٠٠٥', '٧٠٣٬٠٥٠'], answer: 1},
+      {id: 'q4', kind: 'text', prompt: 'اكتب عددًا من ستة أرقام فيه الرقم ٩ في منزلة عشرات الألوف.'}]},
+    {id: 'homework', type: 'homework', title: 'واجب الدرس', instructions: 'ابحث في البيت عن عدد كبير (فاتورة، كتاب، خبر) واكتبه، ثم أجب.', narration: {mode: 'live'}, questions: [
+      {id: 'h1', kind: 'choice', prompt: 'ما قيمة الرقم ٣ في العدد ١٣٥٬٧٢٠؟', options: ['٣٬٠٠٠', '٣٠٬٠٠٠', '٣٠٠'], answer: 1},
+      {id: 'h2', kind: 'choice', prompt: 'أي عدد فيه الرقم ٥ قيمته خمسمئة؟', options: ['٥٢٬٠١٠', '٢٠٥٬١٠٠', '١٠٢٬٥٠٠'], answer: 2},
+      {id: 'h3', kind: 'text', prompt: 'اكتب العدد الذي وجدته بالصيغة التحليلية.'}]},
+    {id: 'evaluate', type: 'evaluation', title: 'تقييم الطلاب', narration: {mode: 'live'}, criteria: ['المشاركة', 'فهم الدرس', 'الواجب']}
+  ]};
+}
 
 export function matterPlan() {
   return {version: 1, title: 'حالات المادة', subject: 'science', grade: 4, steps: [

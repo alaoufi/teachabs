@@ -194,7 +194,9 @@ function narratorEditor(step) {
     el('p', {class: 'pl-hint', text: 'كل مقطع يضبط النشاط على قيم محددة ويشرح بجملة تظهر مكتوبة. يُقرأ بصوت الجهاز، أو بصوتك إن سجلته. في الحصة تتحكم بالتشغيل والكتم والإخفاء.'}));
   segs.forEach((g, i) => {
     g.values ||= Object.fromEntries(a.params.map(p => [p.key, g[p.key] ?? a.initial()[p.key]]));
-    const fields = a.params.map(p => p.kind === 'range'
+    const fields = a.params.map(p => p.kind === 'range' && (p.max - p.min) / (p.segStep || p.step) > 200
+      ? field(p.label, el('input', {type: 'number', min: p.min, max: p.max, step: p.segStep || p.step, value: g.values[p.key], inputmode: 'numeric', onchange: e => { const n = Math.min(p.max, Math.max(p.min, Number(e.target.value) || 0)); g.values[p.key] = n; e.target.value = n; touch(); render(); }}))
+      : p.kind === 'range'
       ? field(p.label, el('select', {onchange: e => { g.values[p.key] = Number(e.target.value); touch(); render(); }},
         Array.from({length: Math.round((p.max - p.min) / (p.segStep || p.step)) + 1}, (_, k) => +(p.min + k * (p.segStep || p.step)).toFixed(3)).map(v => el('option', {value: v, selected: v === g.values[p.key]}, p.format(v)))))
       : field(p.label, el('select', {onchange: e => { g.values[p.key] = e.target.value; touch(); }}, Object.entries(p.options).map(([k, label]) => el('option', {value: k, selected: k === g.values[p.key]}, label)))));

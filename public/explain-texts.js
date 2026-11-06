@@ -1,4 +1,4 @@
-// Ready explanatory texts for the light-and-shadow lesson (original wording, not copied from any textbook).
+// Ready explanatory texts for the grade 4 lessons (original wording, not copied from any textbook).
 // The teacher picks one, edits it and saves the edited copy as a new text in their own library.
 // Kept in the repository so it never depends on the trial server.
 
@@ -39,6 +39,28 @@ export const EXPLAIN_TEXTS = [
   {id: 'mt-dis-1', lesson: 'science-4-matter', topic: 'discuss', title: 'توقّع', body: 'إذا وضعنا كأس ماء في الثلاجة طوال الليل، ماذا تتوقع أن يحدث؟ ولماذا؟'},
   {id: 'mt-act-1', lesson: 'science-4-matter', topic: 'activity', title: 'سباق الجليد', body: 'ضع مكعبي جليد، أحدهما في الشمس والآخر في الظل. أيهما ينصهر أولًا؟ سجّل الوقت.'},
   {id: 'mt-sum-1', lesson: 'science-4-matter', topic: 'summary', title: 'خلاصة الدرس', body: 'للمادة ثلاث حالات. التسخين يحوّل الصلب إلى سائل والسائل إلى غاز، والتبريد يعيد الغاز سائلًا والسائل صلبًا.'}
+,
+  {id: 'cl-idea-1', lesson: 'science-4-cells', topic: 'idea', title: 'الخلية وحدة البناء', body: 'كل مخلوق حي يتكون من خلية واحدة أو من خلايا كثيرة. الخلية أصغر وحدة في بناء المخلوق الحي، ولا نراها عادة إلا بالمجهر.'},
+  {id: 'cl-idea-2', lesson: 'science-4-cells', topic: 'idea', title: 'من الخلية إلى المخلوق', body: 'الخلايا المتشابهة التي تعمل معًا تكوّن نسيجًا، والأنسجة تكوّن عضوًا مثل القلب أو الورقة، والأعضاء تكوّن جهازًا حيويًا، والأجهزة تكوّن المخلوق الحي.'},
+  {id: 'cl-idea-3', lesson: 'science-4-cells', topic: 'idea', title: 'أجزاء مشتركة', body: 'في الخلية النباتية والحيوانية: غشاء خلوي يحيط بها، ونواة تتحكم في أنشطتها، وسيتوبلازم يملؤها، وميتوكندريا تُطلق الطاقة من الغذاء.'},
+  {id: 'cl-idea-4', lesson: 'science-4-cells', topic: 'idea', title: 'ما تتميز به الخلية النباتية', body: 'للخلية النباتية جدار خلية صلب يدعمها، وبلاستيدات خضراء تصنع بها الغذاء بضوء الشمس، وفجوة كبيرة تخزن الماء.'},
+  {id: 'cl-ex-1', lesson: 'science-4-cells', topic: 'example', title: 'قشرة البصل', body: 'إذا وضعنا طبقة رقيقة من قشرة البصل تحت المجهر نرى خلايا مستطيلة متلاصقة مثل قطع الطوب في جدار.'},
+  {id: 'cl-ex-2', lesson: 'science-4-cells', topic: 'example', title: 'المبنى والطوب', body: 'المخلوق الحي يشبه مبنى كبيرًا، والخلايا هي قطع الطوب الصغيرة التي بُني منها.'},
+  {id: 'cl-mis-1', lesson: 'science-4-cells', topic: 'mistake', title: 'الجدار والغشاء', body: 'جدار الخلية ليس هو الغشاء الخلوي. الغشاء موجود في كل خلية، أما الجدار فيوجد في الخلية النباتية فقط، خارج الغشاء.'},
+  {id: 'cl-mis-2', lesson: 'science-4-cells', topic: 'mistake', title: 'كل الخلايا خضراء؟', body: 'ليست كل خلايا النبات خضراء؛ خلايا الجذر مثلًا لا يصلها الضوء فلا تحتوي على بلاستيدات خضراء كثيرة.'},
+  {id: 'cl-dis-1', lesson: 'science-4-cells', topic: 'discuss', title: 'لماذا الجدار؟', body: 'النبات لا يملك هيكلًا عظميًا. كيف يساعده جدار الخلية على الوقوف مستقيمًا؟'},
+  {id: 'cl-act-1', lesson: 'science-4-cells', topic: 'activity', title: 'خلية من الصلصال', body: 'اصنعوا خلية نباتية من الصلصال في علبة: العلبة جدار، والكيس الشفاف غشاء، وحبة كبيرة نواة، وحبوب خضراء بلاستيدات.'},
+  {id: 'cl-sum-1', lesson: 'science-4-cells', topic: 'summary', title: 'خلاصة الدرس', body: 'الخلية وحدة بناء المخلوق الحي. تتشابه الخلايا النباتية والحيوانية في الغشاء والنواة والسيتوبلازم، وتنفرد النباتية بالجدار والبلاستيدات الخضراء.'},
+  {id: 'pv-idea-1', lesson: 'math-4-placevalue', topic: 'idea', title: 'المنزلة تحدد القيمة', body: 'قيمة الرقم تعتمد على منزلته في العدد. الرقم ٧ قيمته سبعة في الآحاد، وسبعون في العشرات، وسبعة آلاف في آحاد الألوف.'},
+  {id: 'pv-idea-2', lesson: 'math-4-placevalue', topic: 'idea', title: 'عشرة أمثال', body: 'كل منزلة قيمتها عشرة أمثال المنزلة التي على يمينها: عشر آحاد تساوي عشرة، وعشر عشرات تساوي مئة، وعشر مئات تساوي ألفًا.'},
+  {id: 'pv-idea-3', lesson: 'math-4-placevalue', topic: 'idea', title: 'الدورات', body: 'نقسم العدد الكبير إلى دورات من ثلاث منازل: دورة الآحاد (آحاد، عشرات، مئات) ودورة الألوف (آحاد الألوف، عشرات الألوف، مئات الألوف)، ونضع فاصلة بينهما.'},
+  {id: 'pv-idea-4', lesson: 'math-4-placevalue', topic: 'idea', title: 'صيغ كتابة العدد', body: 'الصيغة القياسية: نكتب الأرقام فقط مثل ٢٠٦٬٠٣٠. الصيغة التحليلية: نكتب مجموع قيم الأرقام مثل ٢٠٠٠٠٠ + ٦٠٠٠ + ٣٠.'},
+  {id: 'pv-ex-1', lesson: 'math-4-placevalue', topic: 'example', title: 'عدد سكان مدينة', body: 'إذا كان عدد سكان مدينة صغيرة ٤٥٢٬٣١٠ نسمة، فالرقم ٤ في منزلة مئات الألوف وقيمته أربعمئة ألف.'},
+  {id: 'pv-mis-1', lesson: 'math-4-placevalue', topic: 'mistake', title: 'نسيان الصفر', body: 'عند كتابة ثلاثمئة ألف وخمسة يكتب بعض الطلاب ٣٠٥. الصحيح ٣٠٠٬٠٠٥؛ الأصفار تحفظ المنازل الفارغة.'},
+  {id: 'pv-mis-2', lesson: 'math-4-placevalue', topic: 'mistake', title: 'الرقم أم القيمة؟', body: 'في العدد ٨٣٬٠٠٠ الرقم في منزلة عشرات الألوف هو ٨، أما قيمته فهي ٨٠٬٠٠٠. لا نخلط بين الرقم وقيمته.'},
+  {id: 'pv-dis-1', lesson: 'math-4-placevalue', topic: 'discuss', title: 'أكبر عدد', body: 'ما أكبر عدد من ستة أرقام يمكن كتابته؟ وما أصغر عدد من ستة أرقام؟ كيف عرفت؟'},
+  {id: 'pv-act-1', lesson: 'math-4-placevalue', topic: 'activity', title: 'بطاقات الأرقام', body: 'وزّع ست بطاقات أرقام على الطلاب، وليقفوا في صف ليكوّنوا أكبر عدد ممكن، ثم أصغر عدد، وليقرأ كل واحد قيمة رقمه.'},
+  {id: 'pv-sum-1', lesson: 'math-4-placevalue', topic: 'summary', title: 'خلاصة الدرس', body: 'منزلة الرقم تحدد قيمته، وكل منزلة عشرة أمثال التي على يمينها. نكتب العدد بالصيغة القياسية أو التحليلية، والصفر يحفظ المنزلة الفارغة.'}
 ];
 
-export const TEXT_LESSONS = {'science-4-light': 'الضوء والظل', 'science-4-matter': 'حالات المادة'};
+export const TEXT_LESSONS = {'science-4-cells': 'الخلايا', 'math-4-placevalue': 'القيمة المنزلية', 'science-4-light': 'الضوء والظل', 'science-4-matter': 'حالات المادة'};

@@ -6,7 +6,7 @@ import {renderNarrator, setSpeaking} from './group-view.js';
 import {openTextPicker} from './text-library.js';
 import {speakingMs} from './narrator-scripts.js';
 import {formatNumber} from './science-shadow-model.js';
-import {activityOf, segmentLabel} from './activities.js';
+import {activityOf, segmentLabel, bigOf, textOf, quickParams} from './activities.js';
 
 const app = document.getElementById('gl-app'), code = app.dataset.code, base = '/teach/live/' + code;
 const $ = x => document.getElementById(x);
@@ -44,12 +44,10 @@ function renderSequence() {
 function renderQuick(s) {
   const q = $('gl-quick'), parts = [];
   if (s.type === 'interactive') {
-    const a = activityOf(s.activity), act = view.act, v = act.values, p = a.params.find(x => x.kind === 'range' && x.big);
+    const a = activityOf(s.activity), act = view.act, v = act.values;
     const set = values => command({op: 'activity', action: 'set', values});
-    if (p) parts.push(el('button', {type: 'button', class: 'gl-mini', onclick: () => set({[p.key]: Math.max(p.min, v[p.key] - p.big)})}, p.earlier),
-      el('output', {class: 'gl-quick-out', text: p.format(v[p.key])}),
-      el('button', {type: 'button', class: 'gl-mini', onclick: () => set({[p.key]: Math.min(p.max, v[p.key] + p.big)})}, p.later));
-    parts.push(el('button', {type: 'button', class: 'gl-mini' + (act.reveal ? '' : ' is-warn'), 'aria-pressed': String(!act.reveal), onclick: () => command({op: 'activity', action: 'reveal', show: !act.reveal})}, act.reveal ? '🙈 ' + a.hideLabel.replace(' ليتوقع الطلاب', '') : '👁 ' + a.revealLabel));
+    for (const p of quickParams(a)) parts.push(...paramControl(p, v, set, true));
+    parts.push(el('button', {type: 'button', class: 'gl-mini' + (act.reveal ? '' : ' is-warn'), 'aria-pressed': String(!act.reveal), onclick: () => command({op: 'activity', action: 'reveal', show: !act.reveal})}, act.reveal ? '🙈 ' + a.hideLabel.replace(/ ل\S+ الطلاب$/, '') : '👁 ' + a.revealLabel));
     if (s.narrator) parts.push(narratorQuick(s));
   } else if (s.type === 'board') {
     const revealed = view.state.revealed[s.id] || [], next = s.items.find(i => !revealed.includes(i.id));
@@ -173,19 +171,28 @@ function narratorQuick(s) {
 
 
 /** Controls built from the activity's params, so every lesson's activity gets the same teacher tools. */
+/** One activity control: a stepped range (− value +) or a choice (buttons when few, a menu when many). */
+function paramControl(p, v, set, compact) {
+  const mini = compact ? 'gl-mini' : '';
+  if (p.kind === 'range') {
+    const step = bigOf(p, v), out = el('output', {class: compact ? 'gl-quick-out' : '', text: compact ? p.format(v[p.key]) : `${p.label}: ${p.format(v[p.key])}`});
+    if (!step) return [out];
+    return [el('button', {type: 'button', class: mini, onclick: () => set({[p.key]: Math.max(p.min, v[p.key] - step)})}, textOf(p.earlier, v, '−')), out,
+      el('button', {type: 'button', class: mini, onclick: () => set({[p.key]: Math.min(p.max, v[p.key] + step)})}, textOf(p.later, v, '+'))];
+  }
+  const entries = Object.entries(p.options);
+  if (entries.length <= 3) return [el('span', {class: 'gl-seg-group', role: 'group', 'aria-label': p.label}, ...entries.map(([k, label]) => el('button', {type: 'button', class: mini, 'aria-pressed': String(v[p.key] === k), onclick: () => set({[p.key]: k})}, label)))];
+  return [el('label', {class: 'gl-quick-select'}, el('span', {class: 'gl-ctl-label', text: p.label}), el('select', {'aria-label': p.label, onchange: e => set({[p.key]: e.target.value})}, ...entries.map(([k, label]) => el('option', {value: k, selected: v[p.key] === k}, label))))];
+}
+
 function activityControls(s) {
   const a = activityOf(s.activity), act = view.act, v = act.values;
   const set = values => command({op: 'activity', action: 'set', values});
   const box = el('div', {class: 'gl-act-controls'});
   for (const p of a.params) {
-    if (p.kind === 'range') {
-      const input = el('input', {type: 'range', min: p.min, max: p.max, step: p.step, value: v[p.key], 'aria-label': p.label, onchange: e => set({[p.key]: Number(e.target.value)})});
-      box.append(el('div', {class: 'gl-row'},
-        p.big ? el('button', {type: 'button', onclick: () => set({[p.key]: Math.max(p.min, v[p.key] - p.big)})}, p.earlier || '−') : null,
-        el('output', {text: `${p.label}: ${p.format(v[p.key])}`}),
-        p.big ? el('button', {type: 'button', onclick: () => set({[p.key]: Math.min(p.max, v[p.key] + p.big)})}, p.later || '+') : null),
-        el('label', {class: 'gl-field'}, p.label, input));
-    } else box.append(el('div', {class: 'gl-row', role: 'group', 'aria-label': p.label}, Object.entries(p.options).map(([k, label]) => el('button', {type: 'button', 'aria-pressed': String(v[p.key] === k), onclick: () => set({[p.key]: k})}, label))));
+    if (p.kind === 'range') box.append(el('div', {class: 'gl-row'}, ...paramControl(p, v, set, false)),
+      el('label', {class: 'gl-field'}, p.label, el('input', {type: 'range', min: p.min, max: p.max, step: p.step, value: v[p.key], 'aria-label': p.label, onchange: e => set({[p.key]: Number(e.target.value)})})));
+    else box.append(el('div', {class: 'gl-row', role: 'group', 'aria-label': p.label}, el('span', {class: 'gl-ctl-label', text: p.label + ':'}), ...Object.entries(p.options).map(([k, label]) => el('button', {type: 'button', 'aria-pressed': String(v[p.key] === k), onclick: () => set({[p.key]: k})}, label))));
   }
   box.append(el('div', {class: 'gl-row'},
     el('button', {type: 'button', class: act.reveal ? '' : 'is-warn', 'aria-pressed': String(!act.reveal), onclick: () => command({op: 'activity', action: 'reveal', show: !act.reveal})}, act.reveal ? a.hideLabel : a.revealLabel),

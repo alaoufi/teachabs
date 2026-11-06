@@ -3,6 +3,8 @@
 import {renderScene, lessonState, formatHour, formatNumber, MATERIALS} from './science-shadow-model.js';
 import {renderMatter, matterFacts, formatTemp, TEMP_MIN, TEMP_MAX} from './matter-model.js';
 import {NARRATOR_SCRIPTS} from './narrator-scripts.js';
+import {renderCells, cellsFacts, formatLevel, KINDS, PARTS} from './cells-model.js';
+import {renderPlaceValue, placeValueFacts, formatNumber as formatPV, PLACES, PV_MAX} from './placevalue-model.js';
 
 export const ACTIVITIES = {
   shadows: {
@@ -36,6 +38,50 @@ export const ACTIVITIES = {
       {id: 'm6', values: {temp: 50}, text: 'عندما يبرد البخار يتكاثف ويعود سائلًا، مثل القطرات التي تظهر على كأس ماء بارد.'},
       {id: 'm7', values: {temp: -10}, text: 'وإذا بردنا الماء أقل من صفر يتجمد ويصبح جليدًا من جديد. التسخين والتبريد يغيّران حالة المادة.'}
     ]
+  },
+  cells: {
+    id: 'cells', title: 'الخلايا — من المخلوق الحي إلى الخلية', lesson: 'science-4-cells',
+    params: [
+      {key: 'zoom', label: 'التكبير', kind: 'range', min: 1, max: 4, step: 1, big: 1, format: formatLevel, earlier: '🔍− تصغير', later: '🔍+ تكبير', quick: true},
+      {key: 'kind', label: 'نوع الخلية', kind: 'choice', options: KINDS, quick: true},
+      {key: 'part', label: 'الجزء المظلل', kind: 'choice', options: Object.fromEntries(Object.entries(PARTS).map(([k, p]) => [k, p.name])), quick: true}
+    ],
+    initial: () => ({zoom: 1, kind: 'plant', part: 'none'}),
+    render: (v, {hidden}) => renderCells(v, {hidden}),
+    facts: (v, hidden) => cellsFacts(v, hidden),
+    hideLabel: 'إخفاء الأسماء ليتوقع الطلاب', revealLabel: 'اكشف الأسماء', exploreKey: 'zoom',
+    narrator: () => [
+      {id: 'c1', values: {zoom: 1, kind: 'plant', part: 'none'}, text: 'هذا نبات، مخلوق حي. هل تعرفون مِمَّ يتكوّن؟ سنكبّر لنرى.'},
+      {id: 'c2', values: {zoom: 2, kind: 'plant', part: 'none'}, text: 'كبّرنا ورقة النبات. الورقة عضو، والعضو يتكون من أنسجة.'},
+      {id: 'c3', values: {zoom: 3, kind: 'plant', part: 'none'}, text: 'تحت المجهر نرى نسيج الورقة: خلايا كثيرة متشابهة متلاصقة تعمل معًا.'},
+      {id: 'c4', values: {zoom: 4, kind: 'plant', part: 'none'}, text: 'وهذه خلية نباتية واحدة. الخلية أصغر وحدة في بناء المخلوق الحي.'},
+      {id: 'c5', values: {zoom: 4, kind: 'plant', part: 'nucleus'}, text: 'النواة تتحكم في أنشطة الخلية، وفيها المادة الوراثية.'},
+      {id: 'c6', values: {zoom: 4, kind: 'plant', part: 'chloroplast'}, text: 'البلاستيدات الخضراء فيها الكلوروفيل، يصنع بها النبات غذاءه بضوء الشمس.'},
+      {id: 'c7', values: {zoom: 4, kind: 'plant', part: 'wall'}, text: 'جدار الخلية غلاف صلب يدعم الخلية النباتية ويحميها.'},
+      {id: 'c8', values: {zoom: 4, kind: 'animal', part: 'none'}, text: 'وهذه خلية حيوانية. قارنوا: ليس لها جدار خلية ولا بلاستيدات خضراء، وفجواتها صغيرة.'},
+      {id: 'c9', values: {zoom: 1, kind: 'animal', part: 'none'}, text: 'وجسم الإنسان كذلك: خلايا تكوّن أنسجة، والأنسجة أعضاء، والأعضاء أجهزة حيوية.'}
+    ]
+  },
+  placevalue: {
+    id: 'placevalue', title: 'القيمة المنزلية ضمن مئات الألوف', lesson: 'math-4-placevalue',
+    params: [
+      {key: 'number', label: 'العدد', kind: 'range', min: 0, max: PV_MAX, step: 1, tween: false, format: formatPV, quick: true,
+        big: v => PLACES[v.place]?.unit || 1, earlier: v => `− ${formatPV(PLACES[v.place]?.unit || 1)}`, later: v => `+ ${formatPV(PLACES[v.place]?.unit || 1)}`},
+      {key: 'place', label: 'المنزلة', kind: 'choice', options: Object.fromEntries(Object.entries(PLACES).map(([k, p]) => [k, p.name])), quick: true}
+    ],
+    initial: () => ({number: 345678, place: 'tenThousands'}),
+    render: (v, {hidden}) => renderPlaceValue(v, {hidden}),
+    facts: (v, hidden) => placeValueFacts(v, hidden),
+    hideLabel: 'إخفاء القيمة ليحسبها الطلاب', revealLabel: 'اكشف القيمة', exploreKey: 'number',
+    narrator: () => [
+      {id: 'p1', values: {number: 7, place: 'ones'}, text: 'نبدأ بعدد صغير: الرقم سبعة في منزلة الآحاد، وقيمته سبعة.'},
+      {id: 'p2', values: {number: 70, place: 'tens'}, text: 'إذا انتقل الرقم سبعة إلى منزلة العشرات صارت قيمته سبعين. المنزلة هي التي تحدد قيمة الرقم.'},
+      {id: 'p3', values: {number: 700, place: 'hundreds'}, text: 'وفي منزلة المئات قيمته سبعمئة.'},
+      {id: 'p4', values: {number: 7000, place: 'thousands'}, text: 'وفي منزلة آحاد الألوف قيمته سبعة آلاف. كل منزلة قيمتها عشرة أمثال المنزلة التي على يمينها.'},
+      {id: 'p5', values: {number: 345678, place: 'tenThousands'}, text: 'هذا العدد ثلاثمئة وخمسة وأربعون ألفًا وستمئة وثمانية وسبعون. الرقم أربعة في منزلة عشرات الألوف، فقيمته أربعون ألفًا.'},
+      {id: 'p6', values: {number: 345678, place: 'hundredThousands'}, text: 'والرقم ثلاثة في منزلة مئات الألوف، فقيمته ثلاثمئة ألف. الصيغة التحليلية تكتب العدد مجموعًا لقيم أرقامه.'},
+      {id: 'p7', values: {number: 305070, place: 'thousands'}, text: 'انتبهوا للصفر: يحفظ المنزلة الفارغة. في هذا العدد قيمة الرقم خمسة في منزلة آحاد الألوف خمسة آلاف، والأصفار تحفظ بقية المنازل.'}
+    ]
   }
 };
 
@@ -65,8 +111,14 @@ export function cleanValues(id, raw, base = activityOf(id).initial()) {
 /** Intermediate values for smooth animation; choices switch at the end. */
 export function tweenValues(id, a, b, t) {
   const out = {...b};
-  for (const p of activityOf(id).params) if (p.kind === 'range') out[p.key] = a[p.key] + (b[p.key] - a[p.key]) * t; else out[p.key] = t < 1 ? a[p.key] : b[p.key];
+  for (const p of activityOf(id).params) if (p.kind === 'range' && p.tween !== false) out[p.key] = a[p.key] + (b[p.key] - a[p.key]) * t; else out[p.key] = t < 1 ? a[p.key] : b[p.key];
   return out;
 }
 
 export const segmentLabel = (id, values) => activityOf(id).params.filter(p => p.kind === 'range').map(p => p.format(values[p.key])).join(' · ');
+
+/** A control's step and button labels may depend on the other values (e.g. +١٠٠٠ when «آحاد الألوف» is chosen). */
+export const bigOf = (p, v) => typeof p.big === 'function' ? p.big(v) : p.big;
+export const textOf = (x, v, fallback = '') => (typeof x === 'function' ? x(v) : x) || fallback;
+/** Controls shown in the quick bar above the board: those marked `quick`, else the first stepped range. */
+export const quickParams = a => { const marked = a.params.filter(p => p.quick); return marked.length ? marked : a.params.filter(p => p.kind === 'range' && p.big).slice(0, 1); };

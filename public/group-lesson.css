@@ -396,3 +396,31 @@ body:has(.gl-show) main{width:100%;max-width:none;margin:0;padding:0}
 .gl-show .gl-wait{grid-row:2;align-self:center;justify-self:center;font-size:clamp(20px,2.4vw,36px)}
 .gl-show:has(#gl-wait:not([hidden])) .gl-stage{display:none}
 @media(max-width:760px){.gl-show{height:auto;overflow:visible}.gl-show .gl-stage{container-type:normal}.gl-show .gl-board,.gl-show .gl-narrator,.gl-show .gl-stage:has(> .gl-narrator) .gl-board{width:100%}}
+
+/* ===== stage 042: term curriculum on «دروسي», cells and place-value activities ===== */
+.gl-curriculum{margin:6px 0 14px}.gl-curriculum h2{margin:0 0 2px;font-size:20px}.gl-curriculum>.gl-note{margin:0 0 8px;font-size:13px}
+.gl-cur-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,420px),1fr));gap:10px;align-items:start}
+.gl-cur-subject{border:1px solid var(--line);border-radius:14px;background:#fffefb;padding:4px 12px 8px}
+.gl-cur-subject>summary{cursor:pointer;font-weight:800;font-size:17px;min-height:40px;display:flex;align-items:center;gap:8px}
+.gl-cur-subject>summary small{font-weight:600;color:var(--muted);font-size:13px}
+.gl-cur-unit h4{margin:8px 0 2px;font-size:15px;color:var(--forest)}.gl-cur-unit h5{margin:4px 0 0;font-size:13.5px;color:#50645a}
+.gl-cur-unit ol{margin:2px 0;padding-inline-start:22px;display:grid;gap:2px}
+.gl-cur-unit li{display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:14px;line-height:1.35;padding:2px 4px;border-radius:8px}
+.gl-cur-unit li.is-ready{background:#e6f4ee;font-weight:700}
+.gl-cur-unit li form{margin:0;flex:none}.gl-wrap .gl-cur-unit .gl-mini{min-height:32px;padding:2px 10px;font-size:13px}
+.gl-soon{color:#8a948f;font-size:12px;flex:none}
+.gl-quick-select{display:inline-flex;align-items:center;gap:4px;font-size:13px;white-space:nowrap}
+.gl-quick-select select{min-height:36px;font-size:13px;padding:2px 6px;border-radius:10px}
+.gl-seg-group{display:inline-flex;gap:2px}.gl-ctl-label{font-size:13px;color:var(--muted);white-space:nowrap}
+.gl-wrap .gl-seg-group button[aria-pressed=true],.gl-act-controls button[aria-pressed=true]{background:var(--forest);color:#fff;border-color:var(--forest)}
+.c-part{transition:opacity .35s}.c-dim{opacity:.28}
+.c-hl{animation:c-pulse 1.6s ease-in-out infinite;transform-box:fill-box;transform-origin:center}
+@keyframes c-pulse{0%,100%{filter:drop-shadow(0 0 0 #e8890c00)}50%{filter:drop-shadow(0 0 6px #e8890c)}}
+.pv-col.is-on .pv-digit{animation:pv-pop .4s ease-out}
+@keyframes pv-pop{from{opacity:.3}to{opacity:1}}
+@media(prefers-reduced-motion:reduce){.c-hl,.pv-col.is-on .pv-digit{animation:none}}
+/* the activity drawing fits the height left under the step title (never cut by the board's lower edge) */
+.gl-content .gl-scene{flex:1 1 auto;min-height:0;display:flex;justify-content:center}
+.gl-content .gl-scene svg{width:auto;max-width:100%;height:auto;max-height:100%}
+.gl-content .gl-facts{flex:none;margin:0;font-size:clamp(13px,1.4vw,18px);line-height:1.4}
+@media(max-width:760px){.gl-content .gl-facts{display:none}.gl-content .gl-scene svg{width:100%;max-height:none}}

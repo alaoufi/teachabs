@@ -2,6 +2,7 @@
 import {e} from './views.mjs';
 import {STEP_TYPES, STEP_ORDER, LESSON_TEMPLATES} from './public/group-plan.js';
 import {COLORS, SIZE_NAMES} from './public/group-ink.js';
+import {CURRICULUM_G4_T1, CURRICULUM_SOURCE, curriculumLessons} from './public/curriculum-g4.js';
 
 const TOOL_BUTTONS = [['select', '➤', 'تحريك', 'V'], ['hand', '✋', 'يد', 'H'], ['pen', '✎', 'قلم', 'P'], ['brush', '🖌', 'فرشاة', 'B'], ['marker', '▮', 'تظليل', 'M'], ['text', 'ت', 'كتابة', 'T'], ['eraser', '⌫', 'ممحاة', 'E']];
 
@@ -16,11 +17,25 @@ export function plansPage(plans, sessions) {
   const live = sessions.length ? `<h2>حصص سابقة وجارية</h2><ul class="gl-list">${sessions.map(s => `<li class="gl-row"><div><b>${e(s.title)}</b><small>الرمز ${e(s.code)} · ${dateText(s.created)} · ${s.live ? 'جارية' : 'انتهى العرض'}</small></div><a class="outline" href="/teach/live/${e(s.code)}">فتح إدارة الحصة</a></li>`).join('')}</ul>` : '';
   return `${css}<section class="gl-wrap" dir="rtl"><div class="section-head welcome-panel"><div class="eyebrow">الحصة الجماعية</div><h1>دروسي</h1>
   <p>رتّب درسك قبل الحصة بالتسلسل: ${STEP_ORDER.map(t => STEP_TYPES[t].short).join(' ← ')}. أثناء الحصة تتحكم بما يظهر للطلاب وما يختفي. <a class="textlink" href="/guide">دليل الاستخدام</a></p></div>
-  <div class="gl-actions gl-templates"><span class="gl-tpl-label">درس جديد من نموذج جاهز (علوم الصف الرابع):</span>${Object.entries(LESSON_TEMPLATES).map(([id, t]) => `<form method="post" action="/teach/plans/new"><input type="hidden" name="template" value="${id}"><button class="btn">${e(t.title)}</button></form>`).join('')}
+  ${curriculumSection()}
+  <div class="gl-actions gl-templates"><span class="gl-tpl-label">نماذج إضافية للتجربة (ليست ضمن الفصل الأول):</span>${Object.entries(LESSON_TEMPLATES).filter(([id]) => !TEMPLATE_IN_CURRICULUM.has(id)).map(([id, t]) => `<form method="post" action="/teach/plans/new"><input type="hidden" name="template" value="${id}"><button class="btn">${e(t.title)}</button></form>`).join('')}
   <button type="button" class="outline" id="plans-import-btn">استيراد درس من ملف</button><input type="file" id="plans-import" accept=".json,application/json" hidden></div>
   <p id="plans-status" class="gl-status" role="status" aria-live="polite" hidden></p>
   <ul class="gl-list">${list}</ul>${live}
   <p class="gl-note">خادم التجربة مؤقت وقد يتوقف في أي وقت: نزّل دروسك كملفات واحتفظ بها، ويمكنك استيرادها لاحقًا. استخدم أسماء أولى فقط وبيانات وهمية.</p></section><script type="module" src="/group-plans.js?v=1"></script>`;
+}
+
+const TEMPLATE_IN_CURRICULUM = new Set(curriculumLessons().map(l => l.template).filter(Boolean));
+
+/** The term's lessons in the book's order; a ready lesson starts from its template in one click. */
+function curriculumSection() {
+  const subjects = Object.entries(CURRICULUM_G4_T1).map(([key, sub]) => {
+    const all = sub.units.flatMap(u => u.chapters.flatMap(c => c.lessons)), ready = all.filter(l => l.template && LESSON_TEMPLATES[l.template]).length;
+    const units = sub.units.map(u => `<div class="gl-cur-unit"><h4>${e(u.title)}</h4>${u.chapters.map(c => `${c.title ? `<h5>${e(c.title)}</h5>` : ''}<ol>${c.lessons.map(l => `<li class="${l.template ? 'is-ready' : ''}"><span>${e(l.title)}</span>${l.template && LESSON_TEMPLATES[l.template]
+      ? `<form method="post" action="/teach/plans/new"><input type="hidden" name="template" value="${e(l.template)}"><button class="btn gl-mini">ابدأ من الدرس الجاهز</button></form>` : '<small class="gl-soon">قريبًا</small>'}</li>`).join('')}</ol>`).join('')}</div>`).join('');
+    return `<details class="gl-cur-subject" open data-subject="${e(key)}"><summary>${e(sub.name)} <small>${ready} جاهز من ${all.length} درسًا</small></summary>${units}</details>`;
+  }).join('');
+  return `<section class="gl-curriculum" aria-labelledby="cur-title"><h2 id="cur-title">منهج الصف الرابع — الفصل الدراسي الأول</h2><p class="gl-note">${e(CURRICULUM_SOURCE)}</p><div class="gl-cur-grid">${subjects}</div></section>`;
 }
 
 export function plannerPage(id, title) {

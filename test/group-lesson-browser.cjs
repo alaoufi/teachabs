@@ -81,7 +81,7 @@ const assert = require('node:assert/strict'), fs = require('node:fs'), path = re
     await t.locator('#gl-panel').getByRole('button', {name: 'اسمح للطلاب بالاستكشاف على أجهزتهم'}).click();
     await students[2].waitForSelector('.gl-explore input[type=range]');
     await t.locator('#gl-panel').getByRole('button', {name: 'إيقاف الاستكشاف الفردي'}).click();
-    await students[2].waitForSelector('.gl-facts');
+    await students[2].waitForSelector('.gl-facts', {state: 'attached'}); // the facts line is in the page; phones hide it to give the drawing room
     results.push('interactive: predict/reveal, teacher moved the sun, individual exploration on/off');
 
     // 3) Prepared board items revealed one by one.

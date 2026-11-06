@@ -283,7 +283,7 @@ test('activity engine: states of matter values, phases, hidden prediction and a 
   assert.ok(!/particle/.test(hidden) && /توقّع/.test(hidden), 'prediction hides the state');
   assert.ok(!/style=/.test(renderMatter({temp: -10})), 'no inline styles (strict CSP)');
   const plan2 = validatePlan(matterPlan());
-  assert.deepEqual(Object.keys(LESSON_TEMPLATES), ['light', 'matter']);
+  assert.deepEqual(Object.keys(LESSON_TEMPLATES), ['cells', 'placevalue', 'light', 'matter']);
   const i = plan2.steps.findIndex(s => s.type === 'interactive');
   assert.equal(plan2.steps[i].activity, 'matter');
   let s = run2(plan2, initialState(plan2), {op: 'go', index: i}, {op: 'activity', action: 'set', values: {temp: 100}});
@@ -294,6 +294,6 @@ test('activity engine: states of matter values, phases, hidden prediction and a 
   // An old lesson saved before the engine (segment values on the segment itself) still loads.
   const old = structuredClone(defaultPlan()); old.steps[1].narrator = {segments: [{id: 'o1', hour: 9, height: 1.5, material: 'paper', text: 'مقطع قديم'}]};
   assert.deepEqual(validatePlan(old).steps[1].narrator.segments[0].values, {hour: 9, height: 1.5, material: 'paper'});
-  assert.equal(Object.keys(ACTIVITIES).length, 2);
+  assert.equal(Object.keys(ACTIVITIES).length, 4);
 });
 function run2(p, state, ...cmds) { return cmds.reduce((s, c) => teacherCommand(s, p, c), state); }
