@@ -13,6 +13,7 @@ export function adminService(store) {
     const invitation=(result,section='accounts')=>ui.adminInviteResult(profile,{...result,activationUrl:new URL('/activate?code='+result.token,base).href,section});
     if(req.method==='GET') {
       if(path==='/admin')return html('الإدارة',ui.adminHome(profile,admin.overview(u.id)));
+      if(path==='/admin/school/assignments')return html('إسناد المعلمين للطلاب',ui.adminSchoolIndividuals(profile,admin.schoolTeacherStudents(u.id,{gradeId:url.searchParams.get('gradeId')||'',subject:url.searchParams.get('subject')||'',teacherId:url.searchParams.get('teacherId')||'',page:url.searchParams.has('page')?Number(url.searchParams.get('page')):1})));
       if(path==='/admin/school')return html('الصفوف والفصول',ui.adminSchool(profile,admin.school(u.id)));
       if(path==='/admin/accounts')return html('أعضاء الإدارة',ui.adminAccounts(profile,admin.members(u.id)));
       if(path==='/admin/agents')return html('وكلاء التسجيل',ui.adminRegistrationAgents(profile,store.registration.agents(u.id)));
@@ -46,6 +47,12 @@ export function adminService(store) {
         if(!['0','1'].includes(data.active))throw new UserError('راجع حالة الحساب.');
         admin.updateMember(u.id,account[1],{...data,active:data.active==='1',revision:Number(data.revision),permissions:selectedPermissions(data)});
         return redirect('/admin/accounts');
+      }
+      if(path==='/admin/school/assignments'||path==='/admin/school/assignments/remove'){
+        const selection={gradeId:data.gradeId||'',subject:data.subject||'',teacherId:data.teacherId||'',page:1};
+        if(path.endsWith('/remove')){admin.removeSchoolTeacherStudent(u.id,{assignmentId:data.assignmentId});selection.teacherId='';}
+        else admin.assignSchoolTeacherStudents(u.id,{...selection,childIds:Object.keys(data).filter(k=>k.startsWith('child_')&&data[k]==='1').map(k=>k.slice(6))});
+        return redirect('/admin/school/assignments?'+new URLSearchParams({...selection,page:'1'}));
       }
       if(path==='/admin/school/tracks/initialize'){admin.initializeSchoolLegacyTrack(u.id);return redirect('/admin/school');}
       if(path==='/admin/school/tracks'){admin.addSchoolTrack(u.id,data);return redirect('/admin/school');}

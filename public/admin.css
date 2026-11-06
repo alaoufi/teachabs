@@ -329,3 +329,20 @@ body:has(.adm) main{margin-top:0;padding-top:20px;padding-bottom:36px}
 .adm .school-step .adm-disclosure>summary{padding-inline:0;font-size:14px}
 .adm .school-capacity-summary{display:flex;flex-wrap:wrap;gap:5px 12px;margin-top:10px;padding-top:8px;border-top:1px solid #e1e8dd;font-size:12px;line-height:1.8}
 .adm .school-capacity-summary strong{font-size:13px}
+/* 016: compact, keyboard-friendly individual/group teacher assignment flow. */
+.adm .school-individual-steps{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin-block:12px}
+.adm .school-individual-context{font-weight:650;line-height:1.65;overflow-wrap:break-word}
+.adm .school-individual-roster{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;width:100%;grid-column:1/-1}
+.adm .school-individual-person{display:grid;grid-template-columns:24px minmax(0,1fr);align-items:start;gap:9px;padding:12px;border:1px solid #cddde6;border-radius:14px;background:#fff;min-width:0;cursor:pointer}
+.adm .school-individual-person input{width:22px;height:22px;min-height:22px;margin:3px 0;accent-color:#087c84}
+.adm .school-individual-person strong,.adm .school-individual-person small,.adm .school-individual-reason{display:block;line-height:1.6;overflow-wrap:break-word;word-break:normal}
+.adm .school-individual-person small{color:#435b68;margin-block:2px}
+.adm .school-individual-reason{font-size:.88rem;color:#344e5d}
+.adm .school-individual-person.is-unavailable{background:#eef3f5;cursor:default}
+.adm .school-individual-person:focus-within{outline:3px solid #147f91;outline-offset:2px}
+.adm .school-individual-links{display:grid;gap:10px}
+.adm .school-individual-links article{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:12px;border:1px solid #d5e1e7;border-radius:14px;min-width:0}
+.adm .school-individual-links article>div{min-width:0;overflow-wrap:break-word}
+.adm .school-individual-links p{margin:4px 0}.adm .school-individual-links .adm-form{margin:0}
+.adm .school-individual-pages{display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:10px;margin-block:12px}
+@media(max-width:700px){.adm .school-individual-steps,.adm .school-individual-roster{grid-template-columns:minmax(0,1fr)}.adm .school-individual-links article{display:block}.adm .school-individual-links .adm-form{margin-top:10px}.adm .school-individual-person{padding:10px}}

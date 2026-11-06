@@ -80,6 +80,7 @@ function legacyFixture(file){
   const db=raw(file);
   try {
     db.exec(`PRAGMA foreign_keys=OFF; BEGIN IMMEDIATE;
+      DROP TABLE school_teacher_students;
       DROP TABLE school_class_capacity;
       DROP TABLE school_class_lifecycle;
       DROP TABLE school_student_assignments;
