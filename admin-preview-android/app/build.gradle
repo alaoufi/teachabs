@@ -3,11 +3,11 @@ android {
     namespace 'app.teachabs.adminpreview'
     compileSdk 34
     defaultConfig {
-        applicationId 'app.teachabs.adminpreview'
+        applicationId 'app.teachabs.adminpreview.sidecar018'
         minSdk 24
         targetSdk 34
-        versionCode 14
-        versionName '0.1.4-review'
+        versionCode 18
+        versionName '0.1.8-sidecar-preview'
     }
 }
 // Generate only synthetic, read-only assets. No service URL or real database is used.

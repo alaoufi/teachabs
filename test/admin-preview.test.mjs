@@ -39,7 +39,7 @@ test('static preview fails closed for unsafe templates and disables external des
 test('Android preview is isolated, offline, without shared production build changes',()=>{
  const manifest=read('app/src/main/AndroidManifest.xml'),java=read('app/src/main/java/app/teachabs/adminpreview/PreviewActivity.java'),build=read('app/build.gradle');
  assert.doesNotMatch(manifest,/<uses-permission\b/);assert.match(manifest,/android:allowBackup="false"/);assert.match(manifest,/android:usesCleartextTraffic="false"/);
- assert.match(build,/applicationId 'app.teachabs.adminpreview'/);assert.match(build,/variant.enable = false/);
+ assert.match(build,/applicationId 'app.teachabs.adminpreview.sidecar018'/);assert.match(build,/variant.enable = false/);
  for(const setting of ['setJavaScriptEnabled(false)','setAllowFileAccess(false)','setAllowContentAccess(false)','setBlockNetworkLoads(true)','setDomStorageEnabled(false)'])assert.ok(java.includes(setting));
  assert.match(java,/shouldInterceptRequest/);assert.match(java,/getAssets\(\).open\(path\)/);assert.match(java,/routes.has\(uri.getPath\(\)\)/);
  assert.doesNotMatch(java,/addJavascriptInterface|https:\/\/[^"+]*onrender|SslErrorHandler|requestPermissions/);
