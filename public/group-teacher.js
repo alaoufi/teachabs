@@ -54,7 +54,10 @@ function renderQuick(s) {
     const revealed = view.state.revealed[s.id] || [], next = s.items.find(i => !revealed.includes(i.id));
     parts.push(el('button', {type: 'button', class: 'btn gl-mini', disabled: !next, onclick: () => command({op: 'reveal', item: next.id, show: true})}, next ? `إظهار التالي (${formatNumber(revealed.length + 1)}/${formatNumber(s.items.length)})` : 'ظهرت كل العناصر'),
       el('button', {type: 'button', class: 'gl-mini', onclick: () => command({op: 'reveal', all: true})}, 'الكل'),
-      el('button', {type: 'button', class: 'quiet gl-mini', onclick: () => command({op: 'reveal', all: false})}, 'إخفاء الكل'));
+      el('button', {type: 'button', class: 'quiet gl-mini', onclick: () => command({op: 'reveal', all: false})}, 'إخفاء الكل'),
+      // one tap per card: shown to everyone or hidden again
+      el('span', {class: 'gl-seg-group gl-card-chips', role: 'group', 'aria-label': 'البطاقات'}, ...s.items.map((it, i) => el('button', {type: 'button', class: 'gl-mini gl-card-chip', 'aria-pressed': String(revealed.includes(it.id)),
+        title: (it.text || it.caption || 'صورة').slice(0, 80), onclick: () => command({op: 'reveal', item: it.id, show: !revealed.includes(it.id)})}, formatNumber(i + 1)))));
   } else if (s.type === 'questions') {
     const open = Boolean(view.state.open[s.id]), answered = Object.keys(view.results[s.id].answers).length, d = view.state.display[s.id];
     const firstChoice = s.questions.find(x => x.kind === 'choice');
@@ -353,7 +356,7 @@ document.body.append(pageFile);
 // ---- live voice: the teacher decides who is heard ----
 const voice = teacherVoice({base, onChange: () => { renderVoice(); if (view) renderSide(); }});
 function renderVoice() {
-  const v = view?.voice || {teacher: false, mics: true}, talking = voice.speaking().length;
+  const v = view?.voice || {teacher: false, mics: true}, talking = v.mics ? voice.speaking().length : 0;
   $('gl-voice').textContent = voice.on ? '🎙 صوتي: يُسمع الآن' : '🎙 صوتي: مغلق';
   $('gl-voice').setAttribute('aria-pressed', String(voice.on)); $('gl-voice').classList.toggle('is-on', voice.on);
   $('gl-mics').textContent = (v.mics ? '🎤 مايك الطلاب: مسموح' : '🔇 مايك الطلاب: مغلق') + (talking ? ` (${formatNumber(talking)} يتحدث)` : '');

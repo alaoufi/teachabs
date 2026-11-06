@@ -56,7 +56,7 @@ const assert = require('node:assert/strict'), fs = require('node:fs'), path = re
     await t.keyboard.press('Escape');
     await t.locator('#gl-mics').click();
     await until(s, () => document.querySelector('#gl-mic').disabled && document.querySelector('#gl-mic').getAttribute('aria-pressed') === 'false');
-    assert.match(await t.locator('#gl-mics').textContent(), /مغلق/);
+    await until(t, () => /مغلق/.test(document.querySelector('#gl-mics').textContent));
     await t.locator('#gl-mics').click(); await until(s, () => !document.querySelector('#gl-mic').disabled);
     results.push('teacher control: «مايك الطلاب: مغلق» closes and disables the student microphone; opening it again re-enables it');
 

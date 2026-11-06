@@ -42,6 +42,17 @@ function png(w, h) { // a plain test picture standing in for a photo of a book p
     await t.locator('#gl-drawer-btn').click(); await t.waitForFunction(() => document.querySelector('#gl-students')?.textContent.includes('طالب 1')); await t.keyboard.press('Escape');
     results.push('«أنا الطالب» joined the running class directly as «طالب 1» — no code, no name, no sign-up');
 
+    const placeAll = async () => { const n = await t.locator('.gl-snip').count(); for (let i = 0; i < n; i++) { await t.locator('.gl-snip').nth(i).click(); await t.waitForTimeout(250); } await t.waitForTimeout(600);
+      return t.evaluate(() => { const ink = document.querySelector('#gl-ink'), m = ink.getScreenCTM().inverse(), b = [...ink.querySelectorAll('text')].map(x => x.getBBox());
+        const rects = [...document.querySelectorAll('#gl-content .gl-page-svg text')].map(x => { const r = x.getBoundingClientRect(), a = new DOMPoint(r.left, r.top).matrixTransform(m), c = new DOMPoint(r.right, r.bottom).matrixTransform(m); return {x: a.x, y: a.y, width: c.x - a.x, height: c.y - a.y}; });
+        const hit = (p, q) => p.x < q.x + q.width && q.x < p.x + p.width && p.y < q.y + q.height && q.y < p.y + p.height;
+        return {n: b.length, onEachOther: b.some((p, i) => b.some((q, j) => j > i && hit(p, q))), onLesson: b.some(p => rects.some(q => hit(p, q))), rows: new Set(b.map(p => Math.round(p.y))).size}; }); };
+    const tidy = await placeAll();
+    assert.ok(tidy.n >= 4 && !tidy.onEachOther && !tidy.onLesson && tidy.rows < tidy.n, JSON.stringify(tidy));
+    await t.screenshot({path: path.join(out, 'live-trial-snippets.png')});
+    results.push(`«نصوص جاهزة»: ${tidy.n} texts placed with one tap each, in tidy rows, never on each other nor on the lesson text`);
+    await t.locator('#gl-clear').click(); await t.waitForFunction(() => !document.querySelector('#gl-ink text'));
+
     // the book page, photographed during the class
     await t.locator('#gl-page-file').setInputFiles({name: 'page.png', mimeType: 'image/png', buffer: png(600, 800)});
     await t.waitForFunction(() => document.querySelector('#gl-status')?.textContent.includes('ظهرت صفحة الكتاب'));
@@ -51,6 +62,18 @@ function png(w, h) { // a plain test picture standing in for a photo of a book p
     const fit = await t.evaluate(() => { const i = document.querySelector('#gl-content img').getBoundingClientRect(), b = document.querySelector('#gl-board').getBoundingClientRect(); return {inside: i.top >= b.top - 1 && i.bottom <= b.bottom + 1 && i.left >= b.left - 1 && i.right <= b.right + 1, portrait: i.height > i.width}; });
     assert.deepEqual(fit, {inside: true, portrait: true}, 'the whole portrait page fits inside the board');
     results.push('📷 the teacher photographed the book page; it appeared on the teacher’s and the student’s board');
+
+    const overPhoto = await placeAll();
+    assert.ok(!overPhoto.onEachOther, 'texts over a photographed page still never sit on each other: ' + JSON.stringify(overPhoto));
+    results.push('over a photographed page the texts still line up without covering each other');
+
+    // the display screen held upright on a phone fills the whole screen (turned sideways), no empty space
+    const dc = await browser.newContext({viewport: {width: 390, height: 844}, isMobile: true, hasTouch: true}); await dc.addCookies(await tc.cookies());
+    const d = await dc.newPage(); watch(d); await d.goto(t.url() + '/display'); await d.waitForSelector('#gl-board'); await d.waitForTimeout(600);
+    const shown = await d.evaluate(() => { const r = document.querySelector('#gl-board').getBoundingClientRect(); return {h: r.height, vh: innerHeight, w: r.width, scroll: document.documentElement.scrollHeight > innerHeight + 1}; });
+    assert.ok(shown.h > shown.vh * 0.72 && !shown.scroll, JSON.stringify(shown));
+    await d.screenshot({path: path.join(out, 'live-trial-display-phone.png')});
+    results.push(`display screen on an upright phone: the board fills ${Math.round(100 * shown.h / shown.vh)}% of the screen height, no empty space`);
 
     // the prepared audio explanation of the page plays on the student's device
     await t.locator('#gl-quick').getByRole('button', {name: '▶ على أجهزة الطلاب'}).click();

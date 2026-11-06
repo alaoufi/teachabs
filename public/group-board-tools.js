@@ -64,7 +64,7 @@ export function attachBoardTools({mode, send = () => {}, items = () => [], canIn
     if (tool !== 'text') closeTextbox();
   }
   if (teacher) {
-    for (const b of document.querySelectorAll('.gl-tool')) b.addEventListener('click', () => setTool(b.dataset.tool));
+    for (const b of document.querySelectorAll('.gl-tool')) b.addEventListener('click', () => { setTool(b.dataset.tool); if (b.dataset.tool === 'text') openDocked(); });
     for (const b of document.querySelectorAll('.gl-color')) b.addEventListener('click', () => {
       state.color = b.dataset.color; for (const x of document.querySelectorAll('.gl-color')) x.setAttribute('aria-pressed', String(x === b));
       if (['select', 'hand', 'eraser'].includes(state.tool)) setTool('pen');
@@ -83,7 +83,9 @@ export function attachBoardTools({mode, send = () => {}, items = () => [], canIn
     textbox.style.top = Math.max(0, e.clientY - stage.top + 8) + 'px';
     input.value = ''; input.focus();
   }
-  function closeTextbox() { if (textbox) { textbox.hidden = true; textAt = null; } }
+  function closeTextbox() { if (textbox) { textbox.hidden = true; textAt = null; textbox.classList.remove('is-docked'); } }
+  /** «كتابة» opens a large box under the board at once; the text goes on the next free line unless a spot is tapped. */
+  function openDocked() { textAt = null; textbox.hidden = false; textbox.classList.add('is-docked'); textbox.style.left = ''; textbox.style.top = ''; input.value = ''; input.focus(); }
   function placeText(text, point) {
     if (!text.trim()) return;
     const temp = inkNode({kind: 'text', text, color: state.color, size: state.size, x: point[0], y: point[1]}); temp.classList.add('is-pending'); ink.append(temp);
@@ -91,14 +93,59 @@ export function attachBoardTools({mode, send = () => {}, items = () => [], canIn
   }
   if (teacher) {
     input.addEventListener('keydown', e => {
-      if (e.key === 'Enter') { e.preventDefault(); if (textAt) placeText(input.value, textAt); closeTextbox(); }
+      if (e.key === 'Enter') { e.preventDefault(); if (textAt) placeText(input.value, textAt); else placeNow(input.value); closeTextbox(); }
       if (e.key === 'Escape') closeTextbox();
     });
-    $('gl-textok').addEventListener('click', () => { if (textAt) placeText(input.value, textAt); closeTextbox(); });
+    $('gl-textok').addEventListener('click', () => { if (textAt) placeText(input.value, textAt); else placeNow(input.value); closeTextbox(); });
     $('gl-textcancel').addEventListener('click', closeTextbox);
   }
-  /** A prepared text chosen from the step's list is placed with the next tap on the board. */
-  function prepareSnippet(text) { setTool('text'); state.pendingText = text; onStatus('اضغط مكان النص على السبورة لوضعه: «' + text + '»'); }
+  /** Where a new text goes without a tap: the first free place in what is visible, in tidy rows filled from the right — never on top of another text. */
+  function nextLine(text) {
+    const c = state.camera, z = c.z || 1, size = TEXT_SIZES[state.size] || 32, pad = 18 / z, gap = 8 / z;
+    const left = c.x, top = c.y, right = c.x + BOARD.width / z, bottom = c.y + BOARD.height / z;
+    const probe = inkNode({kind: 'text', text: text || 'ـ', color: state.color, size: state.size, x: 0, y: 0});
+    probe.style.visibility = 'hidden'; ink.append(probe);
+    let m; try { m = probe.getBBox(); } catch { m = null; } probe.remove();
+    if (!m || !m.width) m = {x: -size * 6, y: -size, width: size * 6, height: size * 1.3};
+    const texts = [...ink.querySelectorAll('text')].map(t => { try { return t.getBBox(); } catch { return null; } }).filter(b => b && b.width);
+    const x0 = Math.min(BOARD.width - 10, right - pad), y0 = top + pad - m.y;
+    const row = m.height + gap * 1.5, step = 4 / z; // tidy rows, one under the other, filled from the right
+    const search = boxes => {
+      const free = (x, y) => { const a = {x: x + m.x, y: y + m.y, r: x + m.x + m.width, b: y + m.y + m.height};
+        return boxes.every(b => a.r + gap * 3 <= b.x || a.x >= b.x + b.width + gap * 3 || a.b + gap <= b.y || a.y >= b.y + b.height + gap); };
+      for (let y = y0; y + m.y + m.height <= bottom - pad + 1; y += row)
+        for (let x = x0; x + m.x >= left + pad - 1; x -= step) if (free(x, y)) return [Math.round(x), Math.round(y)];
+      return null;
+    };
+    // first around what the screen shows; if a picture fills it all, over the picture — but never on another text
+    const spot = search([...texts, ...contentBoxes()]) || search(texts); if (spot) return spot;
+    return [x0, Math.round(y0)]; // the visible area is full: the teacher can wipe it or drag
+  }
+  /** What the lesson screen already shows under the ink (its lines of text, pictures, cards), in board units. */
+  function contentBoxes() {
+    const content = document.getElementById('gl-content'), m = ink.getScreenCTM?.(); if (!content || !m) return [];
+    const inv = m.inverse(), pt = (x, y) => new DOMPoint(x, y).matrixTransform(inv), out = [];
+    const add = r => { if (!r.width || !r.height) return; const a = pt(r.left, r.top), b = pt(r.right, r.bottom); out.push({x: Math.min(a.x, b.x), y: Math.min(a.y, b.y), width: Math.abs(b.x - a.x), height: Math.abs(b.y - a.y)}); };
+    const walk = document.createTreeWalker(content, NodeFilter.SHOW_TEXT, {acceptNode: n => n.data.trim() ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_REJECT});
+    const range = document.createRange();
+    for (let n; (n = walk.nextNode());) { if (n.parentElement.closest('svg')) continue; range.selectNodeContents(n); for (const r of range.getClientRects()) add(r); }
+    for (const e of content.querySelectorAll('img, canvas, video')) add(e.getBoundingClientRect());
+    for (const svg of content.querySelectorAll('svg')) { // inside a drawing: its words, pictures and shapes — not its background
+      if (svg.parentElement.closest('svg')) continue;
+      const whole = svg.getBoundingClientRect(), area = whole.width * whole.height;
+      for (const e of svg.querySelectorAll('text, image, rect, circle, ellipse, path, polygon, polyline, line, use')) {
+        const r = e.getBoundingClientRect(); if (e.tagName === 'text' || r.width * r.height < area * 0.4) add(r);
+      }
+    }
+    return out;
+  }
+  /** One tap: a prepared or typed text goes straight onto the board; then «تحريك» is ready to drag it. */
+  function placeNow(text) {
+    if (!text || !text.trim()) return;
+    placeText(text, nextLine(text)); setTool('select');
+    onStatus('وُضع النص على السبورة. اسحبه بإصبعك لتغيير مكانه.');
+  }
+  function prepareSnippet(text) { placeNow(text); }
 
   // ---- hit testing ----
   function hit(point) {
@@ -229,7 +276,7 @@ export function attachBoardTools({mode, send = () => {}, items = () => [], canIn
   }
 
   if (teacher) setTool('select');
-  return {remoteCamera, prepareSnippet, setTool, resetForStep() { closeTextbox(); state.pendingText = null; gesture = null; pointers.clear(); }, get tool() { return state.tool; }};
+  return {remoteCamera, prepareSnippet, placeNow, openDocked, setTool, resetForStep() { closeTextbox(); state.pendingText = null; gesture = null; pointers.clear(); }, get tool() { return state.tool; }};
 }
 
 function segmentDistance(p, a, b) {

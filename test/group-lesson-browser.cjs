@@ -29,8 +29,8 @@ const assert = require('node:assert/strict'), fs = require('node:fs'), path = re
     // Prepared board item and move a step to check ordering controls.
     await t.locator('#pl-steps li').nth(1).locator('summary').click();
     await t.locator('#pl-steps li').nth(1).getByRole('button', {name: '+ نص مجهز'}).click();
-    await t.locator('#pl-steps li').nth(1).locator('textarea').last().fill('تذكير: الظل في الجهة المقابلة للضوء.');
-    await t.getByRole('button', {name: 'حفظ الدرس'}).click(); await t.waitForFunction(() => document.querySelector('#pl-status').textContent.includes('حُفظ'));
+    await t.locator('#pl-steps li').nth(1).locator('.pl-item textarea').last().fill('تذكير: الظل في الجهة المقابلة للضوء.');
+    await t.getByRole('button', {name: 'حفظ الدرس'}).click(); await t.waitForFunction(() => document.querySelector('#pl-status').textContent.includes('حُفظ')).catch(async e => { throw new Error('status: ' + await t.locator('#pl-status').textContent()); });
     await shot(t, 'group-planner');
     results.push('planner: six steps in the requested order, recorded narration, prepared item, saved');
 
