@@ -30,9 +30,9 @@ test('demo identity remains visible while role switching is collapsible and cont
 
 test('school forms share the compact workspace and do not advertise unavailable assignment actions',t=>{
  const {a,ids}=fixture(t),p=a.profile(ids.supervisor),html=adminSchool(p,a.school(ids.supervisor));
- assert.match(html,/class="adm-content adm-workspace"/);assert.match(html,/class="school-setup-grid"/);
+ assert.match(html,/class="adm-content adm-workspace"/);assert.match(html,/class="school-setup-grid(?: [^"]*)?"/);
  assert.doesNotMatch(html,/action="\/admin\/school\/(?:teachers|students)"/);
- assert.match(html,/الحجوزات الفردية كما هي/);
+ assert.match(html,/لا تنشئ حجوزات أو حصصًا جماعية/);
  const css=readFileSync(new URL('../public/admin.css',import.meta.url),'utf8');
  assert.match(css,/\.adm \.adm-hub \.adm-card-icon\{position:absolute;top:-22px/);
  assert.match(css,/grid-template-columns:repeat\(5,minmax\(0,1fr\)\)/);

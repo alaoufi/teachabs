@@ -38,7 +38,7 @@ const path=require('node:path');
    }
   }
   await page.goto(base+'/admin/school');assert.equal(await page.locator('form[action="/admin/school/teachers"]').count(),0);
-  store.admin.addSchoolGrade(ids.supervisor,{grade:4});await page.reload();await page.locator('select[name="levelKey"]').selectOption('primary:4');await page.locator('form[action="/admin/school/classes"] input[name="capacity"]').fill('10');
+  store.admin.addSchoolGrade(ids.supervisor,{grade:4});await page.reload();await page.locator('select[name="grade"]').selectOption('4');await page.locator('form[method="get"]:has(select[name="grade"]) button').click();await page.locator('form[action="/admin/school/classes"] input[name="capacity"]').fill('10');
   await page.locator('form[action="/admin/school/classes"] input[name="name"]').fill('فصل الاختبار');await page.locator('form[action="/admin/school/classes"] button').click();
   assert.equal(store.admin.school(ids.supervisor).classes.length,1);
   for(const width of [320,390,768,1280]){await page.setViewportSize({width,height:900});await page.goto(base+'/admin/school');assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth+1),false);await page.locator('.school-class-edit summary').click();assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth+1),false);await page.screenshot({path:path.join(output,`school-ready-${width}.png`),fullPage:true});}

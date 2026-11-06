@@ -47,9 +47,10 @@ test('school UI uses the fixed catalog, separates path/type/curriculum, and expo
  let html=adminSchool(a.profile(id),a.school(id));
  assert.match(html,/name="educationType"/);assert.match(html,/name="curriculumName"/);assert.match(html,/الحد الأقصى للطلاب/);
  assert.match(html,/&lt;مسار&gt;/);assert.match(html,/&lt;منهج&gt;/);assert.doesNotMatch(html,/<مسار>|<منهج>/);
- const levels=html.match(/<select name="levelKey"[^>]*>(.*?)<\/select>/)?.[1];assert.ok(levels);
- for(const level of SCHOOL_LEVELS)assert.ok(levels.includes('value="'+level.key+'"'));
- assert.equal((levels.match(/<option /g)||[]).length,12);assert.doesNotMatch(html,/action="\/admin\/school\/grades"/);
+ const stages=html.match(/<select name="stage"[^>]*>(.*?)<\/select>/)?.[1];assert.ok(stages);
+ const levels=html.match(/<select name="grade"[^>]*>(.*?)<\/select>/)?.[1];assert.ok(levels);
+ for(const level of SCHOOL_LEVELS.filter(l=>l.stage==='secondary'))assert.ok(levels.includes('value="'+level.grade+'"'));
+ assert.equal((stages.match(/<option /g)||[]).length,3);assert.equal((levels.match(/<option /g)||[]).length,3);assert.doesNotMatch(html,/action="\/admin\/school\/grades"/);
  assert.match(html,/بانتظار ربط التسجيل/);assert.doesNotMatch(html,/action="\/admin\/school\/students"/);
  grant(a,ids,['school.read']);html=adminSchool(a.profile(ids.education),a.school(ids.education));
  assert.doesNotMatch(html,/action="\/admin\/school\/(?:tracks|classes|classes\/capacity|classes\/update)"/);

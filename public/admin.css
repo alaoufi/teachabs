@@ -346,3 +346,7 @@ body:has(.adm) main{margin-top:0;padding-top:20px;padding-bottom:36px}
 .adm .school-individual-links p{margin:4px 0}.adm .school-individual-links .adm-form{margin:0}
 .adm .school-individual-pages{display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:10px;margin-block:12px}
 @media(max-width:700px){.adm .school-individual-steps,.adm .school-individual-roster{grid-template-columns:minmax(0,1fr)}.adm .school-individual-links article{display:block}.adm .school-individual-links .adm-form{margin-top:10px}.adm .school-individual-person{padding:10px}}
+/* 018: fixed path -> stage -> grade selection, without changing enrollment. */
+.adm .school-path-flow .school-selector{margin-block:0 10px}
+.adm .school-selected-context{font-weight:650;line-height:1.7;overflow-wrap:break-word;background:#eef6f5;border-radius:12px;padding:9px 12px;margin:0 0 10px}
+.adm .school-new-track{margin-block:8px}.adm .school-path-flow .school-class-grid{margin-top:12px}

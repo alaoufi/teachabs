@@ -22,7 +22,7 @@ const path=require('node:path');
   assert.equal(await page.locator('form[action="/admin/school/classes"]').count(),0);
   store.admin.addSchoolGrade(ids.supervisor,{grade:4});
   await page.reload();
-  await page.locator('form[action="/admin/school/classes"] select[name="levelKey"]').selectOption('primary:4');
+  await page.locator('select[name="grade"]').selectOption('4');await page.locator('form[method="get"]:has(select[name="grade"]) button').click();
   await page.locator('form[action="/admin/school/classes"] input[name="capacity"]').fill('10');
   await page.locator('form[action="/admin/school/classes"] input[name="name"]').fill('أ');
   await page.locator('form[action="/admin/school/classes"] button').click();

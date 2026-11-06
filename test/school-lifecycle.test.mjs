@@ -92,7 +92,7 @@ test('organizational UI omits archived choices and impossible empty forms',t=>{
  let html=adminSchool(a.profile(id),a.school(id));
  assert.doesNotMatch(html,/action="\/admin\/school\/classes"/);
  assert.doesNotMatch(html,/action="\/admin\/school\/teachers"/);
- assert.match(html,/أضف مسارًا تعليميًا أولًا/);
+ assert.match(html,/أنشئ مسارًا جديدًا أو هيّئ مسار التسجيل الحالي أولًا/);
  const active=create(a,id,'أ'),archived=create(a,id,'ب');
  update(a,id,archived,{state:'archived'});
  html=adminSchool(a.profile(id),a.school(id));
@@ -100,7 +100,7 @@ test('organizational UI omits archived choices and impossible empty forms',t=>{
  assert.ok(selectors.length>0);
  for(const options of selectors){assert.ok(options.includes(active));assert.ok(!options.includes(archived));}
  assert.match(html,/إعادة الإتاحة/);
- assert.match(html,/لا تنشئ حصصًا جماعية/);
+ assert.match(html,/لا تنشئ حجوزات أو حصصًا جماعية/);
 });
 
 test('additive lifecycle migration preserves existing records and state survives reopening',()=>{
