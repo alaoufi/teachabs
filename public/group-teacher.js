@@ -2,12 +2,16 @@
 import {STEP_TYPES, NARRATION, RATING, publicStep} from './group-plan.js';
 import {el, renderStep, renderInk, playNarration, stopNarration, renderDisplay} from './group-view.js';
 import {attachBoardTools} from './group-board-tools.js';
+import {renderNarrator, setSpeaking} from './group-view.js';
+import {openTextPicker} from './text-library.js';
+import {speakingMs} from './narrator-scripts.js';
 import {MATERIALS, formatHour, formatNumber, lessonState} from './science-shadow-model.js';
 
 const app = document.getElementById('gl-app'), code = app.dataset.code, base = '/teach/live/' + code;
 const $ = x => document.getElementById(x);
 const status = (text, bad = false) => { $('gl-status').textContent = text; $('gl-status').classList.toggle('is-error', bad); };
 let plan = null, view = null, busy = false, lastStep = null, contentKey = '';
+let autoAdvance = false, listenHere = false, lastSegmentSeq = 0, advanceTimer = 0, speakTimer = 0;
 const INKABLE = ['page', 'board', 'interactive', 'questions'];
 
 async function command(body) {
@@ -52,6 +56,7 @@ function renderBoard() {
   if (s.id !== lastStep) { lastStep = s.id; tools.resetForStep(); renderSnippets(s); }
   renderInk($('gl-ink'), view.state.strokes[s.id] || []);
   tools.remoteCamera(view.state.camera?.[s.id]);
+  renderTeacherNarrator(s);
   const show = $('gl-show');
   show.textContent = view.state.shown ? 'إخفاء عن الطلاب' : 'إظهار للطلاب'; show.setAttribute('aria-pressed', String(view.state.shown));
   $('gl-vis').textContent = !view.state.live ? 'انتهى العرض للطلاب' : view.state.shown ? 'الطلاب يرون هذه الخطوة' : 'الطلاب لا يرون هذه الخطوة الآن';
@@ -63,9 +68,59 @@ function renderBoard() {
   $('gl-live').textContent = view.state.live ? 'إنهاء العرض للطلاب' : 'استئناف العرض';
 }
 
+// The teacher sees the narrator exactly as the class does, and leads it: play, next, mute, hide, automatic advance.
+function renderTeacherNarrator(s) {
+  const n = view.state.narrator, g = s.type === 'interactive' ? s.narrator?.segments[n?.segment] : null;
+  const info = g && n.visible ? {segment: n.segment, total: s.narrator.segments.length, text: g.text, muted: n.muted} : null;
+  renderNarrator($('gl-board'), info);
+  if (!g || n.seq === lastSegmentSeq) return;
+  lastSegmentSeq = n.seq;
+  clearTimeout(advanceTimer); clearTimeout(speakTimer);
+  const duration = speakingMs(g.text) + 1600;
+  if (listenHere && !n.muted) { stopNarration(); setSpeaking($('gl-board'), true); playNarration(g.audio ? {mode: 'recorded', audio: g.audio} : {mode: 'speech', text: g.text}, {onEnd: () => setSpeaking($('gl-board'), false)}); }
+  else if (info) { setSpeaking($('gl-board'), true); speakTimer = setTimeout(() => setSpeaking($('gl-board'), false), duration - 1600); }
+  if (autoAdvance && n.segment < s.narrator.segments.length - 1) advanceTimer = setTimeout(() => command({op: 'narrator', action: 'next'}), duration + 800);
+}
+
+function narratorPanel(s) {
+  const n = view.state.narrator, segs = s.narrator.segments, on = n.segment >= 0;
+  const act = (action, extra = {}) => command({op: 'narrator', action, ...extra});
+  return el('section', {class: 'gl-narr-panel', 'aria-label': 'المتحدث'},
+    el('h3', {text: '🎙 المتحدث: جولة مشروحة'}),
+    el('div', {class: 'gl-row'},
+      el('button', {type: 'button', class: on ? '' : 'btn', onclick: () => act(on ? 'replay' : 'start')}, on ? '↻ أعد المقطع' : '▶ ابدأ الجولة'),
+      el('button', {type: 'button', disabled: !on || n.segment === 0, onclick: () => act('prev')}, 'السابق'),
+      el('button', {type: 'button', class: on ? 'btn' : '', disabled: !on || n.segment === segs.length - 1, onclick: () => act('next')}, 'التالي'),
+      el('button', {type: 'button', class: 'quiet', disabled: !on, onclick: () => { clearTimeout(advanceTimer); stopNarration(); act('stop'); }}, '■ إنهاء الجولة')),
+    el('div', {class: 'gl-row'},
+      el('button', {type: 'button', 'aria-pressed': String(!n.visible), onclick: () => act('visible', {on: !n.visible})}, n.visible ? 'إخفاء المتحدث' : 'إظهار المتحدث'),
+      el('button', {type: 'button', 'aria-pressed': String(n.muted), onclick: () => { if (!n.muted) stopNarration(); act('mute', {on: !n.muted}); }}, n.muted ? '🔇 الصوت مكتوم — شغّله' : '🔊 اكتم الصوت'),
+      el('label', {class: 'gl-field gl-inline'}, 'يُسمع على', el('select', {onchange: e => act('target', {to: e.target.value})},
+        [['screen', 'شاشة العرض'], ['students', 'أجهزة الطلاب'], ['both', 'الاثنين']].map(([v, t]) => el('option', {value: v, selected: n.target === v}, t))))),
+    el('div', {class: 'gl-row'},
+      el('label', {class: 'gl-check'}, el('input', {type: 'checkbox', checked: autoAdvance, onchange: e => { autoAdvance = e.target.checked; clearTimeout(advanceTimer); }}), 'انتقال تلقائي بعد كل مقطع'),
+      el('label', {class: 'gl-check'}, el('input', {type: 'checkbox', checked: listenHere, onchange: e => { listenHere = e.target.checked; if (!listenHere) stopNarration(); }}), 'أسمعه على جهازي أيضًا')),
+    el('ol', {class: 'gl-segs'}, segs.map((g, i) => el('li', {class: i === n.segment ? 'is-current' : ''},
+      el('button', {type: 'button', onclick: () => act('goto', {segment: i})}, el('small', {text: (g.audio ? '🎤 ' : '') + formatHour(g.hour)}), el('span', {text: g.text}))))),
+    el('p', {class: 'gl-hint', text: 'يظهر كلام المتحدث مكتوبًا دائمًا. الصوت من تسجيلك إن سجلته، وإلا من صوت الجهاز العربي إن وُجد. يمكنك الشرح بصوتك بدلًا منه بكتم صوته.'}));
+}
+
+function narratorQuick(s) {
+  const n = view.state.narrator, segs = s.narrator.segments, on = n.segment >= 0;
+  const act = (action, extra = {}) => command({op: 'narrator', action, ...extra});
+  return el('div', {class: 'gl-narr-quick', role: 'group', 'aria-label': 'تحكم سريع بالمتحدث'},
+    el('span', {class: 'gl-narr-label', text: on ? `🎙 المتحدث ${formatNumber(n.segment + 1)}/${formatNumber(segs.length)}` : '🎙 المتحدث'}),
+    el('button', {type: 'button', class: on ? '' : 'btn', 'data-narr': on ? 'replay' : 'start', onclick: () => act(on ? 'replay' : 'start')}, on ? '↻ أعد' : '▶ شغّل الجولة'),
+    on ? el('button', {type: 'button', 'data-narr': 'next', class: 'btn', disabled: n.segment === segs.length - 1, onclick: () => act('next')}, 'المقطع التالي') : null,
+    el('button', {type: 'button', 'data-narr': 'mute', 'aria-pressed': String(n.muted), onclick: () => { if (!n.muted) stopNarration(); act('mute', {on: !n.muted}); }}, n.muted ? '🔇 مكتوم' : '🔊 كتم'),
+    el('button', {type: 'button', 'data-narr': 'visible', 'aria-pressed': String(!n.visible), onclick: () => act('visible', {on: !n.visible})}, n.visible ? 'إخفاء' : 'إظهار'),
+    on ? el('button', {type: 'button', class: 'quiet', 'data-narr': 'stop', onclick: () => { clearTimeout(advanceTimer); stopNarration(); act('stop'); }}, '■ إنهاء') : null);
+}
+
 function renderNarration() {
   const s = step(), box = $('gl-narration');
   box.hidden = false;
+  if (s.type === 'interactive' && s.narrator) { box.replaceChildren(narratorQuick(s)); return; }
   if (s.narration.mode === 'live') { box.replaceChildren(el('span', {class: 'gl-live-voice', text: '🎙 ' + NARRATION.live + ': اشرح هذه الخطوة بصوتك.'})); return; }
   box.replaceChildren(el('span', {text: NARRATION[s.narration.mode] + ':'}),
     el('button', {type: 'button', class: 'outline', onclick: async () => { if (!await playNarration(s.narration)) status('تعذّر تشغيل الشرح على هذا الجهاز (قد لا يتوفر صوت عربي).', true); }}, 'تشغيل هنا'),
@@ -91,7 +146,8 @@ function renderPanel() {
         el('button', {type: 'button', class: sh.reveal ? '' : 'is-warn', 'aria-pressed': String(!sh.reveal), onclick: () => command({op: 'shadow', command: {op: 'reveal', show: !sh.reveal}})}, sh.reveal ? 'إخفاء الظل ليتوقع الطلاب' : 'اكشف الظل'),
         el('button', {type: 'button', 'aria-pressed': String(view.state.explore), onclick: () => command({op: 'explore', on: !view.state.explore})}, view.state.explore ? 'إيقاف الاستكشاف الفردي' : 'اسمح للطلاب بالاستكشاف على أجهزتهم'),
         el('button', {type: 'button', class: 'quiet', onclick: () => command({op: 'shadow', command: {op: 'reset'}})}, 'إعادة')),
-      el('p', {class: 'gl-hint', text: `الآن: ارتفاع الشمس ${formatNumber(full.elevation)}° وطول الظل ${formatNumber(full.length)} م.`}));
+      el('p', {class: 'gl-hint', text: `الآن: ارتفاع الشمس ${formatNumber(full.elevation)}° وطول الظل ${formatNumber(full.length)} م.`}),
+      s.narrator ? narratorPanel(s) : null);
   }
   if (s.type === 'board') {
     const revealed = view.state.revealed[s.id] || [];
@@ -189,6 +245,7 @@ $('gl-next').addEventListener('click', () => command({op: 'go', index: view.stat
 $('gl-show').addEventListener('click', () => command({op: 'show', shown: !view.state.shown}));
 $('gl-live').addEventListener('click', () => { if (!view.state.live || confirm('إنهاء العرض للطلاب؟ يبقى الواجب متاحًا إن كان مفتوحًا.')) command({op: 'live', on: !view.state.live}); });
 $('gl-undo').addEventListener('click', () => command({op: 'undo-stroke'}));
+$('gl-library').addEventListener('click', () => openTextPicker({title: 'نصوص توضيحية للسبورة', useLabel: 'ضعه على السبورة', onUse: text => tools.prepareSnippet(text)}));
 $('gl-clear').addEventListener('click', () => { if (confirm('مسح كل الكتابة في هذه الخطوة؟')) command({op: 'clear-strokes'}); });
 
 const tools = attachBoardTools({

@@ -11,20 +11,25 @@ const dateText = t => new Intl.DateTimeFormat('ar-SA', {dateStyle: 'medium', tim
 export function plansPage(plans, sessions) {
   const list = plans.length ? plans.map(p => `<li class="gl-row"><div><b>${e(p.title)}</b><small>آخر تعديل ${dateText(p.updated)}</small></div>
    <div class="gl-actions"><a class="outline" href="/teach/plans/${p.id}">ترتيب الدرس</a>
+   <a class="outline" href="/teach/plans/${p.id}.json" download="${e(p.title)}.json">تنزيل كملف</a>
    <form method="post" action="/teach/plans/${p.id}/start"><button class="btn">بدء الحصة</button></form></div></li>`).join('') : '<li class="gl-empty">لا توجد دروس بعد. ابدأ بالنموذج الجاهز ثم عدّله.</li>';
   const live = sessions.length ? `<h2>حصص سابقة وجارية</h2><ul class="gl-list">${sessions.map(s => `<li class="gl-row"><div><b>${e(s.title)}</b><small>الرمز ${e(s.code)} · ${dateText(s.created)} · ${s.live ? 'جارية' : 'انتهى العرض'}</small></div><a class="outline" href="/teach/live/${e(s.code)}">فتح إدارة الحصة</a></li>`).join('')}</ul>` : '';
   return `${css}<section class="gl-wrap" dir="rtl"><div class="section-head welcome-panel"><div class="eyebrow">الحصة الجماعية</div><h1>دروسي</h1>
   <p>رتّب درسك قبل الحصة بالتسلسل: ${STEP_ORDER.map(t => STEP_TYPES[t].short).join(' ← ')}. أثناء الحصة تتحكم بما يظهر للطلاب وما يختفي.</p></div>
-  <form method="post" action="/teach/plans/new"><button class="btn">درس جديد من النموذج الجاهز (الضوء والظل)</button></form>
+  <div class="gl-actions"><form method="post" action="/teach/plans/new"><button class="btn">درس جديد من النموذج الجاهز (الضوء والظل)</button></form>
+  <button type="button" class="outline" id="plans-import-btn">استيراد درس من ملف</button><input type="file" id="plans-import" accept=".json,application/json" hidden></div>
+  <p id="plans-status" class="gl-status" role="status" aria-live="polite" hidden></p>
   <ul class="gl-list">${list}</ul>${live}
-  <p class="gl-note">الحفظ في خدمة التجربة مؤقت. استخدم أسماء أولى فقط وبيانات وهمية.</p></section>`;
+  <p class="gl-note">خادم التجربة مؤقت وقد يتوقف في أي وقت: نزّل دروسك كملفات واحتفظ بها، ويمكنك استيرادها لاحقًا. استخدم أسماء أولى فقط وبيانات وهمية.</p></section><script type="module" src="/group-plans.js?v=1"></script>`;
 }
 
 export function plannerPage(id, title) {
   return `${css}<section class="gl-wrap" dir="rtl" id="planner" data-id="${e(id)}">
   <div class="gl-top"><div><div class="eyebrow">ترتيب الدرس قبل الحصة</div><h1 id="pl-heading">${e(title)}</h1></div>
-  <div class="gl-actions"><a class="outline" href="/teach/plans">دروسي</a><button type="button" class="btn" id="pl-save">حفظ الدرس</button></div></div>
+  <div class="gl-actions"><a class="outline" href="/teach/plans">دروسي</a><button type="button" class="outline" id="pl-export">تنزيل الدرس كملف</button><button type="button" class="outline" id="pl-import-btn">استيراد من ملف</button><input type="file" id="pl-import" accept=".json,application/json" hidden><button type="button" class="btn" id="pl-save">حفظ الدرس</button></div></div>
   <p id="pl-status" class="gl-status" role="status" aria-live="polite">جارٍ تحميل الدرس…</p>
+  <div id="pl-draft" class="gl-draft" role="alert" hidden><span>يوجد تعديل محفوظ على هذا الجهاز لم يصل إلى الخادم.</span><button type="button" class="btn" id="pl-draft-restore">استعادة التعديل</button><button type="button" class="quiet" id="pl-draft-drop">تجاهل</button></div>
+  <p class="gl-note">يحفظ هذا الجهاز مسودة تلقائية أثناء العمل. خادم التجربة قد يتوقف في أي وقت، فنزّل الدرس كملف بعد إنهائه واحتفظ به.</p>
   <div class="gl-meta" id="pl-meta"></div>
   <ol class="gl-plan" id="pl-steps"></ol>
   <div class="gl-add" role="group" aria-label="إضافة خطوة">${STEP_ORDER.map(t => `<button type="button" class="outline" data-add="${t}">+ ${STEP_TYPES[t].short}</button>`).join('')}</div>
@@ -53,7 +58,7 @@ export function teacherPage(code, title, base) {
      <div class="gl-toolgroup" role="group" aria-label="الأداة">${TOOL_BUTTONS.map(([tool, icon, label, key]) => `<button type="button" class="gl-tool" data-tool="${tool}" aria-pressed="${tool === 'select' ? 'true' : 'false'}" title="${label} (${key})"><span aria-hidden="true">${icon}</span><span>${label}</span></button>`).join('')}</div>
      <div class="gl-toolgroup gl-colors" role="group" aria-label="اللون">${COLORS.map((c, i) => `<button type="button" class="gl-color" data-color="${c.value}" aria-label="${c.name}" title="${c.name}" aria-pressed="${i ? 'false' : 'true'}"><i data-swatch="${i}"></i></button>`).join('')}</div>
      <div class="gl-toolgroup" role="group" aria-label="الحجم">${Object.entries(SIZE_NAMES).map(([k, n]) => `<button type="button" class="gl-size" data-size="${k}" aria-pressed="${k === 'm' ? 'true' : 'false'}" title="حجم ${n}"><i data-dot="${k}"></i><span>${n}</span></button>`).join('')}</div>
-     <div class="gl-toolgroup" role="group" aria-label="إجراءات"><button type="button" id="gl-undo" title="تراجع (Ctrl+Z)">↶ تراجع</button><button type="button" id="gl-clear">مسح كتابة الخطوة</button></div>
+     <div class="gl-toolgroup" role="group" aria-label="إجراءات"><button type="button" id="gl-library" title="اختر نصًا توضيحيًا وعدّله ثم ضعه على السبورة">📚 نصوص توضيحية</button><button type="button" id="gl-undo" title="تراجع (Ctrl+Z)">↶ تراجع</button><button type="button" id="gl-clear">مسح كتابة الخطوة</button></div>
     </div>
     <div class="gl-snippets" id="gl-snippets" hidden></div>
     ${boardShell('<div class="gl-textbox" id="gl-textbox" hidden><input id="gl-textinput" maxlength="200" aria-label="اكتب على السبورة" placeholder="اكتب ثم Enter" dir="auto"><button type="button" id="gl-textok" class="btn">ضع</button><button type="button" id="gl-textcancel" class="quiet">إلغاء</button></div>')}

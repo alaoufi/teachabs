@@ -8,9 +8,15 @@ export function createGroupStore({db, one, all, run, transaction}) {
   db.exec(`CREATE TABLE IF NOT EXISTS group_plans(id TEXT PRIMARY KEY,teacher TEXT NOT NULL REFERENCES users(id),title TEXT NOT NULL,plan TEXT NOT NULL,updated INTEGER NOT NULL);
   CREATE TABLE IF NOT EXISTS group_sessions(code TEXT PRIMARY KEY,teacher TEXT NOT NULL REFERENCES users(id),plan TEXT NOT NULL,state TEXT NOT NULL,created INTEGER NOT NULL,updated INTEGER NOT NULL);
   CREATE TABLE IF NOT EXISTS group_students(id TEXT PRIMARY KEY,code TEXT NOT NULL REFERENCES group_sessions(code),name TEXT NOT NULL,token TEXT NOT NULL UNIQUE,joined INTEGER NOT NULL,removed INTEGER NOT NULL DEFAULT 0);
+  CREATE TABLE IF NOT EXISTS group_texts(id TEXT PRIMARY KEY,teacher TEXT NOT NULL REFERENCES users(id),title TEXT NOT NULL,body TEXT NOT NULL,origin TEXT,updated INTEGER NOT NULL);
   CREATE TABLE IF NOT EXISTS group_responses(code TEXT NOT NULL REFERENCES group_sessions(code),student TEXT NOT NULL REFERENCES group_students(id),step TEXT NOT NULL,item TEXT NOT NULL,kind TEXT NOT NULL,data TEXT NOT NULL,updated INTEGER NOT NULL,PRIMARY KEY(code,student,step,item,kind));`);
   const parse = row => row && {...row, plan: JSON.parse(row.plan), ...(row.state ? {state: JSON.parse(row.state)} : {})};
   return {
+    texts: teacher => all('SELECT id,title,body,origin,updated FROM group_texts WHERE teacher=? ORDER BY updated DESC', teacher),
+    textCount: teacher => one('SELECT COUNT(*) n FROM group_texts WHERE teacher=?', teacher).n,
+    createText(teacher, {title, body, origin}) { const id = randomUUID(); run('INSERT INTO group_texts VALUES(?,?,?,?,?,?)', id, teacher, title, body, origin || null, Date.now()); return id; },
+    updateText: (teacher, id, {title, body}) => run('UPDATE group_texts SET title=?,body=?,updated=? WHERE id=? AND teacher=?', title, body, Date.now(), id, teacher).changes === 1,
+    deleteText: (teacher, id) => run('DELETE FROM group_texts WHERE id=? AND teacher=?', id, teacher).changes === 1,
     plans: teacher => all('SELECT id,title,updated FROM group_plans WHERE teacher=? ORDER BY updated DESC', teacher),
     plan: (teacher, id) => parse(one('SELECT * FROM group_plans WHERE id=? AND teacher=?', id, teacher)),
     createPlan(teacher, plan) { const id = randomUUID(); run('INSERT INTO group_plans VALUES(?,?,?,?,?)', id, teacher, plan.title, JSON.stringify(plan), Date.now()); return id; },

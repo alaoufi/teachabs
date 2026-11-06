@@ -1,7 +1,7 @@
 // Shared rendering for the group lesson board (teacher console, display screen and student seat).
 import {renderOriginalPage} from './group-plan.js';
 import {renderScene, lessonState, formatNumber} from './science-shadow-model.js';
-import {TOOLS, TEXT_SIZES, smoothPath, cameraTransform} from './group-ink.js';
+import {TOOLS, TEXT_SIZES, smoothPath, cameraTransform, wrapText} from './group-ink.js';
 
 export const el = (tag, attrs = {}, ...children) => {
   const node = document.createElement(tag);
@@ -16,6 +16,43 @@ export const el = (tag, attrs = {}, ...children) => {
 
 const SVG = 'http://www.w3.org/2000/svg';
 /** Draws ink items: smoothed pen/brush/marker strokes and typed text. Markers sit under the other ink. */
+const reduceMotion = () => window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+function animateScene(frame, from, to, hide) {
+  cancelAnimationFrame(frame._raf);
+  const start = performance.now(), duration = reduceMotion() ? 0 : 1600;
+  const a = lessonState(from), b = lessonState(to);
+  const tick = now => {
+    const t = duration ? Math.min(1, (now - start) / duration) : 1, ease = t < 0.5 ? 2 * t * t : 1 - (-2 * t + 2) ** 2 / 2;
+    const state = lessonState({...to, hour: a.hour + (b.hour - a.hour) * ease, height: a.height + (b.height - a.height) * ease, material: t < 1 ? a.material : b.material, exact: true});
+    frame.innerHTML = renderScene(state, {hideShadow: hide});
+    if (t < 1) frame._raf = requestAnimationFrame(tick); else frame._shadow = to;
+  };
+  frame._raf = requestAnimationFrame(tick);
+}
+
+// ---- narrator: an original speaking character with captions; it never covers the board's tools ----
+const NARRATOR_SVG = `<svg viewBox="0 0 120 120" aria-hidden="true" class="gl-avatar-svg"><defs><radialGradient id="glav" cx="40%" cy="35%"><stop offset="0" stop-color="#ffe58a"/><stop offset="1" stop-color="#f2a93b"/></radialGradient></defs>
+<g class="gl-rays" stroke="#f2a93b" stroke-width="6" stroke-linecap="round">${Array.from({length: 10}, (_, i) => { const a = i * Math.PI / 5, r1 = 46, r2 = 57; return `<line x1="${(60 + r1 * Math.cos(a)).toFixed(1)}" y1="${(60 + r1 * Math.sin(a)).toFixed(1)}" x2="${(60 + r2 * Math.cos(a)).toFixed(1)}" y2="${(60 + r2 * Math.sin(a)).toFixed(1)}"/>`; }).join('')}</g>
+<circle cx="60" cy="60" r="40" fill="url(#glav)" stroke="#d98a1c" stroke-width="2"/>
+<g class="gl-eyes" fill="#4a2a05"><ellipse cx="46" cy="54" rx="4.5" ry="6"/><ellipse cx="74" cy="54" rx="4.5" ry="6"/></g>
+<circle cx="38" cy="68" r="5" fill="#ff9d7a" opacity=".6"/><circle cx="82" cy="68" r="5" fill="#ff9d7a" opacity=".6"/>
+<ellipse class="gl-mouth" cx="60" cy="74" rx="11" ry="4" fill="#7a2e12"/></svg>`;
+export function renderNarrator(board, info) {
+  let box = board.querySelector('.gl-narrator');
+  if (!info) { box?.remove(); return null; }
+  if (!box) {
+    box = el('div', {class: 'gl-narrator', role: 'status', 'aria-live': 'polite'});
+    const avatar = el('div', {class: 'gl-avatar'}); avatar.innerHTML = NARRATOR_SVG;
+    box.append(avatar, el('div', {class: 'gl-bubble'}, el('p', {class: 'gl-caption'}), el('small', {class: 'gl-seg'})));
+    board.append(box);
+  }
+  box.querySelector('.gl-caption').textContent = info.text;
+  box.querySelector('.gl-seg').textContent = `${formatNumber(info.segment + 1)} / ${formatNumber(info.total)}${info.muted ? ' · الصوت مكتوم' : ''}`;
+  box.classList.toggle('is-muted', Boolean(info.muted));
+  return box;
+}
+export function setSpeaking(board, on) { board.querySelector('.gl-narrator')?.classList.toggle('is-speaking', on); }
+
 export function renderInk(svg, items = []) {
   const markers = document.createElementNS(SVG, 'g'), ink = document.createElementNS(SVG, 'g');
   markers.setAttribute('class', 'gl-markers');
@@ -30,7 +67,9 @@ export function inkNode(item) {
     t.setAttribute('font-size', TEXT_SIZES[item.size] || TEXT_SIZES.m); t.setAttribute('class', 'gl-text');
     t.setAttribute('direction', 'rtl'); t.setAttribute('text-anchor', 'start'); t.setAttribute('dominant-baseline', 'hanging');
     if (item.id) t.dataset.id = item.id;
-    t.textContent = item.text;
+    const size = TEXT_SIZES[item.size] || TEXT_SIZES.m, lines = wrapText(item.text, item.size);
+    if (lines.length === 1) t.textContent = item.text;
+    else lines.forEach((line, i) => { const span = document.createElementNS(SVG, 'tspan'); span.setAttribute('x', item.x); if (i) span.setAttribute('dy', Math.round(size * 1.35)); span.textContent = line; t.append(span); });
     return t;
   }
   const tool = TOOLS[item.tool] || TOOLS.pen, path = document.createElementNS(SVG, 'path');
@@ -50,10 +89,10 @@ export function applyCamera(camera, c, {animate = true} = {}) {
  * options.shadow is the activity state to draw; options.display is the questions display.
  */
 export function renderStep(container, content, {teacher = false, revealed = null, shadow = null, display = null} = {}) {
-  container.replaceChildren();
-  if (!content) return;
-  container.dataset.type = content.type;
+  if (!content) { container.replaceChildren(); delete container.dataset.step; return; }
   const title = el('h2', {class: 'gl-step-title', text: content.title});
+  if (content.type !== 'interactive') { container.replaceChildren(); delete container.dataset.step; }
+  container.dataset.type = content.type;
   if (content.type === 'page') {
     const frame = el('div', {class: 'gl-page'});
     if (content.source === 'upload') frame.append(el('img', {src: content.image, alt: content.title}));
@@ -62,8 +101,17 @@ export function renderStep(container, content, {teacher = false, revealed = null
     return;
   }
   if (content.type === 'interactive') {
-    const s = shadow || {};
-    const frame = el('div', {class: 'gl-scene'}); frame.innerHTML = renderScene(lessonState(s), {hideShadow: !teacher && s.reveal === false});
+    const s = shadow || {}, hide = !teacher && s.reveal === false;
+    const old = container.dataset.step === content.id ? container.querySelector('.gl-scene') : null;
+    if (old) {
+      // Same step: glide the sun to its new place instead of jumping.
+      animateScene(old, old._shadow || s, s, hide);
+      const facts = container.querySelector('.gl-facts');
+      if (facts) facts.textContent = teacher || s.reveal !== false ? `ارتفاع الشمس ${formatNumber(lessonState(s).elevation)}° · طول الظل ${formatNumber(lessonState(s).length)} م` : 'الظل مخفي: توقّع أين سيكون، ثم انتظر الكشف.';
+      return;
+    }
+    container.replaceChildren(); container.dataset.type = 'interactive'; container.dataset.step = content.id;
+    const frame = el('div', {class: 'gl-scene'}); frame.innerHTML = renderScene(lessonState(s), {hideShadow: hide}); frame._shadow = s;
     container.append(title, frame);
     const facts = el('p', {class: 'gl-facts'});
     if (teacher || s.reveal !== false) facts.textContent = `ارتفاع الشمس ${formatNumber(lessonState(s).elevation)}° · طول الظل ${formatNumber(lessonState(s).length)} م`;
@@ -118,18 +166,20 @@ export function renderDisplay(d) {
 let audio = null;
 export function stopNarration() { audio?.pause(); audio = null; if ('speechSynthesis' in window) speechSynthesis.cancel(); }
 /** Plays recorded audio or Arabic device speech. Resolves false when the browser blocked it or no Arabic voice exists. */
-export async function playNarration(n) {
+export async function playNarration(n, {onEnd = () => {}} = {}) {
   stopNarration();
   if (n.mode === 'recorded') {
-    audio = new Audio(n.audio);
-    try { await audio.play(); return true; } catch { return false; }
+    const a = audio = new Audio(n.audio); a.onended = a.onerror = () => onEnd();
+    try { await a.play(); return true; } catch { onEnd(); return false; }
   }
   if (n.mode === 'speech') {
-    if (!('speechSynthesis' in window)) return false;
+    if (!('speechSynthesis' in window)) { onEnd(); return false; }
     const voices = speechSynthesis.getVoices(), arabic = voices.find(v => v.lang?.toLowerCase().startsWith('ar'));
+    if (voices.length && !arabic) { onEnd(); return false; }
     const u = new SpeechSynthesisUtterance(n.text); u.lang = arabic?.lang || 'ar-SA'; if (arabic) u.voice = arabic;
+    u.onend = u.onerror = () => onEnd();
     speechSynthesis.speak(u);
-    return voices.length === 0 || Boolean(arabic);
+    return true;
   }
-  return false;
+  onEnd(); return false;
 }

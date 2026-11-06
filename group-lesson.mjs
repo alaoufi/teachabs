@@ -1,10 +1,16 @@
 // Group lesson service: planner, live teacher console, display screen and student seats.
 import {validatePlan, defaultPlan, PlanError, LIMITS} from './public/group-plan.js';
-import {initialState, teacherCommand, teacherView, publicView, checkAnswer, checkEvaluation, contentFor, narrationFor, MAX_STUDENTS} from './group-session.mjs';
+import {initialState, teacherCommand, teacherView, publicView, checkAnswer, checkEvaluation, contentFor, narrationFor, segmentAudio, MAX_STUDENTS} from './group-session.mjs';
 import {UserError} from './store.mjs';
 import * as v from './group-views.mjs';
 
 const need = (ok, message, status = 400) => { if (!ok) throw new UserError(message, status); };
+function cleanText(body) {
+  const title = typeof body?.title === 'string' ? body.title.trim() : '', text = typeof body?.body === 'string' ? body.body.trim() : '';
+  need(title.length >= 1 && title.length <= 60, 'اكتب عنوانًا للنص حتى ٦٠ حرفًا.');
+  need(text.length >= 1 && text.length <= 600, 'اكتب النص حتى ٦٠٠ حرف.');
+  return {title, body: text};
+}
 const CODE = /^[A-HJ-NP-Z2-9]{6}$/;
 const UUID = /^[0-9a-f-]{36}$/;
 const PAGE_CSP = "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data: blob:; media-src 'self' data: blob:; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'; object-src 'none'";
@@ -67,7 +73,7 @@ export function groupService(store) {
     matches: path => path === '/join' || path.startsWith('/teach/') || path === '/teach' || path.startsWith('/class/'),
     async handle(ctx) {
       const {req, res, url} = ctx, path = url.pathname;
-      const api = /\/(events|content|narration|answer|command|evaluate|remove|plan|display-events)$/.test(path) || path.endsWith('.json') || req.headers['content-type']?.startsWith('application/json');
+      const api = /\/(events|content|narration|answer|command|evaluate|remove|plan|display-events|texts|delete|import)$/.test(path) || /^\/teach\/texts\//.test(path) || path.endsWith('.json') || req.headers['content-type']?.startsWith('application/json');
       try { return await route(ctx); } catch (err) {
         if (api && err instanceof UserError && !res.headersSent) return send(res, {error: err.message}, err.status);
         throw err;
@@ -99,7 +105,10 @@ export function groupService(store) {
         if (!action && method === 'GET') return page(res, html, 'الحصة', v.studentPage(code, me.name, s.plan.title));
         if (action === 'events' && method === 'GET') return subscribe(req, res, code, 'student', me.id);
         if (action === 'content' && method === 'GET') return send(res, contentFor(s.state, s.plan, url.searchParams.get('step') || ''));
-        if (action === 'narration' && method === 'GET') return send(res, narrationFor(s.state, s.plan, url.searchParams.get('step') || ''));
+        if (action === 'narration' && method === 'GET') {
+          const segment = url.searchParams.get('segment');
+          return send(res, segment === null ? narrationFor(s.state, s.plan, url.searchParams.get('step') || '') : segmentAudio(s.state, s.plan, url.searchParams.get('step') || '', Number(segment)));
+        }
         if (action === 'answer' && method === 'POST') {
           const body = await json(req, base, 8192), kind = body.kind === 'homework' ? 'homework' : 'answer';
           const a = checkAnswer(s.state, s.plan, body, kind);
@@ -115,6 +124,24 @@ export function groupService(store) {
       if (path === '/teach' || path === '/teach/plans') {
         need(method === 'GET', 'إجراء غير متاح.', 405);
         return page(res, html, 'دروسي للحصة الجماعية', v.plansPage(g.plans(teacher.id), g.sessions(teacher.id)));
+      }
+      if (path === '/teach/texts') {
+        if (method === 'GET') return send(res, g.texts(teacher.id));
+        need(method === 'POST', 'إجراء غير متاح.', 405);
+        const body = await json(req, base, 16384), t = cleanText(body);
+        need(g.textCount(teacher.id) < 500, 'وصلت مكتبتك إلى ٥٠٠ نص. احذف بعضها أولًا.', 409);
+        return send(res, {id: g.createText(teacher.id, {...t, origin: typeof body.origin === 'string' ? body.origin.slice(0, 60) : null})});
+      }
+      const tm = path.match(/^\/teach\/texts\/([0-9a-f-]{36})(\/delete)?$/);
+      if (tm && method === 'POST') {
+        const body = await json(req, base, 16384);
+        if (tm[2]) { need(g.deleteText(teacher.id, tm[1]), 'النص غير موجود.', 404); return send(res, {ok: true}); }
+        need(g.updateText(teacher.id, tm[1], cleanText(body)), 'النص غير موجود.', 404); return send(res, {ok: true});
+      }
+      if (path === '/teach/plans/import' && method === 'POST') {
+        const body = await json(req, base, LIMITS.plan + 100_000);
+        let clean; try { clean = validatePlan(body); } catch (e) { if (e instanceof PlanError) throw new UserError(e.message); throw e; }
+        return send(res, {id: g.createPlan(teacher.id, clean)});
       }
       if (path === '/teach/plans/new' && method === 'POST') { await fields(req); return redirect('/teach/plans/' + g.createPlan(teacher.id, validatePlan(defaultPlan()))); }
       const pm = path.match(/^\/teach\/plans\/([0-9a-f-]{36})(\.json|\/delete|\/start)?$/);

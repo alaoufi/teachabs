@@ -1,13 +1,26 @@
 // Planner: the teacher orders the lesson steps before class and prepares content, questions and narration.
-import {STEP_TYPES, NARRATION, SUBJECTS, ORIGINAL_PAGES, LIMITS, renderOriginalPage} from './group-plan.js';
+import {STEP_TYPES, NARRATION, SUBJECTS, ORIGINAL_PAGES, LIMITS, renderOriginalPage, validatePlan} from './group-plan.js';
 import {el} from './group-view.js';
+import {openTextPicker, downloadJSON, safeName} from './text-library.js';
+import {NARRATOR_SCRIPTS} from './narrator-scripts.js';
+import {MATERIALS, formatHour} from './science-shadow-model.js';
 
 const root = document.getElementById('planner'), id = root.dataset.id;
 const $ = x => document.getElementById(x);
 const status = (text, bad = false) => { $('pl-status').textContent = text; $('pl-status').classList.toggle('is-error', bad); };
 let plan = null, dirty = false;
 const uid = prefix => prefix + '-' + Math.random().toString(36).slice(2, 8);
-const touch = () => { dirty = true; status('توجد تعديلات غير محفوظة.'); };
+const DRAFT = 'gl-plan-draft-' + id;
+let draftTimer = 0;
+function saveDraft() {
+  clearTimeout(draftTimer);
+  draftTimer = setTimeout(() => {
+    try { localStorage.setItem(DRAFT, JSON.stringify({at: Date.now(), plan})); }
+    catch { status('توجد تعديلات غير محفوظة. الدرس أكبر من مساحة الحفظ على الجهاز؛ احفظه في الخادم ونزّله كملف.', true); }
+  }, 400);
+}
+const dropDraft = () => { clearTimeout(draftTimer); try { localStorage.removeItem(DRAFT); } catch { /* ignore */ } };
+const touch = () => { dirty = true; status('توجد تعديلات غير محفوظة. تُحفظ مسودة على هذا الجهاز تلقائيًا.'); saveDraft(); };
 window.addEventListener('beforeunload', e => { if (dirty) { e.preventDefault(); e.returnValue = ''; } });
 
 function field(label, input) { return el('label', {class: 'pl-field'}, el('span', {text: label}), input); }
@@ -51,6 +64,35 @@ function imagePicker(label, onPick) {
 
 // ---- narration (live voice, recorded clip, or device speech) ----
 let recorder = null;
+/** Record / play / delete controls that store a voice clip on `holder.audio`. */
+function audioControls(key, holder, label = 'التسجيل') {
+  const parts = [];
+  if (holder.audio) parts.push(el('audio', {controls: true, src: holder.audio}), el('button', {type: 'button', class: 'quiet', onclick: () => { delete holder.audio; touch(); render(); }}, 'حذف ' + label));
+  const rec = el('button', {type: 'button', class: 'outline'}, recorder?.key === key ? '■ إيقاف التسجيل' : (holder.audio ? 'إعادة التسجيل' : '● سجّل بصوتك'));
+  rec.addEventListener('click', async () => {
+    if (recorder?.key === key) return recorder.media.stop();
+    if (recorder) return status('أوقف التسجيل الجاري أولًا.', true);
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({audio: {echoCancellation: true, noiseSuppression: true}});
+      const type = ['audio/webm;codecs=opus', 'audio/ogg;codecs=opus', 'audio/mp4'].find(t => MediaRecorder.isTypeSupported?.(t)) || '';
+      const media = new MediaRecorder(stream, type ? {mimeType: type, audioBitsPerSecond: 48000} : {}), chunks = [];
+      recorder = {key, media};
+      media.ondataavailable = e => chunks.push(e.data);
+      media.onstop = () => {
+        stream.getTracks().forEach(t => t.stop()); clearTimeout(recorder?.timer); recorder = null;
+        const reader = new FileReader();
+        reader.onload = () => { if (reader.result.length > LIMITS.audio) status('التسجيل طويل؛ اجعله أقصر من دقيقة ونصف.', true); else { holder.audio = reader.result; touch(); } render(); };
+        reader.readAsDataURL(new Blob(chunks, {type: media.mimeType || 'audio/webm'}));
+      };
+      media.start(); recorder.timer = setTimeout(() => media.state === 'recording' && media.stop(), 90_000);
+      status('جارٍ التسجيل… تحدث بوضوح ثم اضغط إيقاف (حد أقصى دقيقة ونصف).'); render();
+    } catch { recorder = null; status('تعذّر استخدام الميكروفون. اسمح للمتصفح باستخدامه ثم أعد المحاولة.', true); }
+  });
+  parts.push(rec);
+  return parts;
+}
+/** Button that opens the explanatory text bank and passes the chosen (edited) text on. */
+const libraryButton = (label, onText) => el('button', {type: 'button', class: 'outline tl-open', onclick: () => openTextPicker({onUse: text => { onText(text); touch(); render(); }})}, '📚 ' + label);
 function narrationEditor(step) {
   const n = step.narration ||= {mode: 'live'};
   const box = el('div', {class: 'pl-narration'});
@@ -58,7 +100,7 @@ function narrationEditor(step) {
   box.append(field('الشرح الصوتي لهذه الخطوة', select));
   if (n.mode === 'live') box.append(el('p', {class: 'pl-hint', text: 'تشرح بصوتك أثناء الحصة.'}));
   if (n.mode === 'speech') {
-    box.append(field('النص الذي يقرؤه الجهاز', area(n.text, 600, v => { n.text = v; }, 3)));
+    box.append(field('النص الذي يقرؤه الجهاز', area(n.text, 600, v => { n.text = v; }, 3)), libraryButton('اختر من النصوص التوضيحية', t => { n.text = t; }));
     box.append(el('button', {type: 'button', class: 'outline', onclick: () => {
       if (!('speechSynthesis' in window)) return status('هذا المتصفح لا يدعم القراءة الآلية.', true);
       speechSynthesis.cancel(); const u = new SpeechSynthesisUtterance(n.text || ''); u.lang = 'ar-SA';
@@ -66,30 +108,7 @@ function narrationEditor(step) {
       speechSynthesis.speak(u);
     }}, 'استمع للتجربة'));
   }
-  if (n.mode === 'recorded') {
-    if (n.audio) box.append(el('audio', {controls: true, src: n.audio}), el('button', {type: 'button', class: 'quiet', onclick: () => { delete n.audio; touch(); render(); }}, 'حذف التسجيل'));
-    const rec = el('button', {type: 'button', class: 'outline'}, recorder?.step === step.id ? '■ إيقاف التسجيل' : (n.audio ? 'إعادة التسجيل' : '● بدء التسجيل'));
-    rec.addEventListener('click', async () => {
-      if (recorder?.step === step.id) return recorder.media.stop();
-      if (recorder) return status('أوقف التسجيل الجاري أولًا.', true);
-      try {
-        const stream = await navigator.mediaDevices.getUserMedia({audio: {echoCancellation: true, noiseSuppression: true}});
-        const type = ['audio/webm;codecs=opus', 'audio/ogg;codecs=opus', 'audio/mp4'].find(t => MediaRecorder.isTypeSupported?.(t)) || '';
-        const media = new MediaRecorder(stream, type ? {mimeType: type, audioBitsPerSecond: 48000} : {}), chunks = [];
-        recorder = {step: step.id, media};
-        media.ondataavailable = e => chunks.push(e.data);
-        media.onstop = () => {
-          stream.getTracks().forEach(t => t.stop()); clearTimeout(recorder?.timer); recorder = null;
-          const reader = new FileReader();
-          reader.onload = () => { if (reader.result.length > LIMITS.audio) status('التسجيل طويل؛ اجعله أقصر من دقيقة ونصف.', true); else { n.audio = reader.result.replace(/^data:audio\/([a-z0-9]+);codecs=([a-z0-9.]+);/, 'data:audio/$1;codecs=$2;'); touch(); } render(); };
-          reader.readAsDataURL(new Blob(chunks, {type: media.mimeType || 'audio/webm'}));
-        };
-        media.start(); recorder.timer = setTimeout(() => media.state === 'recording' && media.stop(), 90_000);
-        status('جارٍ التسجيل… تحدث بوضوح ثم اضغط إيقاف (حد أقصى دقيقة ونصف).'); render();
-      } catch { recorder = null; status('تعذّر استخدام الميكروفون. اسمح للمتصفح باستخدامه ثم أعد المحاولة.', true); }
-    });
-    box.append(rec);
-  }
+  if (n.mode === 'recorded') box.append(...audioControls(step.id, n));
   return box;
 }
 
@@ -131,7 +150,7 @@ function stepEditor(step) {
         'أؤكد أن لدي حق عرض هذه الصفحة على طلابي (مثل ترخيص المدرسة أو مادة من إعدادي). لا تنشر الصفحة خارج الحصة.'));
     }
   } else if (step.type === 'interactive') {
-    box.append(field('النشاط', el('select', {disabled: true}, el('option', {}, 'الضوء والظل — علوم الصف الرابع'))), el('p', {class: 'pl-hint', text: 'تحرك الشمس أثناء الحصة، وتخفي الظل ليتوقع الطلاب ثم تكشفه.'}));
+    box.append(field('النشاط', el('select', {disabled: true}, el('option', {}, 'الضوء والظل — علوم الصف الرابع'))), el('p', {class: 'pl-hint', text: 'تحرك الشمس أثناء الحصة، وتخفي الظل ليتوقع الطلاب ثم تكشفه.'}), narratorEditor(step));
   } else if (step.type === 'board') {
     step.items.forEach((item, i) => {
       const card = el('div', {class: 'pl-item'}, el('div', {class: 'pl-q-head'}, el('b', {text: `عنصر ${i + 1} · ${item.kind === 'image' ? 'صورة' : 'نص'}`}), smallButtons(step.items, i, `العنصر ${i + 1}`)));
@@ -141,6 +160,7 @@ function stepEditor(step) {
     });
     if (step.items.length < LIMITS.items) box.append(el('div', {class: 'pl-row'},
       el('button', {type: 'button', class: 'outline', onclick: () => { step.items.push({id: uid('i'), kind: 'text', text: ''}); touch(); render(); }}, '+ نص مجهز'),
+      libraryButton('نص من المكتبة', t => step.items.push({id: uid('i'), kind: 'text', text: t.slice(0, 300)})),
       imagePicker('+ صورة مجهزة', data => { step.items.push({id: uid('i'), kind: 'image', image: data, caption: ''}); })));
     box.append(el('p', {class: 'pl-hint', text: 'تبدأ العناصر مخفية في الحصة، وتظهرها واحدًا واحدًا أثناء الشرح.'}));
   } else if (step.type === 'questions') {
@@ -161,7 +181,27 @@ function snippetsEditor(step) {
   const box = el('div', {class: 'pl-snippets'}, el('b', {text: 'نصوص جاهزة للكتابة على السبورة'}), el('p', {class: 'pl-hint', text: 'كلمات أو جمل تضعها على السبورة بلمسة أثناء الشرح بدل كتابتها وقت الحصة.'}));
   list.forEach((t, i) => box.append(el('div', {class: 'pl-option'}, textInput(t, 200, v => { list[i] = v; }, {'aria-label': `النص الجاهز ${i + 1}`}),
     el('button', {type: 'button', class: 'quiet', onclick: () => { list.splice(i, 1); touch(); render(); }}, 'حذف'))));
-  if (list.length < LIMITS.snippets) box.append(el('button', {type: 'button', class: 'quiet', onclick: () => { list.push(''); touch(); render(); }}, '+ نص جاهز'));
+  if (list.length < LIMITS.snippets) box.append(el('div', {class: 'pl-row'}, el('button', {type: 'button', class: 'quiet', onclick: () => { list.push(''); touch(); render(); }}, '+ نص جاهز'), libraryButton('أضف من النصوص التوضيحية', t => list.push(t.slice(0, 200)))));
+  return box;
+}
+
+function narratorEditor(step) {
+  step.narrator ||= {segments: structuredClone(NARRATOR_SCRIPTS.shadows.segments)};
+  const segs = step.narrator.segments;
+  const box = el('div', {class: 'pl-narrator'}, el('b', {text: '🎙 المتحدث: جولة مشروحة للشمس والظل'}),
+    el('p', {class: 'pl-hint', text: 'كل مقطع يحرّك الشمس إلى وقت محدد ويشرح بجملة تظهر مكتوبة. يُقرأ بصوت الجهاز، أو بصوتك إن سجلته. في الحصة تتحكم بالتشغيل والكتم والإخفاء.'}));
+  segs.forEach((g, i) => {
+    const card = el('div', {class: 'pl-q pl-seg'}, el('div', {class: 'pl-q-head'}, el('b', {text: `مقطع ${i + 1} · ${formatHour(g.hour)}`}), smallButtons(segs, i, `المقطع ${i + 1}`)),
+      field('ما يقوله المتحدث', area(g.text, 300, v => { g.text = v; }, 2)),
+      el('div', {class: 'pl-row'},
+        field('وقت الشمس', el('select', {onchange: e => { g.hour = Number(e.target.value); touch(); render(); }}, Array.from({length: 21}, (_, k) => 7 + k / 2).map(h => el('option', {value: h, selected: h === g.hour}, formatHour(h))))),
+        field('المادة', el('select', {onchange: e => { g.material = e.target.value; touch(); }}, Object.entries(MATERIALS).map(([k, m]) => el('option', {value: k, selected: k === (g.material || 'wood')}, m.name))))),
+      el('div', {class: 'pl-row'}, libraryButton('من النصوص التوضيحية', t => { g.text = t.slice(0, 300); }), ...audioControls('seg-' + step.id + '-' + g.id, g, 'تسجيل المقطع')));
+    box.append(card);
+  });
+  box.append(el('div', {class: 'pl-row'},
+    segs.length < LIMITS.segments ? el('button', {type: 'button', class: 'outline', onclick: () => { segs.push({id: uid('n'), hour: 12, height: 1.5, material: 'wood', text: ''}); touch(); render(); }}, '+ مقطع') : null,
+    el('button', {type: 'button', class: 'quiet', onclick: () => { if (confirm('استبدال المقاطع بالجولة الجاهزة؟')) { step.narrator = {segments: structuredClone(NARRATOR_SCRIPTS.shadows.segments)}; touch(); render(); } }}, 'استعادة الجولة الجاهزة')));
   return box;
 }
 
@@ -204,7 +244,7 @@ $('pl-save').addEventListener('click', async () => {
     const r = await fetch(location.pathname, {method: 'POST', headers: {'content-type': 'application/json'}, body: JSON.stringify(plan)});
     const data = await r.json().catch(() => ({}));
     if (!r.ok) throw new Error(data.error || 'تعذّر الحفظ.');
-    dirty = false; status('حُفظ الدرس. يمكنك بدء الحصة.');
+    dirty = false; dropDraft(); status('حُفظ الدرس. يمكنك بدء الحصة. نزّله كملف للاحتفاظ بنسخة.');
   } catch (e) { status(e.message, true); } finally { button.disabled = false; }
 });
 for (const form of document.querySelectorAll('.gl-start, .gl-delete')) form.addEventListener('submit', e => {
@@ -213,4 +253,30 @@ for (const form of document.querySelectorAll('.gl-start, .gl-delete')) form.addE
   dirty = false;
 });
 
-fetch(location.pathname + '.json').then(r => r.json()).then(data => { plan = data; render(); status('رتّب الخطوات وجهزها، ثم احفظ.'); }).catch(() => status('تعذّر تحميل الدرس.', true));
+function checkDraft(serverPlan) {
+  let draft = null; try { draft = JSON.parse(localStorage.getItem(DRAFT) || 'null'); } catch { /* ignore */ }
+  if (!draft?.plan || JSON.stringify(draft.plan) === JSON.stringify(serverPlan)) { dropDraft(); return; }
+  $('pl-draft').hidden = false;
+  $('pl-draft-restore').onclick = () => { plan = draft.plan; $('pl-draft').hidden = true; dirty = true; render(); status('استُعيد التعديل من هذا الجهاز. اضغط «حفظ الدرس».'); };
+  $('pl-draft-drop').onclick = () => { dropDraft(); $('pl-draft').hidden = true; };
+}
+$('pl-export').addEventListener('click', () => downloadJSON(safeName(plan?.title) + '.json', {format: 'teachabs-lesson', version: 1, saved: new Date().toISOString(), plan}));
+$('pl-import-btn').addEventListener('click', () => $('pl-import').click());
+$('pl-import').addEventListener('change', async e => {
+  const file = e.target.files[0]; if (!file) return;
+  try {
+    const data = JSON.parse(await file.text()), imported = data?.format === 'teachabs-lesson' ? data.plan : data;
+    validatePlan(imported);
+    if (!confirm('استبدال محتوى هذا الدرس بالملف؟ يمكنك التراجع بعدم الحفظ.')) return;
+    plan = imported; touch(); render(); status('استُورد الدرس من الملف. راجعه ثم اضغط «حفظ الدرس».');
+  } catch (err) { status(err instanceof SyntaxError ? 'الملف ليس درسًا صالحًا.' : 'الملف غير صالح: ' + err.message, true); }
+  e.target.value = '';
+});
+
+fetch(location.pathname + '.json').then(r => { if (!r.ok) throw new Error(); return r.json(); }).then(data => { plan = data; render(); status('رتّب الخطوات وجهزها، ثم احفظ.'); checkDraft(data); })
+  .catch(() => {
+    // The server is unreachable: open the last draft from this device so the work is not lost.
+    let draft = null; try { draft = JSON.parse(localStorage.getItem(DRAFT) || 'null'); } catch { /* ignore */ }
+    if (draft?.plan) { plan = draft.plan; render(); status('تعذّر الوصول للخادم. فُتحت آخر مسودة من هذا الجهاز؛ نزّلها كملف للاحتفاظ بها.', true); }
+    else status('تعذّر تحميل الدرس.', true);
+  });

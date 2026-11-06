@@ -23,7 +23,7 @@ const assert = require('node:assert/strict'), fs = require('node:fs'), path = re
     await t.locator('#pl-steps li').nth(0).locator('summary').click();
     const first = t.locator('#pl-steps li').nth(0);
     await first.locator('.pl-narration select').selectOption('recorded');
-    await first.getByRole('button', {name: '● بدء التسجيل'}).click(); await t.waitForTimeout(1500);
+    await first.getByRole('button', {name: '● سجّل بصوتك'}).click(); await t.waitForTimeout(1500);
     await first.getByRole('button', {name: '■ إيقاف التسجيل'}).click();
     await first.locator('audio').waitFor();
     // Prepared board item and move a step to check ordering controls.

@@ -1,6 +1,7 @@
 // Student seat and classroom display screen: shows only what the teacher has made visible.
 import {publicStep} from './group-plan.js';
-import {el, renderStep, renderInk, playNarration} from './group-view.js';
+import {el, renderStep, renderInk, playNarration, stopNarration, renderNarrator, setSpeaking} from './group-view.js';
+import {speakingMs} from './narrator-scripts.js';
 import {attachBoardTools} from './group-board-tools.js';
 import {renderScene, lessonState, formatHour, formatNumber} from './science-shadow-model.js';
 
@@ -8,7 +9,7 @@ const app = document.getElementById('gl-app'), code = app.dataset.code, role = a
 const $ = x => document.getElementById(x);
 const status = (text, bad = false) => { $('gl-status').textContent = text; $('gl-status').classList.toggle('is-error', bad); };
 const classBase = '/class/' + code;
-let renderKey = '', shownStep = null;
+let renderKey = '', shownStep = null, lastSegment = 0, speakTimer = 0, wasMuted = false;
 const tools = attachBoardTools({mode: 'viewer'});
 let view = null, content = null, contentKey = null, homework = null, lastNarration = 0, pendingNarration = null, plan = null;
 let explore = {hour: 9, height: 1.5, material: 'wood'};
@@ -79,6 +80,7 @@ function renderEvaluation() {
 }
 
 function renderExplore() {
+  delete $('gl-content').dataset.step;
   // Each student explores privately; nothing is sent while exploring. The slider is kept so dragging is smooth.
   let wrap = $('gl-content').querySelector('.gl-explore');
   if (!wrap) {
@@ -91,10 +93,33 @@ function renderExplore() {
   wrap.querySelector('.gl-explore-text').textContent = `الوقت: ${formatHour(s.hour)} · طول الظل ${formatNumber(s.length)} م`;
 }
 
+/** Shows the narrator's caption and plays its voice here when the teacher chose this kind of device. */
+async function narrator(n) {
+  const board = $('gl-board');
+  renderNarrator(board, n || null);
+  if (!n) { if (lastSegment) { stopNarration(); lastSegment = 0; } return; }
+  if (n.muted && !wasMuted) { stopNarration(); setSpeaking(board, false); }
+  wasMuted = n.muted;
+  if (n.seq <= lastSegment) return;
+  lastSegment = n.seq; clearTimeout(speakTimer);
+  const animate = ms => { setSpeaking(board, true); speakTimer = setTimeout(() => setSpeaking(board, false), ms); };
+  if (!n.speak) { if (!n.muted) animate(speakingMs(n.text)); return; }
+  try {
+    const voice = student ? await getJSON(`${classBase}/narration?step=${encodeURIComponent(view.step.id)}&segment=${n.segment}`)
+      : (g => g.audio ? {mode: 'recorded', audio: g.audio} : {mode: 'speech', text: g.text})(plan.steps.find(s => s.id === view.step.id).narrator.segments[n.segment]);
+    setSpeaking(board, true);
+    if (!await playNarration(voice, {onEnd: () => setSpeaking(board, false)})) {
+      animate(speakingMs(n.text)); // caption still shows when the device has no Arabic voice
+      if (voice.mode === 'recorded') { pendingNarration = voice; $('gl-audio').hidden = false; $('gl-audio').textContent = 'استمع لشرح المتحدث'; }
+    }
+  } catch (e) { status(e.message, true); }
+}
+
 async function render() {
   $('gl-progress') && ($('gl-progress').textContent = `الخطوة ${formatNumber(view.index + 1)} من ${formatNumber(view.total)}`);
   const wait = $('gl-wait'), board = $('gl-board');
   if (!view.live || !view.step) {
+    renderNarrator(board, null); stopNarration();
     board.hidden = true; wait.hidden = false; content = null; contentKey = null;
     wait.textContent = !view.live ? (view.homework?.status === 'open' ? 'انتهت الحصة. الواجب متاح أدناه.' : 'انتهت الحصة. شكرًا لك!') : 'المعلم يجهز الخطوة… انتبه لشرحه.';
   } else {
@@ -109,6 +134,7 @@ async function render() {
     }
     renderInk($('gl-ink'), view.strokes || []);
     tools.remoteCamera(view.camera);
+    await narrator(view.narrator);
   }
   renderAnswers(); await renderHomework(); renderEvaluation();
   if (view.narrate && view.narrate.seq > lastNarration) {

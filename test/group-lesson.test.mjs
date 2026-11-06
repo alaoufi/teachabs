@@ -166,7 +166,7 @@ test('board ink: tools, typed text, moving, erasing and a camera students follow
   const [mark, text] = s.strokes.curriculum;
   assert.equal(mark.tool, 'marker'); assert.equal(text.text, 'جسم معتم'); assert.notEqual(mark.id, text.id);
   for (const bad of [{op: 'stroke', tool: 'laser', color: '#c0392b', points: [[0, 0], [1, 1]]}, {op: 'stroke', tool: 'pen', size: 'xl', color: '#c0392b', points: [[0, 0], [1, 1]]},
-    {op: 'stroke', tool: 'pen', color: 'red', points: [[0, 0], [1, 1]]}, {op: 'text', text: '', x: 1, y: 1, color: '#c0392b'}, {op: 'text', text: 'x'.repeat(201), x: 1, y: 1, color: '#c0392b'},
+    {op: 'stroke', tool: 'pen', color: 'red', points: [[0, 0], [1, 1]]}, {op: 'text', text: '', x: 1, y: 1, color: '#c0392b'}, {op: 'text', text: 'x'.repeat(601), x: 1, y: 1, color: '#c0392b'},
     {op: 'text', text: 'a', x: 5000, y: 1, color: '#c0392b'}, {op: 'move', id: mark.id, x: 1, y: 1}, {op: 'erase', id: 'nope'}])
     assert.throws(() => run(s, bad));
   s = run(s, {op: 'move', id: text.id, x: 2000, y: -5});
@@ -185,4 +185,53 @@ test('board ink: tools, typed text, moving, erasing and a camera students follow
   assert.equal('snippets' in contentFor(s, plan, 'curriculum'), false);
   const bad = structuredClone(defaultPlan()); bad.steps[0].snippets = Array(13).fill('x');
   assert.throws(() => validatePlan(bad), PlanError);
+});
+
+test('narrator tour: teacher leads segments, moves the scene, mutes and hides; students get captions and voice only when chosen', async () => {
+  const {segmentAudio} = await import('../group-session.mjs');
+  const idx = plan.steps.findIndex(s => s.type === 'interactive'), stepId = plan.steps[idx].id;
+  assert.equal(plan.steps[idx].narrator.segments.length, 7, 'ready script fills the lesson');
+  let s = run(initialState(plan), {op: 'go', index: idx});
+  assert.equal(publicView(s, plan, 'a', []).narrator, undefined);
+  assert.throws(() => run(run(initialState(plan)), {op: 'narrator', action: 'start'}), 'only on the interactive step');
+  s = run(s, {op: 'shadow', command: {op: 'reveal', show: false}}, {op: 'explore', on: true}, {op: 'narrator', action: 'start'});
+  let v = publicView(s, plan, 'a', []);
+  assert.equal(v.narrator.segment, 0); assert.equal(v.explore, false); assert.equal(v.shadow.reveal, true);
+  assert.equal(v.narrator.speak, false, 'default voice is on the display screen');
+  assert.equal(publicView(s, plan, null, []).narrator.speak, true);
+  s = run(s, {op: 'narrator', action: 'goto', segment: 3});
+  assert.equal(publicView(s, plan, 'a', []).shadow.hour, 12);
+  s = run(s, {op: 'narrator', action: 'target', to: 'both'}, {op: 'narrator', action: 'mute', on: true});
+  assert.equal(publicView(s, plan, 'a', []).narrator.speak, false, 'muted');
+  assert.equal(publicView(s, plan, 'a', []).narrator.text, plan.steps[idx].narrator.segments[3].text, 'caption stays when muted');
+  assert.deepEqual(segmentAudio(s, plan, stepId, 3), {mode: 'speech', text: plan.steps[idx].narrator.segments[3].text});
+  assert.throws(() => segmentAudio(s, plan, stepId, 4), e => e.status === 403);
+  s = run(s, {op: 'narrator', action: 'visible', on: false});
+  assert.equal(publicView(s, plan, 'a', []).narrator, undefined);
+  for (const bad of [{op: 'narrator', action: 'goto', segment: 99}, {op: 'narrator', action: 'dance'}, {op: 'narrator', action: 'target', to: 'parents'}])
+    assert.throws(() => run(s, bad));
+  s = run(s, {op: 'narrator', action: 'goto', segment: 6});
+  assert.throws(() => run(s, {op: 'narrator', action: 'next'}));
+  const bad = structuredClone(defaultPlan()); bad.steps[1].narrator = {segments: [{id: 'x', hour: 3, text: 'a'}]};
+  assert.throws(() => validatePlan(bad), PlanError);
+});
+
+test('teacher text library and lesson import over HTTP', async t => {
+  const {store, base} = await server(t);
+  const tour = store.tour(), teacher = 'ks=' + store.session(tour.teacher), other = 'ks=' + store.session(store.tour().teacher);
+  const json = (cookie, body) => ({method: 'POST', headers: {origin: base, cookie, 'content-type': 'application/json'}, body: JSON.stringify(body)});
+  const created = await (await fetch(base + '/teach/texts', json(teacher, {title: 'ما الظل؟ — بأسلوبي', body: 'الظل مكان مظلم خلف الجسم.', origin: 'ls-idea-2'}))).json();
+  assert.match(created.id, /^[0-9a-f-]{36}$/);
+  assert.equal((await fetch(base + '/teach/texts', json(teacher, {title: '', body: 'x'}))).status, 400);
+  assert.equal((await fetch(base + '/teach/texts', json(teacher, {title: 'a', body: 'x'.repeat(601)}))).status, 400);
+  assert.equal((await fetch(base + '/teach/texts/' + created.id, json(other, {title: 'سرقة', body: 'x'}))).status, 404, 'another teacher cannot edit it');
+  assert.equal((await fetch(base + '/teach/texts/' + created.id, json(teacher, {title: 'معدّل', body: 'نص معدّل'}))).status, 200);
+  const mine = await (await fetch(base + '/teach/texts', {headers: {cookie: teacher}})).json();
+  assert.deepEqual(mine.map(x => [x.title, x.body, x.origin]), [['معدّل', 'نص معدّل', 'ls-idea-2']]);
+  assert.deepEqual(await (await fetch(base + '/teach/texts', {headers: {cookie: other}})).json(), []);
+  assert.equal((await fetch(base + '/teach/texts/' + created.id + '/delete', json(teacher, {}))).status, 200);
+  const imported = await fetch(base + '/teach/plans/import', json(teacher, defaultPlan()));
+  assert.equal(imported.status, 200);
+  assert.equal((await fetch(base + '/teach/plans/import', json(teacher, {...defaultPlan(), steps: []}))).status, 400);
+  assert.equal(store.group.plans(tour.teacher).length, 1);
 });

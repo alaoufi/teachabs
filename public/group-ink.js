@@ -13,7 +13,20 @@ export const TOOLS = {
 };
 export const TEXT_SIZES = {s: 22, m: 32, l: 46};
 export const SIZE_NAMES = {s: 'صغير', m: 'متوسط', l: 'كبير'};
-export const LIMITS = {items: 300, points: 500, text: 200, zoom: 4};
+export const LIMITS = {items: 300, points: 500, text: 600, zoom: 4};
+/** Characters per line for each text size, so long explanations wrap on the board. */
+export const LINE_CHARS = {s: 46, m: 34, l: 24};
+export function wrapText(text, size = 'm') {
+  const max = LINE_CHARS[size] || LINE_CHARS.m, lines = [];
+  for (const paragraph of String(text).split(/\n/)) {
+    let line = '';
+    for (const word of paragraph.split(/\s+/).filter(Boolean)) {
+      if (line && (line + ' ' + word).length > max) { lines.push(line); line = word; } else line = line ? line + ' ' + word : word;
+    }
+    lines.push(line);
+  }
+  return lines;
+}
 
 export const colorAllowed = c => COLORS.some(x => x.value === c);
 

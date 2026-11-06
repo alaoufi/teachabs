@@ -9,10 +9,20 @@ export const MAX_STUDENTS = 40, MAX_STROKES = INK.items, MAX_POINTS = INK.points
 const INKABLE = ['page', 'board', 'interactive', 'questions'];
 
 export function initialState(plan) {
-  return {live: true, index: 0, shown: !plan.steps[0].startHidden, revealed: {}, open: {}, display: {}, strokes: {}, camera: {}, shadow: initialShadow(), explore: false, homework: 'none', evaluationPublished: false, narrate: null, seq: 0};
+  return {live: true, index: 0, shown: !plan.steps[0].startHidden, revealed: {}, open: {}, display: {}, strokes: {}, camera: {}, narrator: initialNarrator(), shadow: initialShadow(), explore: false, homework: 'none', evaluationPublished: false, narrate: null, seq: 0};
 }
 
 const current = (state, plan) => plan.steps[state.index];
+
+export const initialNarrator = () => ({visible: true, muted: false, segment: -1, target: 'screen', seq: 0});
+
+/** Move the shared scene to a narrated segment so everyone sees the sun where the narrator is talking about it. */
+function goSegment(s, step, index) {
+  const g = step.narrator.segments[index];
+  s.narrator.segment = index; s.narrator.seq = s.seq; s.explore = false;
+  s.shadow = {...s.shadow, hour: g.hour, height: g.height, material: g.material, reveal: true, step: (s.shadow.step || 0) + 1};
+  return s;
+}
 
 function addInk(s, step, item) {
   const list = s.strokes[step.id] || [];
@@ -24,7 +34,7 @@ function addInk(s, step, item) {
 export function teacherCommand(state, plan, cmd) {
   need(cmd && typeof cmd.op === 'string', 'أمر غير صالح.');
   const s = structuredClone(state), step = current(s, plan);
-  s.seq++; s.camera ||= {}; s.strokes ||= {};
+  s.seq++; s.camera ||= {}; s.strokes ||= {}; s.narrator ||= initialNarrator();
   switch (cmd.op) {
     case 'go': {
       need(Number.isInteger(cmd.index) && cmd.index >= 0 && cmd.index < plan.steps.length, 'خطوة غير موجودة.');
@@ -83,6 +93,22 @@ export function teacherCommand(state, plan, cmd) {
       need(step.type === 'interactive', 'هذه الخطوة ليست الشرح التفاعلي.');
       need(['set', 'reveal', 'reset'].includes(cmd.command?.op), 'أمر غير متاح في الحصة الجماعية.');
       s.shadow = changeShadow(s.shadow, 'teacher', cmd.command); return s;
+    }
+    case 'narrator': {
+      need(step.type === 'interactive' && step.narrator, 'المتحدث متاح في خطوة الشرح التفاعلي.');
+      const n = s.narrator, last = step.narrator.segments.length - 1;
+      switch (cmd.action) {
+        case 'start': n.visible = true; return goSegment(s, step, 0);
+        case 'goto': need(Number.isInteger(cmd.segment) && cmd.segment >= 0 && cmd.segment <= last, 'مقطع غير موجود.'); return goSegment(s, step, cmd.segment);
+        case 'next': need(n.segment < last, 'هذا آخر مقطع.'); return goSegment(s, step, n.segment + 1);
+        case 'prev': need(n.segment > 0, 'هذا أول مقطع.'); return goSegment(s, step, n.segment - 1);
+        case 'replay': need(n.segment >= 0, 'ابدأ الجولة أولًا.'); n.seq = s.seq; return s;
+        case 'stop': n.segment = -1; n.seq = s.seq; return s;
+        case 'visible': need(typeof cmd.on === 'boolean', 'قيمة غير صالحة.'); n.visible = cmd.on; return s;
+        case 'mute': need(typeof cmd.on === 'boolean', 'قيمة غير صالحة.'); n.muted = cmd.on; return s;
+        case 'target': need(['screen', 'students', 'both'].includes(cmd.to), 'جهة غير صالحة.'); n.target = cmd.to; return s;
+        default: throw new UserError('أمر غير معروف للمتحدث.');
+      }
     }
     case 'explore': need(typeof cmd.on === 'boolean', 'قيمة غير صالحة.'); s.explore = cmd.on; return s;
     case 'narrate': need(step.narration.mode !== 'live', 'هذه الخطوة شرحها مباشر بصوت المعلم.'); need(['here', 'screen', 'students'].includes(cmd.target), 'جهة غير صالحة.'); s.narrate = {step: step.id, target: cmd.target, seq: s.seq}; return s;
@@ -158,7 +184,12 @@ export function publicView(state, plan, student, responses, studentNames = {}) {
     view.step = {id: step.id, type: step.type, title: step.title, key: `${step.id}:${revealed.join(',')}`};
     if (INKABLE.includes(step.type)) view.strokes = state.strokes[step.id] || [];
     view.camera = state.camera?.[step.id] || {z: 1, x: 0, y: 0};
-    if (step.type === 'interactive') { view.shadow = visibleShadow(state.shadow, 'student'); view.explore = state.explore; }
+    if (step.type === 'interactive') {
+      view.shadow = visibleShadow(state.shadow, 'student'); view.explore = state.explore;
+      const n = state.narrator || initialNarrator(), g = step.narrator?.segments[n.segment];
+      if (n.visible && g) view.narrator = {segment: n.segment, total: step.narrator.segments.length, text: g.text, seq: n.seq, muted: n.muted,
+        speak: !n.muted && (n.target === 'both' || n.target === (student ? 'students' : 'screen')), recorded: Boolean(g.audio)};
+    }
     if (step.type === 'questions') {
       const answers = byStudent(responses, 'answer', step.id);
       view.open = Boolean(state.open[step.id]);
@@ -202,6 +233,13 @@ export function contentFor(state, plan, stepId) {
   const isHomework = step.type === 'homework' && state.homework !== 'none';
   need(isCurrent || isHomework, 'هذه الخطوة غير معروضة الآن.', 403);
   return publicStep(step, state.revealed[step.id] || []);
+}
+
+export function segmentAudio(state, plan, stepId, index) {
+  const step = plan.steps.find(s => s.id === stepId);
+  need(step && step === current(state, plan) && step.type === 'interactive' && state.live && state.shown && state.narrator?.segment === index, 'هذا المقطع غير معروض الآن.', 403);
+  const g = step.narrator.segments[index];
+  return g.audio ? {mode: 'recorded', audio: g.audio} : {mode: 'speech', text: g.text};
 }
 
 export function narrationFor(state, plan, stepId) {

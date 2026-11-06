@@ -28,7 +28,7 @@ files['/classroom-lab-model.js']='text/javascript; charset=utf-8';
 files['/classroom-lab.css']='text/css; charset=utf-8';
 files['/science-shadow.js']='text/javascript; charset=utf-8';
 files['/shadow-client.js']='text/javascript; charset=utf-8';
-for(const f of ['group-plan.js','group-view.js','group-ink.js','group-board-tools.js','group-planner.js','group-teacher.js','group-student.js'])files['/'+f]='text/javascript; charset=utf-8';
+for(const f of ['group-plan.js','group-view.js','group-ink.js','group-board-tools.js','group-plans.js','text-library.js','explain-texts.js','narrator-scripts.js','group-planner.js','group-teacher.js','group-student.js'])files['/'+f]='text/javascript; charset=utf-8';
 files['/group-lesson.css']='text/css; charset=utf-8';
 files['/science-shadow-model.js']='text/javascript; charset=utf-8';
 files['/science-shadow.css']='text/css; charset=utf-8';

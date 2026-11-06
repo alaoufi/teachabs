@@ -1,5 +1,6 @@
 // Lesson plan for the group class: the teacher arranges ordered steps before class.
 // Shared by the server (validation) and the browser (planner and live views). Pure functions only.
+import {NARRATOR_SCRIPTS} from './narrator-scripts.js';
 
 export const STEP_TYPES = {
   page: {label: 'عرض المنهج على السبورة', short: 'المنهج'},
@@ -46,7 +47,7 @@ const text = (value, max, label, {required = true} = {}) => {
 const ID = /^[a-z0-9-]{1,40}$/;
 const IMAGE = /^data:image\/(png|jpeg|webp);base64,[A-Za-z0-9+/]+=*$/;
 const AUDIO = /^data:audio\/(webm|ogg|mp4|mpeg)(;codecs=[a-z0-9.]+)?;base64,[A-Za-z0-9+/]+=*$/;
-export const LIMITS = {steps: 20, image: 900_000, audio: 1_500_000, plan: 9_000_000, items: 12, questions: 10, criteria: 6, snippets: 12};
+export const LIMITS = {steps: 20, image: 900_000, audio: 1_500_000, plan: 9_000_000, items: 12, questions: 10, criteria: 6, snippets: 12, segments: 12};
 
 export function validImage(value) { return typeof value === 'string' && value.length <= LIMITS.image && IMAGE.test(value); }
 
@@ -71,6 +72,23 @@ function narration(raw) {
   if (mode === 'speech') out.text = text(raw.text, 600, 'نص الشرح الذي يقرؤه الجهاز');
   if (mode === 'recorded') { need(typeof raw.audio === 'string' && raw.audio.length <= LIMITS.audio && AUDIO.test(raw.audio), 'سجّل الشرح الصوتي (حتى دقيقة ونصف تقريبًا).'); out.audio = raw.audio; }
   return out;
+}
+
+const MATERIAL_IDS = ['wood', 'paper', 'glass'];
+/** The narrated tour for the animation; a lesson without one gets the ready script. */
+function narratorScript(raw) {
+  const segments = raw?.segments ?? structuredClone(NARRATOR_SCRIPTS.shadows.segments);
+  need(Array.isArray(segments) && segments.length >= 1 && segments.length <= LIMITS.segments, `جولة المتحدث من مقطع إلى ${LIMITS.segments} مقطعًا.`);
+  const ids = new Set();
+  return {segments: segments.map((g, i) => {
+    need(g && ID.test(g.id) && !ids.has(g.id), 'معرّف مقطع غير صالح.'); ids.add(g.id);
+    need(Number.isFinite(g.hour) && g.hour >= 7 && g.hour <= 17, `وقت المقطع ${i + 1} من ٧ إلى ١٧.`);
+    need(Number.isFinite(g.height ?? 1.5) && (g.height ?? 1.5) >= 1 && (g.height ?? 1.5) <= 2, `طول اللوح في المقطع ${i + 1} من ١ إلى ٢ م.`);
+    need(MATERIAL_IDS.includes(g.material ?? 'wood'), `مادة المقطع ${i + 1} غير معروفة.`);
+    const out = {id: g.id, hour: Math.round(g.hour * 4) / 4, height: Math.round((g.height ?? 1.5) * 10) / 10, material: g.material ?? 'wood', text: text(g.text, 300, `نص المقطع ${i + 1}`)};
+    if (g.audio !== undefined) { need(typeof g.audio === 'string' && g.audio.length <= LIMITS.audio && AUDIO.test(g.audio), `تسجيل المقطع ${i + 1} غير صالح.`); out.audio = g.audio; }
+    return out;
+  })};
 }
 
 export function validatePlan(raw) {
@@ -100,6 +118,7 @@ export function validatePlan(raw) {
     } else if (s.type === 'interactive') {
       need(s.activity === 'shadows', 'النشاط التفاعلي المتاح الآن: الضوء والظل.');
       step.activity = 'shadows';
+      step.narrator = narratorScript(s.narrator);
     } else if (s.type === 'board') {
       need(Array.isArray(s.items) && s.items.length >= 1 && s.items.length <= LIMITS.items, `جهّز من عنصر إلى ${LIMITS.items} عناصر للسبورة.`);
       const itemIds = new Set();

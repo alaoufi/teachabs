@@ -111,7 +111,7 @@ const assert = require('node:assert/strict'), fs = require('node:fs'), path = re
     // Presenter keys move through the sequence.
     await t.locator('body').press('PageDown');
     await s.waitForSelector('#gl-content .gl-scene svg');
-    assert.equal(await t.locator('.gl-snip').count(), 3, 'snippets follow the step');
+    await t.waitForFunction(() => document.querySelectorAll('.gl-snip').length === 3); // snippets follow the step
     await t.locator('body').press('ArrowRight');
     await s.waitForSelector('#gl-content .gl-page svg');
     assert.ok(await s.locator('#gl-ink text').count() >= 1, 'ink stays with its step');
