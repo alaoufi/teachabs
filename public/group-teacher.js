@@ -1,12 +1,14 @@
 // Teacher console for the live group lesson: sequence, visibility, board ink, activity, results, homework, evaluation.
 import {STEP_TYPES, NARRATION, RATING, publicStep} from './group-plan.js';
 import {el, renderStep, renderInk, playNarration, stopNarration, renderDisplay} from './group-view.js';
+import {attachBoardTools} from './group-board-tools.js';
 import {MATERIALS, formatHour, formatNumber, lessonState} from './science-shadow-model.js';
 
 const app = document.getElementById('gl-app'), code = app.dataset.code, base = '/teach/live/' + code;
 const $ = x => document.getElementById(x);
 const status = (text, bad = false) => { $('gl-status').textContent = text; $('gl-status').classList.toggle('is-error', bad); };
-let plan = null, view = null, pen = false, color = '#173e34', busy = false;
+let plan = null, view = null, busy = false, lastStep = null, contentKey = '';
+const INKABLE = ['page', 'board', 'interactive', 'questions'];
 
 async function command(body) {
   if (busy && body.op !== 'stroke') return;
@@ -42,16 +44,22 @@ function renderBoard() {
     else if (d.mode === 'correct') display = {mode: 'correct', prompt: q.prompt, options: q.options, answer: q.answer};
     else { const a = r.answers[d.student]?.[q.id]; display = {mode: 'spotlight', prompt: q.prompt, answer: a ? (q.kind === 'choice' ? q.options[a.choice] : a.text) : null, name: d.named ? nameOf(d.student) : null}; }
   }
-  renderStep($('gl-content'), content, {teacher: true, revealed, shadow: view.state.shadow, display});
+  const key = JSON.stringify([s.id, revealed, view.state.shadow, display]);
+  if (key !== contentKey) {
+    contentKey = key; renderStep($('gl-content'), content, {teacher: true, revealed, shadow: view.state.shadow, display});
+    if (s.id !== lastStep) { $('gl-content').classList.remove('gl-enter'); void $('gl-content').offsetWidth; $('gl-content').classList.add('gl-enter'); }
+  }
+  if (s.id !== lastStep) { lastStep = s.id; tools.resetForStep(); renderSnippets(s); }
   renderInk($('gl-ink'), view.state.strokes[s.id] || []);
+  tools.remoteCamera(view.state.camera?.[s.id]);
   const show = $('gl-show');
   show.textContent = view.state.shown ? 'إخفاء عن الطلاب' : 'إظهار للطلاب'; show.setAttribute('aria-pressed', String(view.state.shown));
   $('gl-vis').textContent = !view.state.live ? 'انتهى العرض للطلاب' : view.state.shown ? 'الطلاب يرون هذه الخطوة' : 'الطلاب لا يرون هذه الخطوة الآن';
   $('gl-vis').classList.toggle('is-hidden', !view.state.shown || !view.state.live);
   $('gl-board').classList.toggle('is-off', !view.state.shown);
-  const canInk = ['page', 'board', 'interactive'].includes(s.type);
-  for (const b of document.querySelectorAll('.gl-pens button')) b.disabled = !canInk;
-  if (!canInk && pen) setPen(false);
+  const canInk = INKABLE.includes(s.type);
+  for (const b of document.querySelectorAll('.gl-tools button')) b.disabled = !canInk && !['select', 'hand'].includes(b.dataset.tool);
+  $('gl-board').classList.toggle('no-ink', !canInk);
   $('gl-live').textContent = view.state.live ? 'إنهاء العرض للطلاب' : 'استئناف العرض';
 }
 
@@ -181,28 +189,19 @@ $('gl-next').addEventListener('click', () => command({op: 'go', index: view.stat
 $('gl-show').addEventListener('click', () => command({op: 'show', shown: !view.state.shown}));
 $('gl-live').addEventListener('click', () => { if (!view.state.live || confirm('إنهاء العرض للطلاب؟ يبقى الواجب متاحًا إن كان مفتوحًا.')) command({op: 'live', on: !view.state.live}); });
 $('gl-undo').addEventListener('click', () => command({op: 'undo-stroke'}));
-$('gl-clear').addEventListener('click', () => { if (confirm('مسح الكتابة في هذه الخطوة؟')) command({op: 'clear-strokes'}); });
-function setPen(on) { pen = on; $('gl-pen').setAttribute('aria-pressed', String(on)); $('gl-board').classList.toggle('is-inking', on); }
-$('gl-pen').addEventListener('click', () => setPen(!pen));
-for (const b of document.querySelectorAll('.gl-color')) b.addEventListener('click', () => {
-  color = b.dataset.color; setPen(true);
-  for (const x of document.querySelectorAll('.gl-color')) x.setAttribute('aria-pressed', String(x === b));
-});
+$('gl-clear').addEventListener('click', () => { if (confirm('مسح كل الكتابة في هذه الخطوة؟')) command({op: 'clear-strokes'}); });
 
-// Ink: draw locally while the pointer moves, then send one stroke.
-const ink = $('gl-ink'); let points = null, live = null;
-const toBoard = e => { const r = ink.getBoundingClientRect(); return [Math.max(0, Math.min(1000, (e.clientX - r.left) / r.width * 1000)), Math.max(0, Math.min(600, (e.clientY - r.top) / r.height * 600))]; };
-ink.addEventListener('pointerdown', e => {
-  if (!pen) return; e.preventDefault(); ink.setPointerCapture(e.pointerId); points = [toBoard(e)];
-  live = document.createElementNS('http://www.w3.org/2000/svg', 'polyline'); live.setAttribute('class', 'gl-stroke'); live.setAttribute('stroke', color); ink.append(live);
+const tools = attachBoardTools({
+  mode: 'teacher', send: command, items: () => view?.state.strokes[step().id] || [], canInk: () => view && INKABLE.includes(step().type),
+  onStatus: text => status(text), onUndo: () => command({op: 'undo-stroke'}),
+  onNext: () => view.state.index < plan.steps.length - 1 && command({op: 'go', index: view.state.index + 1}),
+  onPrev: () => view.state.index > 0 && command({op: 'go', index: view.state.index - 1})
 });
-ink.addEventListener('pointermove', e => {
-  if (!points) return; const p = toBoard(e), last = points[points.length - 1];
-  if (Math.hypot(p[0] - last[0], p[1] - last[1]) < 3 || points.length >= 400) return;
-  points.push(p); live.setAttribute('points', points.map(x => x.map(Math.round).join(',')).join(' '));
-});
-const finish = () => { if (!points) return; const p = points; points = null; if (p.length >= 2) command({op: 'stroke', points: p, color}); else live?.remove(); };
-ink.addEventListener('pointerup', finish); ink.addEventListener('pointercancel', finish);
+function renderSnippets(s) {
+  const box = $('gl-snippets'), list = s.snippets || [];
+  box.hidden = !list.length;
+  box.replaceChildren(el('span', {class: 'gl-snip-label', text: 'نصوص جاهزة:'}), ...list.map(t => el('button', {type: 'button', class: 'gl-snip', onclick: () => tools.prepareSnippet(t)}, t)));
+}
 
 // ---- connection ----
 const plansReady = fetch(base + '/plan').then(r => r.json()).then(p => { plan = p; });

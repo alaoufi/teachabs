@@ -2,21 +2,29 @@
 import {publicStep, RATING} from './public/group-plan.js';
 import {changeShadow, visibleShadow, initialShadow} from './shadow-activity.mjs';
 import {UserError} from './store.mjs';
+import {TOOLS, TEXT_SIZES, LIMITS as INK, colorAllowed, clampCamera} from './public/group-ink.js';
 
 const need = (ok, message, status = 400) => { if (!ok) throw new UserError(message, status); };
-export const MAX_STUDENTS = 40, MAX_STROKES = 300, MAX_POINTS = 400;
-const COLORS = ['#173e34', '#c0392b', '#1f5fa8', '#e8890c'];
+export const MAX_STUDENTS = 40, MAX_STROKES = INK.items, MAX_POINTS = INK.points;
+const INKABLE = ['page', 'board', 'interactive', 'questions'];
 
 export function initialState(plan) {
-  return {live: true, index: 0, shown: !plan.steps[0].startHidden, revealed: {}, open: {}, display: {}, strokes: {}, shadow: initialShadow(), explore: false, homework: 'none', evaluationPublished: false, narrate: null, seq: 0};
+  return {live: true, index: 0, shown: !plan.steps[0].startHidden, revealed: {}, open: {}, display: {}, strokes: {}, camera: {}, shadow: initialShadow(), explore: false, homework: 'none', evaluationPublished: false, narrate: null, seq: 0};
 }
 
 const current = (state, plan) => plan.steps[state.index];
 
+function addInk(s, step, item) {
+  const list = s.strokes[step.id] || [];
+  need(list.length < MAX_STROKES, 'امتلأت مساحة الكتابة في هذه الخطوة. امسح بعضها أولًا.', 409);
+  s.strokes[step.id] = [...list, {id: 'k' + s.seq, ...item}];
+  return s;
+}
+
 export function teacherCommand(state, plan, cmd) {
   need(cmd && typeof cmd.op === 'string', 'أمر غير صالح.');
   const s = structuredClone(state), step = current(s, plan);
-  s.seq++;
+  s.seq++; s.camera ||= {}; s.strokes ||= {};
   switch (cmd.op) {
     case 'go': {
       need(Number.isInteger(cmd.index) && cmd.index >= 0 && cmd.index < plan.steps.length, 'خطوة غير موجودة.');
@@ -42,15 +50,35 @@ export function teacherCommand(state, plan, cmd) {
       s.display[step.id] = {mode: 'spotlight', question: q.id, student: cmd.student, named: cmd.named}; return s;
     }
     case 'stroke': {
-      need(['page', 'board', 'interactive'].includes(step.type), 'الكتابة متاحة على صفحة المنهج والسبورة والشرح.');
+      need(INKABLE.includes(step.type), 'الكتابة متاحة على المنهج والشرح والسبورة والأسئلة.');
       need(Array.isArray(cmd.points) && cmd.points.length >= 2 && cmd.points.length <= MAX_POINTS && cmd.points.every(p => Array.isArray(p) && p.length === 2 && p.every(Number.isFinite) && p[0] >= 0 && p[0] <= 1000 && p[1] >= 0 && p[1] <= 600), 'خط غير صالح.');
-      need(COLORS.includes(cmd.color), 'لون غير متاح.');
+      need(colorAllowed(cmd.color), 'لون غير متاح.');
+      const tool = cmd.tool ?? 'pen', size = cmd.size ?? 'm';
+      need(Object.hasOwn(TOOLS, tool) && Object.hasOwn(TOOLS[tool].widths, size), 'أداة غير معروفة.');
+      return addInk(s, step, {kind: 'stroke', tool, size, color: cmd.color, points: cmd.points.map(([x, y]) => [Math.round(x * 10) / 10, Math.round(y * 10) / 10])});
+    }
+    case 'text': {
+      need(INKABLE.includes(step.type), 'الكتابة متاحة على المنهج والشرح والسبورة والأسئلة.');
+      const text = typeof cmd.text === 'string' ? cmd.text.trim() : '';
+      need(text.length >= 1 && text.length <= INK.text, `اكتب نصًا حتى ${INK.text} حرف.`);
+      need(colorAllowed(cmd.color) && Object.hasOwn(TEXT_SIZES, cmd.size ?? 'm'), 'لون أو حجم غير متاح.');
+      need(Number.isFinite(cmd.x) && Number.isFinite(cmd.y) && cmd.x >= 0 && cmd.x <= 1000 && cmd.y >= 0 && cmd.y <= 600, 'موضع غير صالح.');
+      return addInk(s, step, {kind: 'text', text, color: cmd.color, size: cmd.size ?? 'm', x: Math.round(cmd.x), y: Math.round(cmd.y)});
+    }
+    case 'move': {
+      const list = s.strokes[step.id] || [], item = list.find(i => i.id === cmd.id && i.kind === 'text');
+      need(item, 'النص غير موجود.', 404);
+      need(Number.isFinite(cmd.x) && Number.isFinite(cmd.y), 'موضع غير صالح.');
+      item.x = Math.round(Math.min(1000, Math.max(0, cmd.x))); item.y = Math.round(Math.min(600, Math.max(0, cmd.y))); return s;
+    }
+    case 'erase': {
       const list = s.strokes[step.id] || [];
-      need(list.length < MAX_STROKES, 'امتلأت مساحة الكتابة في هذه الخطوة. امسحها أولًا.', 409);
-      s.strokes[step.id] = [...list, {color: cmd.color, points: cmd.points.map(([x, y]) => [Math.round(x), Math.round(y)])}]; return s;
+      need(list.some(i => i.id === cmd.id), 'العنصر غير موجود.', 404);
+      s.strokes[step.id] = list.filter(i => i.id !== cmd.id); return s;
     }
     case 'undo-stroke': s.strokes[step.id] = (s.strokes[step.id] || []).slice(0, -1); return s;
     case 'clear-strokes': s.strokes[step.id] = []; return s;
+    case 'camera': s.camera[step.id] = clampCamera(cmd); return s;
     case 'shadow': {
       need(step.type === 'interactive', 'هذه الخطوة ليست الشرح التفاعلي.');
       need(['set', 'reveal', 'reset'].includes(cmd.command?.op), 'أمر غير متاح في الحصة الجماعية.');
@@ -128,7 +156,8 @@ export function publicView(state, plan, student, responses, studentNames = {}) {
   if (shown) {
     const revealed = state.revealed[step.id] || [];
     view.step = {id: step.id, type: step.type, title: step.title, key: `${step.id}:${revealed.join(',')}`};
-    if (['page', 'board', 'interactive'].includes(step.type)) view.strokes = state.strokes[step.id] || [];
+    if (INKABLE.includes(step.type)) view.strokes = state.strokes[step.id] || [];
+    view.camera = state.camera?.[step.id] || {z: 1, x: 0, y: 0};
     if (step.type === 'interactive') { view.shadow = visibleShadow(state.shadow, 'student'); view.explore = state.explore; }
     if (step.type === 'questions') {
       const answers = byStudent(responses, 'answer', step.id);

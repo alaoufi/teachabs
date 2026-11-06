@@ -1,12 +1,15 @@
 // Student seat and classroom display screen: shows only what the teacher has made visible.
 import {publicStep} from './group-plan.js';
 import {el, renderStep, renderInk, playNarration} from './group-view.js';
+import {attachBoardTools} from './group-board-tools.js';
 import {renderScene, lessonState, formatHour, formatNumber} from './science-shadow-model.js';
 
 const app = document.getElementById('gl-app'), code = app.dataset.code, role = app.dataset.role, student = role === 'student';
 const $ = x => document.getElementById(x);
 const status = (text, bad = false) => { $('gl-status').textContent = text; $('gl-status').classList.toggle('is-error', bad); };
 const classBase = '/class/' + code;
+let renderKey = '', shownStep = null;
+const tools = attachBoardTools({mode: 'viewer'});
 let view = null, content = null, contentKey = null, homework = null, lastNarration = 0, pendingNarration = null, plan = null;
 let explore = {hour: 9, height: 1.5, material: 'wood'};
 const sent = {};
@@ -97,9 +100,15 @@ async function render() {
   } else {
     board.hidden = false; wait.hidden = true;
     if (view.step.key !== contentKey) { contentKey = view.step.key; content = await stepContent(view.step.id, view.step.key).catch(e => { status(e.message, true); return null; }); }
-    if (student && view.step.type === 'interactive' && view.explore) renderExplore();
-    else renderStep($('gl-content'), content, {shadow: view.shadow, display: view.display});
+    if (student && view.step.type === 'interactive' && view.explore) { renderExplore(); renderKey = ''; }
+    else {
+      // Redraw content only when it changed, so camera moves and ink stay smooth.
+      const key = JSON.stringify([contentKey, view.shadow, view.display, content ? 1 : 0]);
+      if (key !== renderKey) { renderKey = key; renderStep($('gl-content'), content, {shadow: view.shadow, display: view.display}); }
+      if (view.step.id !== shownStep) { shownStep = view.step.id; const c = $('gl-content'); c.classList.remove('gl-enter'); void c.offsetWidth; c.classList.add('gl-enter'); tools.resetForStep(); }
+    }
     renderInk($('gl-ink'), view.strokes || []);
+    tools.remoteCamera(view.camera);
   }
   renderAnswers(); await renderHomework(); renderEvaluation();
   if (view.narrate && view.narrate.seq > lastNarration) {

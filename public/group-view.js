@@ -1,6 +1,7 @@
 // Shared rendering for the group lesson board (teacher console, display screen and student seat).
 import {renderOriginalPage} from './group-plan.js';
 import {renderScene, lessonState, formatNumber} from './science-shadow-model.js';
+import {TOOLS, TEXT_SIZES, smoothPath, cameraTransform} from './group-ink.js';
 
 export const el = (tag, attrs = {}, ...children) => {
   const node = document.createElement(tag);
@@ -13,13 +14,35 @@ export const el = (tag, attrs = {}, ...children) => {
   return node;
 };
 
-export function renderInk(svg, strokes = []) {
-  svg.replaceChildren(...strokes.map(s => {
-    const line = document.createElementNS('http://www.w3.org/2000/svg', 'polyline');
-    line.setAttribute('points', s.points.map(p => p.join(',')).join(' '));
-    line.setAttribute('stroke', s.color); line.setAttribute('class', 'gl-stroke');
-    return line;
-  }));
+const SVG = 'http://www.w3.org/2000/svg';
+/** Draws ink items: smoothed pen/brush/marker strokes and typed text. Markers sit under the other ink. */
+export function renderInk(svg, items = []) {
+  const markers = document.createElementNS(SVG, 'g'), ink = document.createElementNS(SVG, 'g');
+  markers.setAttribute('class', 'gl-markers');
+  for (const item of items) (item.tool === 'marker' ? markers : ink).append(inkNode(item));
+  // Keep a stroke that is being drawn right now when a live update redraws the board.
+  svg.replaceChildren(markers, ink, ...svg.querySelectorAll(':scope > .is-live'));
+}
+export function inkNode(item) {
+  if (item.kind === 'text') {
+    const t = document.createElementNS(SVG, 'text');
+    t.setAttribute('x', item.x); t.setAttribute('y', item.y); t.setAttribute('fill', item.color);
+    t.setAttribute('font-size', TEXT_SIZES[item.size] || TEXT_SIZES.m); t.setAttribute('class', 'gl-text');
+    t.setAttribute('direction', 'rtl'); t.setAttribute('text-anchor', 'start'); t.setAttribute('dominant-baseline', 'hanging');
+    if (item.id) t.dataset.id = item.id;
+    t.textContent = item.text;
+    return t;
+  }
+  const tool = TOOLS[item.tool] || TOOLS.pen, path = document.createElementNS(SVG, 'path');
+  path.setAttribute('d', smoothPath(item.points)); path.setAttribute('stroke', item.color);
+  path.setAttribute('stroke-width', tool.widths[item.size] || tool.widths.m); path.setAttribute('stroke-opacity', tool.opacity);
+  path.setAttribute('class', 'gl-stroke gl-' + (item.tool || 'pen'));
+  if (item.id) path.dataset.id = item.id;
+  return path;
+}
+export function applyCamera(camera, c, {animate = true} = {}) {
+  camera.classList.toggle('no-anim', !animate);
+  camera.style.transform = cameraTransform(c);
 }
 
 /**

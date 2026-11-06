@@ -46,7 +46,7 @@ const text = (value, max, label, {required = true} = {}) => {
 const ID = /^[a-z0-9-]{1,40}$/;
 const IMAGE = /^data:image\/(png|jpeg|webp);base64,[A-Za-z0-9+/]+=*$/;
 const AUDIO = /^data:audio\/(webm|ogg|mp4|mpeg)(;codecs=[a-z0-9.]+)?;base64,[A-Za-z0-9+/]+=*$/;
-export const LIMITS = {steps: 20, image: 900_000, audio: 1_500_000, plan: 9_000_000, items: 12, questions: 10, criteria: 6};
+export const LIMITS = {steps: 20, image: 900_000, audio: 1_500_000, plan: 9_000_000, items: 12, questions: 10, criteria: 6, snippets: 12};
 
 export function validImage(value) { return typeof value === 'string' && value.length <= LIMITS.image && IMAGE.test(value); }
 
@@ -85,6 +85,9 @@ export function validatePlan(raw) {
     need(s && ID.test(s.id) && !ids.has(s.id), 'معرّف خطوة غير صالح.'); ids.add(s.id);
     need(Object.hasOwn(STEP_TYPES, s.type), 'نوع خطوة غير معروف.');
     const step = {id: s.id, type: s.type, title: text(s.title, 80, `عنوان الخطوة ${i + 1}`), startHidden: s.startHidden === true, narration: narration(s.narration)};
+    const snippets = s.snippets === undefined ? [] : s.snippets;
+    need(Array.isArray(snippets) && snippets.length <= LIMITS.snippets, `حتى ${LIMITS.snippets} نصوص جاهزة لكل خطوة.`);
+    step.snippets = snippets.map((t, j) => text(t, 200, `النص الجاهز ${j + 1}`));
     if (s.type === 'page') {
       if (s.source === 'upload') {
         need(validImage(s.image), 'ارفع صورة الصفحة بصيغة PNG أو JPEG أو WebP حتى ٦٥٠ كيلوبايت تقريبًا.');
@@ -136,8 +139,8 @@ export const RATING = ['', 'يحتاج دعمًا', 'مقبول', 'جيد', 'م�
 
 export function defaultPlan() {
   return {version: 1, title: 'الضوء والظل', subject: 'science', grade: 4, steps: [
-    {id: 'curriculum', type: 'page', title: 'نقرأ صفحة الدرس', source: 'original', page: 'science-4-light', narration: {mode: 'live'}},
-    {id: 'explain', type: 'interactive', title: 'نجرب: كيف يتغير الظل؟', activity: 'shadows', narration: {mode: 'speech', text: 'انظروا إلى الشمس. عندما تكون منخفضة في الصباح يكون الظل طويلًا، وعندما ترتفع قرب الظهر يقصر الظل.'}},
+    {id: 'curriculum', type: 'page', title: 'نقرأ صفحة الدرس', source: 'original', page: 'science-4-light', narration: {mode: 'live'}, snippets: ['مصدر الضوء', 'جسم معتم', 'الظل', 'خط مستقيم']},
+    {id: 'explain', type: 'interactive', title: 'نجرب: كيف يتغير الظل؟', activity: 'shadows', snippets: ['صباحًا: ظل طويل', 'ظهرًا: ظل قصير', 'الظل عكس الشمس'], narration: {mode: 'speech', text: 'انظروا إلى الشمس. عندما تكون منخفضة في الصباح يكون الظل طويلًا، وعندما ترتفع قرب الظهر يقصر الظل.'}},
     {id: 'board-notes', type: 'board', title: 'نلخص على السبورة', narration: {mode: 'live'}, items: [
       {id: 'n1', kind: 'text', text: 'الضوء ينتقل في خطوط مستقيمة.'},
       {id: 'n2', kind: 'text', text: 'الظل منطقة لا يصلها الضوء لأن جسمًا معتمًا حجبه.'},

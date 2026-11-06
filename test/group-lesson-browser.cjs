@@ -52,11 +52,11 @@ const assert = require('node:assert/strict'), fs = require('node:fs'), path = re
 
     // 1) Curriculum page with ink and recorded narration on student devices.
     for (const p of students) await p.waitForSelector('#gl-content .gl-page svg');
-    await t.locator('#gl-pen').click();
+    await t.locator('.gl-tool[data-tool=pen]').click();
     const board = await t.locator('#gl-ink').boundingBox();
     await t.mouse.move(board.x + 100, board.y + 100); await t.mouse.down(); await t.mouse.move(board.x + 400, board.y + 160, {steps: 10}); await t.mouse.up();
-    await students[0].waitForFunction(() => document.querySelectorAll('#gl-ink polyline').length === 1);
-    await display.waitForFunction(() => document.querySelectorAll('#gl-ink polyline').length === 1);
+    await students[0].waitForFunction(() => document.querySelectorAll('#gl-ink path.gl-pen').length === 1);
+    await display.waitForFunction(() => document.querySelectorAll('#gl-ink path.gl-pen').length === 1);
     await t.getByRole('button', {name: 'تشغيل على أجهزة الطلاب'}).click();
     await students[1].waitForFunction(() => window.__played > 0);
     results.push('curriculum page shown, teacher ink synced, recorded narration played on a student device');

@@ -157,3 +157,32 @@ test('HTTP flow: plan, start, join, answer, results, homework and evaluation', a
   assert.equal((await answer(sara, {kind: 'homework', step: 'homework', question: 'h1', choice: 1})).status, 401);
   for (const asset of ['group-plan.js', 'group-view.js', 'group-planner.js', 'group-teacher.js', 'group-student.js', 'group-lesson.css']) assert.equal((await fetch(base + '/' + asset)).status, 200, asset);
 });
+
+test('board ink: tools, typed text, moving, erasing and a camera students follow', async () => {
+  const {clampCamera, zoomAround, smoothPath} = await import('../public/group-ink.js');
+  let s = initialState(plan);
+  s = run(s, {op: 'stroke', tool: 'marker', size: 'l', color: '#f4d03f', points: [[10, 10], [300, 12], [500, 14]]},
+    {op: 'text', text: ' جسم معتم ', x: 600, y: 120, color: '#c0392b', size: 'l'});
+  const [mark, text] = s.strokes.curriculum;
+  assert.equal(mark.tool, 'marker'); assert.equal(text.text, 'جسم معتم'); assert.notEqual(mark.id, text.id);
+  for (const bad of [{op: 'stroke', tool: 'laser', color: '#c0392b', points: [[0, 0], [1, 1]]}, {op: 'stroke', tool: 'pen', size: 'xl', color: '#c0392b', points: [[0, 0], [1, 1]]},
+    {op: 'stroke', tool: 'pen', color: 'red', points: [[0, 0], [1, 1]]}, {op: 'text', text: '', x: 1, y: 1, color: '#c0392b'}, {op: 'text', text: 'x'.repeat(201), x: 1, y: 1, color: '#c0392b'},
+    {op: 'text', text: 'a', x: 5000, y: 1, color: '#c0392b'}, {op: 'move', id: mark.id, x: 1, y: 1}, {op: 'erase', id: 'nope'}])
+    assert.throws(() => run(s, bad));
+  s = run(s, {op: 'move', id: text.id, x: 2000, y: -5});
+  assert.deepEqual([s.strokes.curriculum[1].x, s.strokes.curriculum[1].y], [1000, 0]);
+  s = run(s, {op: 'erase', id: mark.id});
+  assert.deepEqual(s.strokes.curriculum.map(i => i.kind), ['text']);
+  s = run(s, {op: 'camera', z: 9, x: 999, y: -40});
+  assert.deepEqual(publicView(s, plan, 'a', []).camera, {z: 4, x: 750, y: 0});
+  assert.deepEqual(clampCamera({z: 0.2}), {z: 1, x: 0, y: 0});
+  const z = zoomAround({z: 1, x: 0, y: 0}, 2, 500, 300);
+  assert.deepEqual(z, {z: 2, x: 250, y: 150}, 'zooming keeps the point under the cursor');
+  assert.match(smoothPath([[0, 0], [10, 10], [20, 0]]), /^M0 0 Q10 10 15\.0 5\.0 L20 0$/);
+  // Prepared texts stay with the teacher's plan, not in student content.
+  assert.ok(plan.steps[0].snippets.length > 0);
+  s = run(initialState(plan));
+  assert.equal('snippets' in contentFor(s, plan, 'curriculum'), false);
+  const bad = structuredClone(defaultPlan()); bad.steps[0].snippets = Array(13).fill('x');
+  assert.throws(() => validatePlan(bad), PlanError);
+});

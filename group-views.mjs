@@ -1,6 +1,9 @@
 // HTML scaffolds for the group lesson. Dynamic parts are filled by same-origin modules.
 import {e} from './views.mjs';
 import {STEP_TYPES, STEP_ORDER} from './public/group-plan.js';
+import {COLORS, SIZE_NAMES} from './public/group-ink.js';
+
+const TOOL_BUTTONS = [['select', '➤', 'تحريك', 'V'], ['hand', '✋', 'يد', 'H'], ['pen', '✎', 'قلم', 'P'], ['brush', '🖌', 'فرشاة', 'B'], ['marker', '▮', 'تظليل', 'M'], ['text', 'ت', 'كتابة', 'T'], ['eraser', '⌫', 'ممحاة', 'E']];
 
 const css = '<link rel="stylesheet" href="/group-lesson.css?v=1">';
 const dateText = t => new Intl.DateTimeFormat('ar-SA', {dateStyle: 'medium', timeStyle: 'short', timeZone: 'Asia/Riyadh'}).format(t);
@@ -31,12 +34,13 @@ export function plannerPage(id, title) {
  </section><script type="module" src="/group-planner.js?v=1"></script>`;
 }
 
-const boardShell = (extra = '') => `<div class="gl-stage"><div class="gl-board" id="gl-board" aria-live="polite"><div class="gl-content" id="gl-content"></div><svg class="gl-ink" id="gl-ink" viewBox="0 0 1000 600" preserveAspectRatio="none" aria-hidden="true"></svg></div>${extra}</div>`;
+const zoomBar = (follow = false) => `<div class="gl-zoom" role="group" aria-label="تكبير السبورة"><button type="button" data-zoom="in" aria-label="تكبير" title="تكبير (+)">＋</button><button type="button" data-zoom="out" aria-label="تصغير" title="تصغير (−)">－</button><button type="button" data-zoom="fit" title="ملاءمة (0)">ملاءمة</button>${follow ? '<button type="button" data-zoom="follow" hidden>اتبع المعلم</button>' : ''}</div>`;
+const boardShell = (extra = '', follow = false) => `<div class="gl-stage"><div class="gl-board" id="gl-board" aria-live="polite"><div class="gl-camera" id="gl-camera"><div class="gl-content" id="gl-content"></div><svg class="gl-ink" id="gl-ink" viewBox="0 0 1000 600" preserveAspectRatio="none" aria-hidden="true"></svg></div>${zoomBar(follow)}</div>${extra}</div>`;
 
 export function teacherPage(code, title, base) {
   const join = `${base}/join?code=${code}`;
   return `${css}<section class="gl-wrap gl-teacher" dir="rtl" id="gl-app" data-code="${e(code)}" data-role="teacher">
-  <div class="gl-top"><div><div class="eyebrow">إدارة الحصة الجماعية</div><h1>${e(title)}</h1>
+  <div class="gl-top gl-top-compact"><div><div class="eyebrow">إدارة الحصة الجماعية</div><h1>${e(title)}</h1>
    <p class="gl-join">رمز الحصة: <b class="gl-code">${e(code)}</b> · يدخل الطلاب من <a class="textlink" href="/join?code=${e(code)}" target="_blank" rel="noopener">${e(join)}</a></p></div>
    <div class="gl-actions"><a class="outline" href="/teach/live/${e(code)}/display" target="_blank" rel="noopener">فتح شاشة العرض للسبورة الذكية ↗</a><button type="button" class="outline" id="gl-live">إنهاء العرض</button></div></div>
   <p id="gl-status" class="gl-status" role="status" aria-live="polite">جارٍ الاتصال…</p>
@@ -44,13 +48,17 @@ export function teacherPage(code, title, base) {
    <nav class="gl-seq" aria-label="تسلسل الدرس"><h2>تسلسل الدرس</h2><ol id="gl-steps"></ol>
     <div class="gl-nav"><button type="button" id="gl-prev">السابق</button><button type="button" id="gl-next" class="btn">التالي</button></div></nav>
    <div class="gl-main">
-    <div class="gl-toolbar" role="toolbar" aria-label="التحكم بالعرض">
-     <button type="button" id="gl-show" aria-pressed="true">إخفاء عن الطلاب</button>
-     <span class="gl-vis" id="gl-vis"></span>
-     <span class="gl-pens" role="group" aria-label="قلم الكتابة"><button type="button" id="gl-pen" aria-pressed="false">✎ قلم</button>${['#173e34', '#c0392b', '#1f5fa8', '#e8890c'].map((c, i) => `<button type="button" class="gl-color" data-color="${c}" aria-label="لون ${i + 1}" aria-pressed="${i ? 'false' : 'true'}"><i data-swatch="${i}"></i></button>`).join('')}<button type="button" id="gl-undo">تراجع</button><button type="button" id="gl-clear">مسح الكتابة</button></span>
+    <div class="gl-tools" role="toolbar" aria-label="أدوات السبورة">
+     <div class="gl-toolgroup gl-showgroup" role="group" aria-label="العرض للطلاب"><button type="button" id="gl-show" aria-pressed="true">إخفاء عن الطلاب</button><span class="gl-vis" id="gl-vis"></span></div>
+     <div class="gl-toolgroup" role="group" aria-label="الأداة">${TOOL_BUTTONS.map(([tool, icon, label, key]) => `<button type="button" class="gl-tool" data-tool="${tool}" aria-pressed="${tool === 'select' ? 'true' : 'false'}" title="${label} (${key})"><span aria-hidden="true">${icon}</span><span>${label}</span></button>`).join('')}</div>
+     <div class="gl-toolgroup gl-colors" role="group" aria-label="اللون">${COLORS.map((c, i) => `<button type="button" class="gl-color" data-color="${c.value}" aria-label="${c.name}" title="${c.name}" aria-pressed="${i ? 'false' : 'true'}"><i data-swatch="${i}"></i></button>`).join('')}</div>
+     <div class="gl-toolgroup" role="group" aria-label="الحجم">${Object.entries(SIZE_NAMES).map(([k, n]) => `<button type="button" class="gl-size" data-size="${k}" aria-pressed="${k === 'm' ? 'true' : 'false'}" title="حجم ${n}"><i data-dot="${k}"></i><span>${n}</span></button>`).join('')}</div>
+     <div class="gl-toolgroup" role="group" aria-label="إجراءات"><button type="button" id="gl-undo" title="تراجع (Ctrl+Z)">↶ تراجع</button><button type="button" id="gl-clear">مسح كتابة الخطوة</button></div>
     </div>
-    ${boardShell()}
+    <div class="gl-snippets" id="gl-snippets" hidden></div>
+    ${boardShell('<div class="gl-textbox" id="gl-textbox" hidden><input id="gl-textinput" maxlength="200" aria-label="اكتب على السبورة" placeholder="اكتب ثم Enter" dir="auto"><button type="button" id="gl-textok" class="btn">ضع</button><button type="button" id="gl-textcancel" class="quiet">إلغاء</button></div>')}
     <div class="gl-narration" id="gl-narration" hidden></div>
+    <details class="gl-keys"><summary>اختصارات لوحة المفاتيح</summary><p>V تحريك · H يد · P قلم · B فرشاة · M تظليل · T كتابة · E ممحاة · + و − تكبير وتصغير · 0 ملاءمة · Ctrl+Z تراجع · PageDown أو ← للخطوة التالية، و PageUp أو → للسابقة (تناسب أجهزة التحكم بالعرض) · Esc إلغاء.</p></details>
     <section class="gl-panel" id="gl-panel" aria-label="أدوات الخطوة الحالية"></section>
    </div>
    <aside class="gl-side"><section><h2>الطلاب <small id="gl-count"></small></h2><ul id="gl-students" class="gl-students"></ul></section>
@@ -75,7 +83,7 @@ export function studentPage(code, name, title) {
   <div class="gl-top"><div><div class="eyebrow">مرحبًا ${e(name)}</div><h1>${e(title)}</h1></div><span class="gl-progress" id="gl-progress"></span></div>
   <p id="gl-status" class="gl-status" role="status" aria-live="polite">جارٍ الاتصال…</p>
   <button type="button" id="gl-audio" class="outline" hidden>تفعيل صوت الشرح</button>
-  ${boardShell()}<p id="gl-wait" class="gl-wait" hidden></p>
+  ${boardShell('', true)}<p id="gl-wait" class="gl-wait" hidden></p>
   <section class="gl-answer" id="gl-answer" hidden aria-label="أجب عن الأسئلة"></section>
   <section class="gl-homework" id="gl-hw" hidden aria-label="الواجب"></section>
   <section class="gl-myeval" id="gl-eval" hidden aria-label="تقييمي"></section>

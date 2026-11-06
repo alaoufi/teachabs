@@ -156,6 +156,15 @@ function stepEditor(step) {
   return box;
 }
 
+function snippetsEditor(step) {
+  const list = step.snippets ||= [];
+  const box = el('div', {class: 'pl-snippets'}, el('b', {text: 'نصوص جاهزة للكتابة على السبورة'}), el('p', {class: 'pl-hint', text: 'كلمات أو جمل تضعها على السبورة بلمسة أثناء الشرح بدل كتابتها وقت الحصة.'}));
+  list.forEach((t, i) => box.append(el('div', {class: 'pl-option'}, textInput(t, 200, v => { list[i] = v; }, {'aria-label': `النص الجاهز ${i + 1}`}),
+    el('button', {type: 'button', class: 'quiet', onclick: () => { list.splice(i, 1); touch(); render(); }}, 'حذف'))));
+  if (list.length < LIMITS.snippets) box.append(el('button', {type: 'button', class: 'quiet', onclick: () => { list.push(''); touch(); render(); }}, '+ نص جاهز'));
+  return box;
+}
+
 const openSteps = new Set();
 function render() {
   $('pl-heading').textContent = plan.title || 'درس بلا عنوان';
@@ -169,7 +178,7 @@ function render() {
       el('div', {class: 'pl-step-tools'}, smallButtons(plan.steps, i, `الخطوة ${i + 1}`)),
       field('عنوان الخطوة', textInput(step.title, 80, v => { step.title = v; details.querySelector('.pl-title').textContent = v || 'بلا عنوان'; })),
       el('label', {class: 'pl-check'}, el('input', {type: 'checkbox', checked: step.startHidden === true, onchange: e => { step.startHidden = e.target.checked; touch(); }}), 'تبدأ مخفية عن الطلاب حتى أظهرها'),
-      stepEditor(step), narrationEditor(step));
+      stepEditor(step), ['homework', 'evaluation'].includes(step.type) ? null : snippetsEditor(step), narrationEditor(step));
     return el('li', {}, details);
   }));
 }
