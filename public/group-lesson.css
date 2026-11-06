@@ -376,3 +376,23 @@ body:has(.gl-present) main{width:100%}
 .gl-present nav.gl-bar-steps{flex-wrap:wrap}
 .gl-present .gl-quick{flex:1 1 auto;flex-wrap:wrap;overflow:visible}
 .gl-present .gl-quick .gl-narr-quick,.gl-present .gl-quick .gl-row{flex-wrap:wrap}
+
+/* ===== stage 041: the display screen (smart board / projector) — one thin bar, the board fills the rest ===== */
+body:has(.gl-show) main{width:100%;max-width:none;margin:0;padding:0}
+.gl-show{max-width:none;width:100%;height:100vh;height:100dvh;box-sizing:border-box;padding:6px 12px 8px;display:grid;grid-template-rows:auto minmax(0,1fr);gap:6px;overflow:hidden;background:linear-gradient(180deg,#eef3f1,#f7f5ef)}
+.gl-show-bar{display:flex;align-items:center;gap:8px 16px;flex-wrap:wrap;background:#fffefb;border:1px solid var(--line);border-radius:14px;padding:4px 12px;min-width:0}
+.gl-show-bar h1{font-size:clamp(18px,1.6vw,26px)!important;margin:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:45vw}
+.gl-show-bar .gl-join{margin:0;font-size:clamp(14px,1.2vw,20px)}
+.gl-show-bar .gl-code{font-size:1.25em}
+.gl-show-bar .gl-status-dot{margin:0;flex:1 1 auto}
+.gl-show-actions{display:flex;gap:6px;flex-wrap:wrap}
+.gl-show .gl-stage{min-height:0;container-type:size;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:0 0 18px;perspective:1600px}
+.gl-show .gl-board{width:min(100cqw - 6px,(100cqh - 30px) * 1.6667);max-height:none;margin:0;flex:none}
+.gl-show .gl-stage:has(> .gl-narrator) .gl-board{width:min(100cqw - 6px,(100cqh - 120px) * 1.6667)}
+.gl-show .gl-narrator{width:min(100cqw - 6px,(100cqh - 120px) * 1.6667);margin-top:6px;flex:none}
+.gl-show .gl-stage::after{width:min(70cqw,(100cqh - 30px) * 1.4);position:absolute;bottom:2px;margin:0}
+.gl-show .gl-stage:has(> .gl-narrator)::after{display:none}
+.gl-show .gl-stage::before{bottom:6px;inset-inline-start:calc(50% - 160px)}
+.gl-show .gl-wait{grid-row:2;align-self:center;justify-self:center;font-size:clamp(20px,2.4vw,36px)}
+.gl-show:has(#gl-wait:not([hidden])) .gl-stage{display:none}
+@media(max-width:760px){.gl-show{height:auto;overflow:visible}.gl-show .gl-stage{container-type:normal}.gl-show .gl-board,.gl-show .gl-narrator,.gl-show .gl-stage:has(> .gl-narrator) .gl-board{width:100%}}

@@ -72,6 +72,19 @@ const assert = require('node:assert/strict'), fs = require('node:fs'), path = re
       onScreen(await layout(), min);
     }
     results.push('no page scroll and the whole board visible at 1920x1080, 1280x800, 1024x768 and 768x1024');
+
+    // the display screen for the smart board: one thin bar, the board (and narrator strip) fill the rest, no scroll
+    const code = t.url().split('/').pop();
+    const d = await tc.newPage(); watch(d); await d.goto(base + `/teach/live/${code}/display`);
+    await d.waitForSelector('#gl-board:not([hidden])');
+    for (const [w, h, min] of [[1366, 768, 900], [1920, 1080, 1400], [1280, 720, 850]]) {
+      await d.setViewportSize({width: w, height: h}); await d.waitForTimeout(300);
+      const m = await d.evaluate(() => { const b = document.querySelector('#gl-board').getBoundingClientRect(), n = document.querySelector('.gl-stage > .gl-narrator')?.getBoundingClientRect();
+        return {top: b.top, bottom: Math.max(b.bottom, n ? n.bottom : 0), width: b.width, vh: innerHeight, scroll: document.documentElement.scrollHeight > innerHeight + 1, header: getComputedStyle(document.querySelector('body > header')).display}; });
+      assert.ok(!m.scroll && m.header === 'none' && m.top >= 0 && m.bottom <= m.vh && m.width >= min, `display ${w}x${h} ${JSON.stringify(m)}`);
+    }
+    await d.setViewportSize({width: 1366, height: 768}); await d.screenshot({path: path.join(out, 'present-display-1366.png')});
+    results.push('display screen: whole board on screen without scroll at 1366x768, 1920x1080 and 1280x720');
     assert.equal(await t.locator('#gl-status.is-error').count(), 0, await t.locator('#gl-status').textContent());
     assert.deepEqual(errors, []);
     console.log(JSON.stringify({ok: true, results}, null, 1));

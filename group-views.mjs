@@ -82,11 +82,12 @@ export function teacherPage(code, title, base) {
 }
 
 export function displayPage(code, title) {
-  return `${css}<section class="gl-wrap gl-display" dir="rtl" id="gl-app" data-code="${e(code)}" data-role="display">
-  <div class="gl-top"><h1>${e(title)}</h1><p class="gl-join">للانضمام: <b class="gl-code">${e(code)}</b></p><button type="button" id="gl-full" class="outline">ملء الشاشة</button></div>
-  <p id="gl-status" class="gl-status" role="status" aria-live="polite">جارٍ الاتصال…</p>
+  // Made for a smart board or projector: one thin bar, and the board takes every remaining pixel.
+  return `${css}<section class="gl-wrap gl-display gl-show" dir="rtl" id="gl-app" data-code="${e(code)}" data-role="display">
+  <header class="gl-show-bar"><h1>${e(title)}</h1><p class="gl-join">للانضمام: <b class="gl-code">${e(code)}</b></p>
+   <p id="gl-status" class="gl-status-dot" role="status" aria-live="polite">جارٍ الاتصال…</p>
+   <span class="gl-show-actions"><button type="button" id="gl-audio" class="outline gl-mini" hidden>تفعيل صوت الشرح على هذه الشاشة</button><button type="button" id="gl-full" class="outline gl-mini">⛶ ملء الشاشة</button></span></header>
   ${boardShell()}<p id="gl-wait" class="gl-wait" hidden></p>
-  <button type="button" id="gl-audio" class="outline" hidden>تفعيل صوت الشرح على هذه الشاشة</button>
  </section><script type="module" src="/group-student.js?v=2"></script>`;
 }
 
