@@ -52,3 +52,31 @@ body:has(.adm) main>.demo{display:none}
 
 body:has(.adm) main{padding-top:12px}
 @media(max-width:700px){body:has(.adm) main{margin-top:0;padding-top:8px}.adm-breadcrumb{margin-bottom:6px}.adm-heading{margin-bottom:10px}}
+
+/* School setup: compact RTL steps, scoped to this page only. */
+.school-step{overflow:hidden;padding:0!important;box-shadow:none!important;border:1px solid #d9e4df!important}
+.school-step-head{display:flex;align-items:center;gap:12px;padding:18px 22px;border-bottom:1px solid #e4ece7;background:#f6f9f6}
+.school-step-head>span{display:grid;place-items:center;flex:none;width:32px;height:32px;border-radius:50%;background:#155d50;color:white;font-weight:700}
+.school-step-head h2{margin:0;font-size:19px}
+.school-step-body{padding:20px 22px}
+.school-step .adm-form{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px 18px;align-items:end;margin:16px 0}
+.school-step .adm-field{margin:0;min-width:0}
+.school-step .adm-form>.btn{justify-self:start;min-height:44px;margin:0}
+.school-step article{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px;border-top:1px solid #e3ebe5;padding:12px 0}
+.school-step article p{margin:0;line-height:1.8}
+.school-step article .adm-form{display:block;margin:0}
+.school-step article .btn{background:#fff;color:#8a3b30;border:1px solid #d9bbb5;font-size:13px}
+@media(max-width:600px){.school-step .adm-form{grid-template-columns:1fr}.school-step-head,.school-step-body{padding:16px}.school-step article{align-items:start}.school-step .adm-form>.btn{width:100%}}
+
+/* Shared administration design: container, floating tiles, distinct landmarks. */
+.adm{--hub-ink:#173e34;--hub-border:#cdded4;--hub-shadow:0 6px 0 #d1ded4,0 18px 35px #183e3410}
+.adm-hub{border:1px solid var(--hub-border);border-radius:28px;padding:28px;background:linear-gradient(145deg,#eef4eb,#fafbf6);box-shadow:var(--hub-shadow)}
+.adm-hub-head{display:flex;justify-content:space-between;align-items:start;gap:20px;margin-bottom:24px}.adm-hub-head h2{font-size:23px;margin:5px 0}.adm-eyebrow{font-size:12px;color:#597265}
+.adm-help{max-width:320px;font-size:13px}.adm-help summary,.school-guide summary{cursor:pointer;min-height:44px;padding:10px 14px;border:1px solid #cdded4;border-radius:12px;background:#fff}.adm-help p{line-height:1.9}.school-guide{margin-bottom:18px}
+.adm-hub .adm-section-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:18px}
+.adm-hub .adm-section-card{display:flex;flex-direction:column;align-items:center;text-align:center;gap:12px;min-width:0;padding:22px 14px;border:1px solid #d7e3dc;border-radius:20px;background:#fff;box-shadow:0 5px 0 #dce6df,0 10px 20px #173e3409;transition:transform .15s,box-shadow .15s}
+.adm-hub .adm-section-card:hover{transform:translateY(-3px);box-shadow:0 8px 0 #dce6df,0 14px 22px #173e3414}.adm a:focus-visible,.adm summary:focus-visible{outline:3px solid #a36c18;outline-offset:4px}
+.adm-hub .adm-card-icon{display:grid;place-items:center;width:58px;height:58px;background:#e3eee8;color:#155d50}.adm-hub .shape-0{border-radius:15px}.adm-hub .shape-1{border-radius:50%;background:#e6edf6;color:#345c88}.adm-hub .shape-2{clip-path:polygon(25% 0,75% 0,100% 50%,75% 100%,25% 100%,0 50%);border-radius:0;background:#f6ecd7;color:#805d1e}.adm-hub .adm-card-icon svg{width:27px;height:27px}.adm-hub .adm-section-card h2{font-size:17px;margin:0;line-height:1.5}.adm-card-open{font-size:12px;color:#5d7569}
+.adm .adm-panel{border-radius:20px;box-shadow:0 4px 0 #e0e8df}.adm .adm-heading-icon{border-radius:50%}.adm-sidebar nav a[aria-current=page]{box-shadow:0 3px 0 #c1d5c6}
+@media(max-width:700px){.adm-hub{padding:16px;border-radius:20px}.adm-hub-head{flex-direction:column;gap:10px}.adm-hub .adm-section-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.adm-hub .adm-section-card{padding:18px 8px}.adm-hub .adm-section-card h2{font-size:14px}.adm-hub-head h2{font-size:21px}}
+@media(prefers-reduced-motion:reduce){.adm-hub .adm-section-card:hover{transform:none}}
