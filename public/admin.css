@@ -180,10 +180,10 @@ body:has(.adm) main{margin-top:0;padding-top:20px;padding-bottom:36px}
 .adm .adm-brand{font-size:18px;gap:10px}.adm .adm-brand-mark{width:40px;height:40px;border-radius:12px}
 .adm .adm-brand-mark svg{width:24px;height:24px}.adm .adm-brand small{font-size:11px;margin:0}
 .adm details.adm-simulation{display:block;padding:0 12px;margin-bottom:14px}
-.adm .adm-simulation>summary{display:flex;align-items:center;gap:8px;min-height:44px;cursor:pointer;list-style:none}
+.adm .adm-simulation>summary{display:flex;align-items:center;flex-wrap:wrap;gap:4px 8px;padding-block:5px;min-height:44px;cursor:pointer;list-style:none}
 .adm .adm-simulation>summary::-webkit-details-marker{display:none}
-.adm .adm-simulation>summary span{font-size:12px;overflow-wrap:anywhere}
-.adm .adm-simulation>summary small{font-size:11px;margin-inline-start:auto;white-space:nowrap}
+.adm .adm-simulation>summary span{font-size:12px;overflow-wrap:break-word;word-break:normal}
+.adm .adm-simulation>summary small{font-size:11px;margin-inline-start:auto;white-space:normal;overflow-wrap:break-word;word-break:normal}
 .adm .adm-simulation>.adm-form{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:end;gap:8px;padding-bottom:10px;margin-top:4px;max-width:520px}
 .adm .adm-simulation .btn{width:auto}
 .adm .adm-hub{padding:20px 22px 24px;border-radius:24px;background:linear-gradient(145deg,#e8f0e9,#fafbf7);border-color:#c0d3c5;box-shadow:0 7px 0 #c6d6cb,0 18px 32px #173e3417}
