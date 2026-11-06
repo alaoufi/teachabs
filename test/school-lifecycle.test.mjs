@@ -83,11 +83,11 @@ test('validation and scope denial preserve the class and audit log',t=>{
  denied(()=>a.updateSchoolClass(other.supervisor,{classId,name:'غير مسموح',state:'active',revision:c.revision}),404);
  assert.deepEqual(current(a,id,classId),c);assert.deepEqual(a.auditLog(id),audit);
  update(a,id,classId,{name:'<script>bad</script>'});
- const html=adminSchool(a.profile(id),a.school(id));
+ const selected=current(a,id,classId),html=adminSchool(a.profile(id),a.school(id),{trackId:selected.track_id,stage:selected.stage,grade:selected.grade,classId});
  assert.match(html,/&lt;script&gt;bad&lt;\/script&gt;/);assert.doesNotMatch(html,/<script>bad/);
 });
 
-test('organizational UI omits archived choices and impossible empty forms',t=>{
+test('organizational UI keeps archived records selectable but omits their admission forms',t=>{
  const {a,ids}=fixture(t),id=ids.supervisor;
  let html=adminSchool(a.profile(id),a.school(id));
  assert.doesNotMatch(html,/action="\/admin\/school\/classes"/);
@@ -95,11 +95,13 @@ test('organizational UI omits archived choices and impossible empty forms',t=>{
  assert.match(html,/أنشئ مسارًا جديدًا أو هيّئ مسار التسجيل الحالي أولًا/);
  const active=create(a,id,'أ'),archived=create(a,id,'ب');
  update(a,id,archived,{state:'archived'});
- html=adminSchool(a.profile(id),a.school(id));
+ const selected=current(a,id,archived);
+ html=adminSchool(a.profile(id),a.school(id),{trackId:selected.track_id,stage:selected.stage,grade:selected.grade,classId:archived});
  const selectors=[...html.matchAll(/<select name="classId"[^>]*>(.*?)<\/select>/g)].map(m=>m[1]);
  assert.ok(selectors.length>0);
- for(const options of selectors){assert.ok(options.includes(active));assert.ok(!options.includes(archived));}
+ for(const options of selectors){assert.ok(options.includes(active));assert.ok(options.includes(archived));}
  assert.match(html,/إعادة الإتاحة/);
+ assert.doesNotMatch(html,/action="\/admin\/school\/(?:students\/batch|teachers)"/);
  assert.match(html,/لا تنشئ حجوزات أو حصصًا جماعية/);
 });
 

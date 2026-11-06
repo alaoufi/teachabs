@@ -43,18 +43,18 @@ test('capacity has its own granted HTTP permission and stale revisions cannot ch
 
 test('school UI uses the fixed catalog, separates path/type/curriculum, and exposes only granted editors',async t=>{
  const {a,ids}=await fixture(t),id=ids.supervisor,trackId=a.addSchoolTrack(id,{name:'<مسار>',educationType:'private',curriculumName:'<منهج>'});
- a.addSchoolClass(id,{trackId,levelKey:'secondary:3',name:'فصل تجريبي',capacity:10});
- let html=adminSchool(a.profile(id),a.school(id));
+ const classId=a.addSchoolClass(id,{trackId,levelKey:'secondary:3',name:'فصل تجريبي',capacity:10}),selection={trackId,stage:'secondary',grade:3,classId};
+ let html=adminSchool(a.profile(id),a.school(id),selection);
  assert.match(html,/name="educationType"/);assert.match(html,/name="curriculumName"/);assert.match(html,/الحد الأقصى للطلاب/);
  assert.match(html,/&lt;مسار&gt;/);assert.match(html,/&lt;منهج&gt;/);assert.doesNotMatch(html,/<مسار>|<منهج>/);
  const stages=html.match(/<select name="stage"[^>]*>(.*?)<\/select>/)?.[1];assert.ok(stages);
  const levels=html.match(/<select name="grade"[^>]*>(.*?)<\/select>/)?.[1];assert.ok(levels);
  for(const level of SCHOOL_LEVELS.filter(l=>l.stage==='secondary'))assert.ok(levels.includes('value="'+level.grade+'"'));
- assert.equal((stages.match(/<option /g)||[]).length,3);assert.equal((levels.match(/<option /g)||[]).length,3);assert.doesNotMatch(html,/action="\/admin\/school\/grades"/);
+ assert.equal((stages.match(/<option /g)||[]).length,4);assert.equal((levels.match(/<option /g)||[]).length,4);assert.doesNotMatch(html,/action="\/admin\/school\/grades"/);
  assert.match(html,/بانتظار ربط التسجيل/);assert.doesNotMatch(html,/action="\/admin\/school\/students"/);
- grant(a,ids,['school.read']);html=adminSchool(a.profile(ids.education),a.school(ids.education));
+ grant(a,ids,['school.read']);html=adminSchool(a.profile(ids.education),a.school(ids.education),selection);
  assert.doesNotMatch(html,/action="\/admin\/school\/(?:tracks|classes|classes\/capacity|classes\/update)"/);
- grant(a,ids,['school.read','school.capacity']);html=adminSchool(a.profile(ids.education),a.school(ids.education));
+ grant(a,ids,['school.read','school.capacity']);html=adminSchool(a.profile(ids.education),a.school(ids.education),selection);
  assert.match(html,/action="\/admin\/school\/classes\/capacity"/);assert.doesNotMatch(html,/action="\/admin\/school\/classes\/update"/);
 });
 

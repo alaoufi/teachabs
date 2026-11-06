@@ -360,3 +360,10 @@ body:has(.adm) main{margin-top:0;padding-top:20px;padding-bottom:36px}
 .adm .adm-option-names>li{display:grid;grid-template-columns:26px minmax(0,1fr);gap:8px;align-items:start;min-width:0;padding:8px;border:1px solid #d8e2d5;border-radius:10px;background:#f3f7ee}
 .adm .adm-option-names bdi{min-width:0;white-space:normal;overflow-wrap:break-word;word-break:normal}
 .adm .adm-option-number{display:inline-grid;place-items:center;min-width:24px;min-height:26px;border-radius:7px;background:#dfebd9;font-weight:700;color:#254b39}
+/* 020: compact progressive choices and explicit bulk membership. */
+.adm .school-enrollment-choices{grid-column:1/-1;min-width:0;margin:0;padding:0;border:0}
+.adm .school-enrollment-choices legend{font-weight:700;font-size:.95rem;line-height:1.7;margin-bottom:6px;padding:0;max-width:100%;white-space:normal;overflow-wrap:break-word}
+.adm .school-class-members article{display:flex;align-items:center;justify-content:space-between;gap:10px;min-width:0;padding:10px 0;border-bottom:1px solid #e0e7dc}
+.adm .school-class-members article p{min-width:0;overflow-wrap:break-word;word-break:normal;margin:0}
+.adm .school-class-members .adm-form{margin:0;flex:none}
+@media(max-width:420px){.adm .school-class-members article{display:block}.adm .school-class-members .adm-form{margin-top:8px}}

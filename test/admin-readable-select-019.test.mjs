@@ -33,7 +33,7 @@ test('readable choice text is escaped and short fixed stages do not gain an unne
  const {a,id}=fixture(t),name='<img src=x onerror=alert(1)> مسار طويل للاختبار',trackId=a.addSchoolTrack(id,{name});
  const html=adminSchool(a.profile(id),a.school(id),{trackId,stage:'middle',grade:2});
  assert.match(wrapper(html,'trackId'),/&lt;img src=x onerror=alert\(1\)&gt;/);assert.doesNotMatch(html,/<img src=x/);
- const stages=wrapper(html,'stage');assert.ok(stages);assert.equal((stages.match(/<option /g)||[]).length,3);assert.doesNotMatch(stages,/adm-option-names|<details/);
+ const stages=wrapper(html,'stage');assert.ok(stages);assert.equal((stages.match(/<option /g)||[]).length,4);assert.doesNotMatch(stages,/adm-option-names|<details/);
  assert.match(stages,/<option value="middle" selected>المتوسطة/);
 });
 

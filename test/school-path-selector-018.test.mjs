@@ -12,8 +12,8 @@ test('path stage grade flow uses exactly the stored fixed stage and grade catalo
  const {a,ids,get}=await fixture(t),trackId=a.addSchoolTrack(ids.supervisor,{name:'المسار المصري',curriculumName:'المصري'});
  for(const [stage,count] of [['primary',6],['middle',3],['secondary',3]]){
   const response=await get(url({trackId,stage}));assert.equal(response.status,200);const html=await response.text(),stages=choices(html,'stage'),grades=choices(html,'grade');
-  assert.equal((stages.match(/<option /g)||[]).length,3);assert.match(stages,/value="primary"/);assert.match(stages,/value="middle"/);assert.match(stages,/value="secondary"/);
-  assert.equal((grades.match(/<option /g)||[]).length,count);for(let n=1;n<=count;n++)assert.match(grades,new RegExp('value="'+n+'"'));assert.doesNotMatch(html,/<select name="levelKey"/);
+  assert.equal((stages.match(/<option /g)||[]).length,4);assert.match(stages,/value="primary"/);assert.match(stages,/value="middle"/);assert.match(stages,/value="secondary"/);
+  assert.equal((grades.match(/<option /g)||[]).length,count+1);for(let n=1;n<=count;n++)assert.match(grades,new RegExp('value="'+n+'"'));assert.doesNotMatch(html,/<select name="levelKey"/);
   assert.match(html,/إنشاء مسار جديد/);assert.match(html,/name="trackId"/);assert.match(html,/اسناد|إسناد/);
  }
 });

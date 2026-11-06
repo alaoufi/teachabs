@@ -7,7 +7,7 @@ import {adminSchool,adminRegistrationAgents} from '../admin-views.mjs';
 test('class and agent card names keep their own title cell and separate state row',t=>{
  const store=openStore(':memory:');t.after(()=>store.close());const a=store.admin,ids=a.demo(),id=ids.supervisor;
  const gradeId=a.addSchoolGrade(id,{grade:4});a.addSchoolClass(id,{gradeId,name:'الرابع · أ (مثال)',capacity:10});
- const html=adminSchool(a.profile(id),a.school(id));
+ const snapshot=a.school(id),c=snapshot.classes[0],html=adminSchool(a.profile(id),snapshot,{trackId:c.track_id,stage:c.stage,grade:c.grade,classId:c.id});
  assert.match(html,/<div class="school-class-title"><h3>الرابع · أ \(مثال\)<\/h3>/);
  const css=readFileSync(new URL('../public/admin.css',import.meta.url),'utf8');
  assert.match(css,/\.adm \.school-class-top\{display:grid;grid-template-columns:34px minmax\(0,1fr\)/);

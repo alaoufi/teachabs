@@ -12,12 +12,21 @@ export function adminService(store) {
     const path=url.pathname;
     if(path==='/admin/demo/switch'&&req.method==='POST'){if(req.headers.origin!==base)throw new UserError('Untrusted origin',403);limit(req,'admin-write',180);const data=await fields(req);return enter(admin.switchDemo(u.id,data.adminRole));}
     const profile=admin.profile(u.id);
-    const classDestination=classId=>{if(!classId)return '/admin/school';const row=admin.school(u.id).classes.find(c=>c.id===classId);if(!row)throw new UserError('الفصل غير متاح.',404);return '/admin/school?'+new URLSearchParams({trackId:row.track_id,stage:row.stage,grade:String(row.grade)});};
+    const classDestination=classId=>{if(!classId)return '/admin/school';const row=admin.school(u.id).classes.find(c=>c.id===classId);if(!row)throw new UserError('الفصل غير متاح.',404);return '/admin/school?'+new URLSearchParams({trackId:row.track_id,stage:row.stage,grade:String(row.grade),classId:row.id});};
     const invitation=(result,section='accounts')=>ui.adminInviteResult(profile,{...result,activationUrl:new URL('/activate?code='+result.token,base).href,section});
     if(req.method==='GET') {
       if(path==='/admin')return html('الإدارة',ui.adminHome(profile,admin.overview(u.id)));
       if(path==='/admin/school/assignments')return html('إسناد المعلمين للطلاب',ui.adminSchoolIndividuals(profile,admin.schoolTeacherStudents(u.id,{gradeId:url.searchParams.get('gradeId')||'',subject:url.searchParams.get('subject')||'',teacherId:url.searchParams.get('teacherId')||'',page:url.searchParams.has('page')?Number(url.searchParams.get('page')):1})));
-      if(path==='/admin/school'){const school=admin.school(u.id),selection=schoolSelection(school,Object.fromEntries(url.searchParams));return html('الصفوف والفصول',ui.adminSchool(profile,school,selection));}
+      if(path==='/admin/school'||path==='/admin/school/enrollment'){
+        for(const key of ['trackId','stage','grade','classId'])if(url.searchParams.getAll(key).length>1)throw new UserError('اختر قيمة واحدة لكل خطوة.');
+        if(path.endsWith('/enrollment'))admin.requireAccess(u.id,'school.students');
+        const school=admin.school(u.id),selection=schoolSelection(school,Object.fromEntries(url.searchParams));
+        if(path.endsWith('/enrollment')){
+          if(!selection.grade||selection.classId)throw new UserError('اختر المسار والمرحلة والصف أولًا، ثم حدد الطلاب قبل الفصل.');
+          return html('إضافة طلاب الصف إلى فصل',ui.adminSchoolEnrollment(profile,school,selection));
+        }
+        return html('الصفوف والفصول',ui.adminSchool(profile,school,selection));
+      }
       if(path==='/admin/accounts')return html('أعضاء الإدارة',ui.adminAccounts(profile,admin.members(u.id)));
       if(path==='/admin/agents')return html('وكلاء التسجيل',ui.adminRegistrationAgents(profile,store.registration.agents(u.id)));
       if(path==='/admin/accounts/new'){admin.requireAccess(u.id,'supervisor');return html('إضافة عضو إدارة',ui.adminAccountForm(profile));}
@@ -57,20 +66,26 @@ export function adminService(store) {
         else admin.assignSchoolTeacherStudents(u.id,{...selection,childIds:Object.keys(data).filter(k=>k.startsWith('child_')&&data[k]==='1').map(k=>k.slice(6))});
         return redirect('/admin/school/assignments?'+new URLSearchParams({...selection,page:'1'}));
       }
-      if(path==='/admin/school/tracks/initialize'){const track=admin.initializeSchoolLegacyTrack(u.id);return redirect('/admin/school?'+new URLSearchParams({trackId:track.id,stage:'primary',grade:'1'}));}
-      if(path==='/admin/school/tracks'){const trackId=admin.addSchoolTrack(u.id,data);return redirect('/admin/school?'+new URLSearchParams({trackId,stage:'primary',grade:'1'}));}
+      if(path==='/admin/school/tracks/initialize'){const track=admin.initializeSchoolLegacyTrack(u.id);return redirect('/admin/school?'+new URLSearchParams({trackId:track.id}));}
+      if(path==='/admin/school/tracks'){const trackId=admin.addSchoolTrack(u.id,data);return redirect('/admin/school?'+new URLSearchParams({trackId}));}
       if(path==='/admin/school/grades'){admin.addSchoolGrade(u.id,{...data,grade:Number(data.grade)});return redirect('/admin/school');}
       if(path==='/admin/school/classes'){
         if(data.stage!==undefined||data.grade!==undefined){
           if(data.gradeId!==undefined||data.levelKey!==undefined||!validSchoolLevel(data.stage,Number(data.grade)))throw new UserError('اختر المسار والمرحلة والصف الثابت دون حقول متعارضة.');
-          admin.addSchoolClass(u.id,{trackId:data.trackId,levelKey:data.stage+':'+Number(data.grade),name:data.name,capacity:Number(data.capacity)});
-          return redirect('/admin/school?'+new URLSearchParams({trackId:data.trackId,stage:data.stage,grade:String(Number(data.grade))}));
+          const classId=admin.addSchoolClass(u.id,{trackId:data.trackId,levelKey:data.stage+':'+Number(data.grade),name:data.name,capacity:Number(data.capacity)});
+          return redirect(classDestination(classId));
         }
-        admin.addSchoolClass(u.id,{...data,capacity:Number(data.capacity)});return redirect('/admin/school');
+        const classId=admin.addSchoolClass(u.id,{...data,capacity:Number(data.capacity)});return redirect(classDestination(classId));
       }
       if(path==='/admin/school/classes/capacity'){const destination=classDestination(data.classId);admin.updateSchoolClassCapacity(u.id,{...data,capacity:Number(data.capacity),revision:Number(data.revision)});return redirect(destination);}
       if(path==='/admin/school/classes/update'){const destination=classDestination(data.classId);admin.updateSchoolClass(u.id,{...data,revision:Number(data.revision)});return redirect(destination);}
       if(path==='/admin/school/teachers'){const destination=classDestination(data.classId);admin.assignSchoolTeacher(u.id,data);return redirect(destination);}
+      if(path==='/admin/school/students/batch'){
+        if(data.childId!==undefined)throw new UserError('استخدم اختيار الطلاب للدفعة دون حقول متعارضة.');
+        const destination=classDestination(data.classId);
+        admin.assignSchoolStudents(u.id,{classId:data.classId,childIds:Object.keys(data).filter(k=>k.startsWith('child_')&&data[k]==='1').map(k=>k.slice(6))});
+        return redirect(destination);
+      }
       if(path==='/admin/school/students'){const destination=classDestination(data.classId);admin.assignSchoolStudent(u.id,data);return redirect(destination);}
       if(path==='/admin/school/supervisors'){admin.assignSchoolSupervisor(u.id,data);return redirect('/admin/school');}
       if(path==='/admin/school/remove'){const destination=classDestination(data.classId);admin.removeSchoolAssignment(u.id,data);return redirect(destination);}
