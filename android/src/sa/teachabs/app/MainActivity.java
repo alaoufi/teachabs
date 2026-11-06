@@ -25,7 +25,13 @@ import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
 import android.widget.FrameLayout;
+import android.widget.LinearLayout;
 import android.widget.ProgressBar;
+import android.widget.TextView;
+import android.view.Gravity;
+import android.graphics.Color;
+import android.os.Handler;
+import android.os.Looper;
 import android.widget.Toast;
 
 /**
@@ -37,10 +43,13 @@ public class MainActivity extends Activity {
     static final String HOME = "https://abdulrahman-edu-trial.onrender.com/";
     static final String HOST = "abdulrahman-edu-trial.onrender.com";
     static final int FILE_REQUEST = 41, MIC_REQUEST = 42;
-    static final String VERSION = "0.5";
+    static final String VERSION = "0.6";
 
     WebView web;
     ProgressBar progress;
+    LinearLayout loading;
+    final Handler ui = new Handler(Looper.getMainLooper());
+    final Runnable showLoading = () -> loading.setVisibility(View.VISIBLE);
     ValueCallback<Uri[]> pendingFiles;
     PermissionRequest pendingMic;
 
@@ -53,7 +62,16 @@ public class MainActivity extends Activity {
         progress = new ProgressBar(this, null, android.R.attr.progressBarStyleHorizontal);
         progress.setMax(100);
         root.addView(web, new FrameLayout.LayoutParams(-1, -1));
-        root.addView(progress, new FrameLayout.LayoutParams(-1, 8));
+        root.addView(progress, new FrameLayout.LayoutParams(-1, 14));
+        // A clear loading card in the middle of the screen, shown only when a page takes longer than a moment.
+        loading = new LinearLayout(this);
+        loading.setOrientation(LinearLayout.VERTICAL); loading.setGravity(Gravity.CENTER);
+        loading.setBackgroundColor(Color.argb(150, 11, 31, 42));
+        ProgressBar spin = new ProgressBar(this);
+        TextView label = new TextView(this); label.setText("جارٍ التحميل…"); label.setTextColor(Color.WHITE); label.setTextSize(18); label.setPadding(0, 24, 0, 0);
+        loading.addView(spin); loading.addView(label);
+        loading.setVisibility(View.GONE);
+        root.addView(loading, new FrameLayout.LayoutParams(-1, -1));
         setContentView(root);
 
         WebSettings s = web.getSettings();
@@ -66,6 +84,7 @@ public class MainActivity extends Activity {
         s.setLoadWithOverviewMode(true);
         s.setUseWideViewPort(true);
         s.setSupportZoom(false);
+        s.setTextZoom(100); // ignore the phone's large-font setting: the board and tools are sized for the screen
         s.setUserAgentString(s.getUserAgentString() + " TeachabsApp/" + VERSION + "");
         CookieManager.getInstance().setAcceptCookie(true);
         CookieManager.getInstance().setAcceptThirdPartyCookies(web, false);
@@ -79,9 +98,9 @@ public class MainActivity extends Activity {
                 return true;
             }
             @Override
-            public void onPageStarted(WebView view, String url, Bitmap icon) { progress.setVisibility(View.VISIBLE); }
+            public void onPageStarted(WebView view, String url, Bitmap icon) { progress.setVisibility(View.VISIBLE); ui.removeCallbacks(showLoading); ui.postDelayed(showLoading, 350); }
             @Override
-            public void onPageFinished(WebView view, String url) { progress.setVisibility(View.GONE); CookieManager.getInstance().flush(); }
+            public void onPageFinished(WebView view, String url) { progress.setVisibility(View.GONE); ui.removeCallbacks(showLoading); loading.setVisibility(View.GONE); CookieManager.getInstance().flush(); }
             @Override
             public void onReceivedError(WebView view, WebResourceRequest req, WebResourceError err) {
                 if (!req.isForMainFrame()) return;

@@ -491,3 +491,26 @@ body:has(.gl-solo){overflow:hidden}
  .gl-present .gl-bar-title h1{display:none}
  .gl-present .gl-stage::after{position:static;margin:-2px auto 0}
 }
+
+/* ===== stage 045: portrait phone — board and tools packed together, small tools in rows, no long strip ===== */
+@media(max-width:760px) and (orientation:portrait){
+ .gl-present{grid-template-rows:auto auto auto auto;align-content:center;gap:6px}
+ .gl-present .gl-stage{container-type:inline-size;height:auto;padding-bottom:6px}
+ .gl-present .gl-board,.gl-present .gl-stage:has(> .gl-narrator) .gl-board,.gl-present .gl-narrator{width:calc(100cqw - 2px)!important}
+ .gl-present .gl-stage::after{width:72%}
+ .gl-present .gl-bar-bottom{overflow:visible;flex-wrap:wrap;padding:4px}
+ .gl-present .gl-tools{flex-wrap:wrap;justify-content:center;gap:4px;width:100%}
+ .gl-present .gl-toolgroup{flex-wrap:wrap;justify-content:center;gap:3px;flex:1 1 100%}
+ .gl-present .gl-toolgroup+.gl-toolgroup{border:0;padding:0}
+ .gl-present .gl-tool{min-width:38px;min-height:38px;padding:1px 3px!important;font-size:10px}
+ .gl-present .gl-tool span:first-child{font-size:15px}
+ .gl-present .gl-color{min-width:28px;min-height:30px}.gl-present .gl-color i{width:18px;height:18px}
+ .gl-present .gl-size,.gl-present .gl-tools [role=group][aria-label="إجراءات"] button{min-height:32px;font-size:12px;padding:2px 8px}
+ .gl-present .gl-snippets{flex-wrap:wrap;justify-content:center;border:0;padding:0;width:100%}
+ .gl-present .gl-zoom button{min-height:32px;min-width:34px;font-size:13px}
+ .gl-present .gl-bar .gl-mini,.gl-present .gl-code-chip{font-size:12px;min-height:32px}
+ .gl-present .gl-code-chip .gl-code{font-size:14px}
+ .gl-present .gl-steps-strip button{min-height:32px;font-size:12px}
+ .gl-present .gl-steps-strip .gl-num{width:22px;height:22px;font-size:11px}
+ .gl-present::after{content:"↻ أدر الجوال أفقيًا لسبورة أكبر";font-size:12px;color:var(--muted);text-align:center}
+}
