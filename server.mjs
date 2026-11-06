@@ -2,6 +2,7 @@ import {registrationDashboard,registrationAdmin} from './registration-views.mjs'
 import { adminService } from './admin-service.mjs';
 import { groupService } from './group-lesson.mjs';
 import {serveAsset} from './asset-response.mjs';
+import {buildStamp, stampHtml, stampModule} from './build-stamp.mjs';
 import { demoHub } from './demo.mjs';
 import { classroomLab } from './classroom-lab.mjs';
 import { scienceShadowLesson, SCIENCE_SHADOW_ROUTE } from './science-lesson.mjs';
@@ -33,6 +34,7 @@ for(const f of ['activities.js','matter-model.js','cells-model.js','placevalue-m
 files['/group-lesson.css']='text/css; charset=utf-8';
 files['/science-shadow-model.js']='text/javascript; charset=utf-8';
 files['/science-shadow.css']='text/css; charset=utf-8';
+const BUILD=buildStamp(files); // changes with every deploy; stamped files are cached for a year
 async function fields(req){
   if(req.headers['content-type']?.split(';')[0]!=='application/x-www-form-urlencoded')throw new UserError('صيغة نموذج غير صالحة.',415);
   const chunks=[];let length=0;
@@ -60,7 +62,7 @@ export function createApp(store,{origin=process.env.APP_ORIGIN}={}) {
     res.setHeader('Content-Security-Policy',"default-src 'self'; script-src 'none'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'; object-src 'none'");
     const cookie=(req.headers.cookie||'').match(/(?:^|;\s*)ks=([a-f0-9]{64})(?:;|$)/)?.[1];
     let u=null,back='/app',data=null,route='';
-    const html=(title,body,status=200)=>{res.writeHead(status,{'Content-Type':'text/html; charset=utf-8'});res.end(ui.page(title,body,u));};
+    const html=(title,body,status=200)=>{res.writeHead(status,{'Content-Type':'text/html; charset=utf-8'});res.end(stampHtml(ui.page(title,body,u),files,BUILD));};
     const redirect=(to)=>{res.writeHead(303,{Location:to});res.end();};
     const setCookie=(value,age)=>{
       const secure=origin?.startsWith('https://')?'; Secure':'';
@@ -98,8 +100,9 @@ export function createApp(store,{origin=process.env.APP_ORIGIN}={}) {
           const asset=await readFile(new URL('./public'+route,import.meta.url));return await serveAsset(req,res,asset,type,/^\/board-assets\/(chunks|assets)\/[^/]+-[A-Z0-9]{8}\.[a-z0-9]+$/.test(route));
         }
         if(Object.hasOwn(files,route)){
-          const asset=await readFile(new URL('./public'+route,import.meta.url));
-          return await serveAsset(req,res,asset,files[route]);
+          let asset=await readFile(new URL('./public'+route,import.meta.url));
+          if(files[route].startsWith('text/javascript'))asset=Buffer.from(stampModule(asset.toString('utf8'),files,BUILD));
+          return await serveAsset(req,res,asset,files[route],q.b===BUILD); // the current stamp never changes: keep it for a year
         }
         if(route==='/')return u?redirect('/app'):html('التعليم الفردي',ui.landing());
         if(['/login','/register','/activate'].includes(route))return html('الحساب',ui.auth(route.slice(1),q.code||''));

@@ -37,7 +37,7 @@ public class MainActivity extends Activity {
     static final String HOME = "https://abdulrahman-edu-trial.onrender.com/";
     static final String HOST = "abdulrahman-edu-trial.onrender.com";
     static final int FILE_REQUEST = 41, MIC_REQUEST = 42;
-    static final String VERSION = "0.4";
+    static final String VERSION = "0.5";
 
     WebView web;
     ProgressBar progress;
@@ -138,7 +138,7 @@ public class MainActivity extends Activity {
         // A new app version never shows pages cached by an older one.
         SharedPreferences prefs = getSharedPreferences("app", MODE_PRIVATE);
         if (!VERSION.equals(prefs.getString("version", ""))) { web.clearCache(true); web.clearHistory(); prefs.edit().putString("version", VERSION).apply(); }
-        s.setCacheMode(WebSettings.LOAD_NO_CACHE); // a trial site changes often: always load the latest
+        s.setCacheMode(WebSettings.LOAD_DEFAULT); // the site stamps its files per deploy, so cached files are always current
         if (saved != null) web.restoreState(saved);
         else showStart();
     }
