@@ -239,3 +239,11 @@ body:has(.adm) main{margin-top:0;padding-top:20px;padding-bottom:36px}
 @media(max-width:480px){.adm .adm-form-grid{grid-template-columns:1fr}.adm .school-class-edit>.adm-form{grid-template-columns:1fr}.adm .school-class-edit>.adm-form>.btn{justify-self:start;width:auto}}
 @media(max-width:360px){.adm .adm-hub{padding:14px 10px 18px}.adm .adm-hub .adm-section-grid{gap:29px 8px}.adm .adm-hub .adm-section-card h2{font-size:13px}.adm .adm-hub-head .adm-help summary span{display:none}.adm .adm-hub-head h1{font-size:20px}.adm .adm-simulation>summary{flex-wrap:wrap;gap:2px 7px;padding-block:5px}.adm .adm-simulation>summary small{display:none}.adm .school-step .adm-form{grid-template-columns:1fr}}
 @media print{.adm .adm-hub,.adm .adm-hub .adm-card-icon,.adm .adm-hub .adm-section-card{box-shadow:none}.adm .school-setup-grid{display:block}.adm details.adm-simulation{display:none}}
+
+/* Administration 013: balance the full ten-section hub on narrow screens. */
+@media(max-width:700px){
+ .adm .adm-hub .adm-section-grid{grid-template-columns:repeat(6,minmax(0,1fr))}
+ .adm .adm-hub .adm-section-card{grid-column:span 2}
+ .adm .adm-hub .adm-section-grid:has(>.adm-section-card:nth-child(10):last-child)>.adm-section-card:nth-last-child(-n+4){grid-column:span 3}
+ .adm .adm-hub .adm-section-card:only-child{grid-column:1/-1;width:100%;max-width:180px;justify-self:center}
+}
