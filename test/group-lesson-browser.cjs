@@ -16,7 +16,7 @@ const assert = require('node:assert/strict'), fs = require('node:fs'), path = re
     const tc = await browser.newContext({viewport: {width: 1400, height: 1000}, permissions: ['microphone']}); tc.setDefaultTimeout(15000);
     const t = await tc.newPage(); watch(t); t.on('dialog', d => d.accept().catch(() => {}));
     await t.goto(base + '/demo'); await t.locator('#group form button').click(); await t.waitForURL(/\/app/);
-    await t.goto(base + '/teach/plans'); await t.getByRole('button', {name: /درس جديد/}).click(); await t.waitForURL(/\/teach\/plans\/[0-9a-f-]{36}$/);
+    await t.goto(base + '/teach/plans'); await t.locator('.gl-templates button', {hasText: 'الضوء والظل'}).click(); await t.waitForURL(/\/teach\/plans\/[0-9a-f-]{36}$/);
     await t.waitForSelector('#pl-steps li');
     assert.deepEqual(await t.locator('.pl-type').allTextContents(), ['المنهج', 'الشرح التفاعلي', 'السبورة المجهزة', 'الأسئلة', 'الواجب', 'التقييم']);
     // Prepare: record a narration for the curriculum step with the synthetic microphone.

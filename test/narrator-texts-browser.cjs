@@ -16,7 +16,7 @@ const assert = require('node:assert/strict'), fs = require('node:fs'), path = re
     const tour = store.tour();
     await tc.addCookies([{name: 'ks', value: store.session(tour.teacher), url: base}]);
     const t = await tc.newPage(); watch(t); t.on('dialog', d => d.accept().catch(() => {}));
-    await t.goto(base + '/teach/plans'); await t.getByRole('button', {name: /درس جديد/}).click(); await t.waitForURL(/\/teach\/plans\/[0-9a-f-]{36}$/);
+    await t.goto(base + '/teach/plans'); await t.locator('.gl-templates button', {hasText: 'الضوء والظل'}).click(); await t.waitForURL(/\/teach\/plans\/[0-9a-f-]{36}$/);
     const planUrl = t.url();
     await t.waitForSelector('#pl-steps li');
     const interactive = t.locator('#pl-steps li').nth(1);

@@ -1,6 +1,7 @@
 // Shared rendering for the group lesson board (teacher console, display screen and student seat).
 import {renderOriginalPage} from './group-plan.js';
-import {renderScene, lessonState, formatNumber} from './science-shadow-model.js';
+import {formatNumber} from './science-shadow-model.js';
+import {activityOf, tweenValues} from './activities.js';
 import {TOOLS, TEXT_SIZES, smoothPath, cameraTransform, wrapText} from './group-ink.js';
 
 export const el = (tag, attrs = {}, ...children) => {
@@ -17,15 +18,13 @@ export const el = (tag, attrs = {}, ...children) => {
 const SVG = 'http://www.w3.org/2000/svg';
 /** Draws ink items: smoothed pen/brush/marker strokes and typed text. Markers sit under the other ink. */
 const reduceMotion = () => window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
-function animateScene(frame, from, to, hide) {
+function animateScene(frame, id, from, to, hide) {
   cancelAnimationFrame(frame._raf);
-  const start = performance.now(), duration = reduceMotion() ? 0 : 1600;
-  const a = lessonState(from), b = lessonState(to);
+  const a = activityOf(id), start = performance.now(), duration = reduceMotion() ? 0 : 1600;
   const tick = now => {
     const t = duration ? Math.min(1, (now - start) / duration) : 1, ease = t < 0.5 ? 2 * t * t : 1 - (-2 * t + 2) ** 2 / 2;
-    const state = lessonState({...to, hour: a.hour + (b.hour - a.hour) * ease, height: a.height + (b.height - a.height) * ease, material: t < 1 ? a.material : b.material, exact: true});
-    frame.innerHTML = renderScene(state, {hideShadow: hide});
-    if (t < 1) frame._raf = requestAnimationFrame(tick); else frame._shadow = to;
+    frame.innerHTML = a.render(tweenValues(id, from, to, t < 1 ? ease : 1), {hidden: hide});
+    if (t < 1) frame._raf = requestAnimationFrame(tick); else frame._values = to;
   };
   frame._raf = requestAnimationFrame(tick);
 }
@@ -38,20 +37,21 @@ const NARRATOR_SVG = `<svg viewBox="0 0 120 120" aria-hidden="true" class="gl-av
 <circle cx="38" cy="68" r="5" fill="#ff9d7a" opacity=".6"/><circle cx="82" cy="68" r="5" fill="#ff9d7a" opacity=".6"/>
 <ellipse class="gl-mouth" cx="60" cy="74" rx="11" ry="4" fill="#7a2e12"/></svg>`;
 export function renderNarrator(board, info) {
-  let box = board.querySelector('.gl-narrator');
+  // Shown in its own strip under the board, so it never covers the lesson content.
+  let box = board.parentElement.querySelector(':scope > .gl-narrator');
   if (!info) { box?.remove(); return null; }
   if (!box) {
     box = el('div', {class: 'gl-narrator', role: 'status', 'aria-live': 'polite'});
     const avatar = el('div', {class: 'gl-avatar'}); avatar.innerHTML = NARRATOR_SVG;
     box.append(avatar, el('div', {class: 'gl-bubble'}, el('p', {class: 'gl-caption'}), el('small', {class: 'gl-seg'})));
-    board.append(box);
+    board.after(box);
   }
   box.querySelector('.gl-caption').textContent = info.text;
   box.querySelector('.gl-seg').textContent = `${formatNumber(info.segment + 1)} / ${formatNumber(info.total)}${info.muted ? ' · الصوت مكتوم' : ''}`;
   box.classList.toggle('is-muted', Boolean(info.muted));
   return box;
 }
-export function setSpeaking(board, on) { board.querySelector('.gl-narrator')?.classList.toggle('is-speaking', on); }
+export function setSpeaking(board, on) { board.parentElement.querySelector(':scope > .gl-narrator')?.classList.toggle('is-speaking', on); }
 
 export function renderInk(svg, items = []) {
   const markers = document.createElementNS(SVG, 'g'), ink = document.createElementNS(SVG, 'g');
@@ -101,22 +101,19 @@ export function renderStep(container, content, {teacher = false, revealed = null
     return;
   }
   if (content.type === 'interactive') {
-    const s = shadow || {}, hide = !teacher && s.reveal === false;
+    // `act` is {id, values, reveal}; the activity registry knows how to draw and animate it.
+    const act = shadow || {id: content.activity, values: activityOf(content.activity).initial(), reveal: true};
+    const a = activityOf(act.id || content.activity), hide = !teacher && act.reveal === false;
     const old = container.dataset.step === content.id ? container.querySelector('.gl-scene') : null;
-    if (old) {
-      // Same step: glide the sun to its new place instead of jumping.
-      animateScene(old, old._shadow || s, s, hide);
+    if (old && old._hide === hide) {
+      animateScene(old, a.id, old._values || act.values, act.values, hide);
       const facts = container.querySelector('.gl-facts');
-      if (facts) facts.textContent = teacher || s.reveal !== false ? `ارتفاع الشمس ${formatNumber(lessonState(s).elevation)}° · طول الظل ${formatNumber(lessonState(s).length)} م` : 'الظل مخفي: توقّع أين سيكون، ثم انتظر الكشف.';
+      if (facts) facts.textContent = a.facts(act.values, hide);
       return;
     }
     container.replaceChildren(); container.dataset.type = 'interactive'; container.dataset.step = content.id;
-    const frame = el('div', {class: 'gl-scene'}); frame.innerHTML = renderScene(lessonState(s), {hideShadow: hide}); frame._shadow = s;
-    container.append(title, frame);
-    const facts = el('p', {class: 'gl-facts'});
-    if (teacher || s.reveal !== false) facts.textContent = `ارتفاع الشمس ${formatNumber(lessonState(s).elevation)}° · طول الظل ${formatNumber(lessonState(s).length)} م`;
-    else facts.textContent = 'الظل مخفي: توقّع أين سيكون، ثم انتظر الكشف.';
-    container.append(facts);
+    const frame = el('div', {class: 'gl-scene'}); frame.innerHTML = a.render(act.values, {hidden: hide}); frame._values = act.values; frame._hide = hide;
+    container.append(title, frame, el('p', {class: 'gl-facts', text: a.facts(act.values, hide)}));
     return;
   }
   if (content.type === 'board') {

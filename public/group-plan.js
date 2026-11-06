@@ -1,6 +1,6 @@
 // Lesson plan for the group class: the teacher arranges ordered steps before class.
 // Shared by the server (validation) and the browser (planner and live views). Pure functions only.
-import {NARRATOR_SCRIPTS} from './narrator-scripts.js';
+import {ACTIVITIES, cleanValues} from './activities.js';
 
 export const STEP_TYPES = {
   page: {label: 'عرض المنهج على السبورة', short: 'المنهج'},
@@ -23,6 +23,7 @@ export const SUBJECTS = {science: 'العلوم', math: 'الرياضيات', ar
 // Original practice pages drawn by the project. They are NOT official textbook pages.
 export const ORIGINAL_PAGES = {
   'science-4-light': {title: 'علوم ٤ — الضوء والظل (صفحة أصلية للتجربة)', lines: ['الضوء والظل', 'ينتقل الضوء في خطوط مستقيمة.', 'عندما يحجب جسمٌ الضوء يتكون خلفه ظل.', 'يتغير طول الظل واتجاهه بتغير موقع مصدر الضوء.', 'سؤال: لماذا يكون ظلك طويلًا في الصباح الباكر؟']},
+  'science-4-matter': {title: 'علوم ٤ — حالات المادة (صفحة أصلية للتجربة)', lines: ['حالات المادة', 'للمادة ثلاث حالات: صلبة وسائلة وغازية.', 'الماء يكون جليدًا صلبًا، أو ماءً سائلًا، أو بخارًا غازيًا.', 'التسخين والتبريد يغيّران حالة المادة.', 'سؤال: ماذا يحدث لمكعب الجليد في يوم حار؟']},
   'math-1-p1': {title: 'رياضيات ١ — نبني عددًا (صفحة أصلية للتجربة)', lines: ['نبني عددًا', 'ارسم ثلاث دوائر ثم أضف دائرتين بلون آخر.', 'صف ما فعلته. كم دائرة ترى الآن؟']},
   'math-1-p2': {title: 'رياضيات ١ — نقارن مجموعتين (صفحة أصلية للتجربة)', lines: ['نقارن مجموعتين', 'ارسم أربعة مربعات وست دوائر.', 'صل كل مربع بدائرة واشرح ما تلاحظه.']}
 };
@@ -74,18 +75,19 @@ function narration(raw) {
   return out;
 }
 
-const MATERIAL_IDS = ['wood', 'paper', 'glass'];
-/** The narrated tour for the animation; a lesson without one gets the ready script. */
-function narratorScript(raw) {
-  const segments = raw?.segments ?? structuredClone(NARRATOR_SCRIPTS.shadows.segments);
+/** The narrated tour for an activity; a lesson without one gets the activity's ready script. */
+function narratorScript(activity, raw) {
+  const a = ACTIVITIES[activity], segments = raw?.segments ?? a.narrator();
   need(Array.isArray(segments) && segments.length >= 1 && segments.length <= LIMITS.segments, `جولة المتحدث من مقطع إلى ${LIMITS.segments} مقطعًا.`);
   const ids = new Set();
   return {segments: segments.map((g, i) => {
     need(g && ID.test(g.id) && !ids.has(g.id), 'معرّف مقطع غير صالح.'); ids.add(g.id);
-    need(Number.isFinite(g.hour) && g.hour >= 7 && g.hour <= 17, `وقت المقطع ${i + 1} من ٧ إلى ١٧.`);
-    need(Number.isFinite(g.height ?? 1.5) && (g.height ?? 1.5) >= 1 && (g.height ?? 1.5) <= 2, `طول اللوح في المقطع ${i + 1} من ١ إلى ٢ م.`);
-    need(MATERIAL_IDS.includes(g.material ?? 'wood'), `مادة المقطع ${i + 1} غير معروفة.`);
-    const out = {id: g.id, hour: Math.round(g.hour * 4) / 4, height: Math.round((g.height ?? 1.5) * 10) / 10, material: g.material ?? 'wood', text: text(g.text, 300, `نص المقطع ${i + 1}`)};
+    // Older lessons stored the shadow values directly on the segment.
+    const rawValues = g.values ?? Object.fromEntries(a.params.map(p => [p.key, g[p.key]]).filter(([, v]) => v !== undefined));
+    let values;
+    try { values = cleanValues(activity, rawValues); } catch (e) { throw new PlanError(`المقطع ${i + 1}: ${e.message}`); }
+    for (const p of a.params) if (p.kind === 'range' && Object.hasOwn(rawValues, p.key)) need(Number(rawValues[p.key]) >= p.min && Number(rawValues[p.key]) <= p.max, `المقطع ${i + 1}: ${p.label} خارج المدى.`);
+    const out = {id: g.id, values, text: text(g.text, 300, `نص المقطع ${i + 1}`)};
     if (g.audio !== undefined) { need(typeof g.audio === 'string' && g.audio.length <= LIMITS.audio && AUDIO.test(g.audio), `تسجيل المقطع ${i + 1} غير صالح.`); out.audio = g.audio; }
     return out;
   })};
@@ -116,9 +118,9 @@ export function validatePlan(raw) {
         Object.assign(step, {source: 'original', page: s.page});
       }
     } else if (s.type === 'interactive') {
-      need(s.activity === 'shadows', 'النشاط التفاعلي المتاح الآن: الضوء والظل.');
-      step.activity = 'shadows';
-      step.narrator = narratorScript(s.narrator);
+      need(Object.hasOwn(ACTIVITIES, s.activity), 'اختر نشاطًا تفاعليًا من القائمة.');
+      step.activity = s.activity;
+      step.narrator = narratorScript(s.activity, s.narrator);
     } else if (s.type === 'board') {
       need(Array.isArray(s.items) && s.items.length >= 1 && s.items.length <= LIMITS.items, `جهّز من عنصر إلى ${LIMITS.items} عناصر للسبورة.`);
       const itemIds = new Set();
@@ -155,6 +157,32 @@ export function publicStep(step, revealed = []) {
 }
 
 export const RATING = ['', 'يحتاج دعمًا', 'مقبول', 'جيد', 'متميز'];
+
+/** Ready lesson templates for grade 4 science (original content; mapping to the official book not yet verified). */
+export const LESSON_TEMPLATES = {
+  light: {title: 'الضوء والظل', plan: () => defaultPlan()},
+  matter: {title: 'حالات المادة', plan: () => matterPlan()}
+};
+
+export function matterPlan() {
+  return {version: 1, title: 'حالات المادة', subject: 'science', grade: 4, steps: [
+    {id: 'curriculum', type: 'page', title: 'نقرأ صفحة الدرس', source: 'original', page: 'science-4-matter', narration: {mode: 'live'}, snippets: ['صلب', 'سائل', 'غاز', 'انصهار', 'تجمد', 'تبخر', 'تكاثف']},
+    {id: 'explain', type: 'interactive', title: 'نجرب: نسخّن الماء ونبرّده', activity: 'matter', snippets: ['التسخين ← انصهار ثم غليان', 'التبريد ← تكاثف ثم تجمد'], narration: {mode: 'live'}},
+    {id: 'board-notes', type: 'board', title: 'نلخص على السبورة', narration: {mode: 'live'}, items: [
+      {id: 'n1', kind: 'text', text: 'الصلب له شكل ثابت وحجم ثابت.'},
+      {id: 'n2', kind: 'text', text: 'السائل له حجم ثابت ويأخذ شكل الإناء.'},
+      {id: 'n3', kind: 'text', text: 'الغاز ينتشر ويملأ المكان كله.'},
+      {id: 'n4', kind: 'text', text: 'صلب ← (تسخين) ← سائل ← (تسخين) ← غاز، والتبريد يعكس الطريق.'}]},
+    {id: 'check', type: 'questions', title: 'أسئلة سريعة', narration: {mode: 'live'}, questions: [
+      {id: 'q1', kind: 'choice', prompt: 'ماذا يحدث للجليد عندما نسخّنه؟', options: ['ينصهر ويصبح سائلًا', 'يصبح أصلب', 'لا يتغير'], answer: 0},
+      {id: 'q2', kind: 'choice', prompt: 'الفقاعات في الماء المغلي هي:', options: ['هواء', 'بخار ماء', 'جليد'], answer: 1},
+      {id: 'q3', kind: 'text', prompt: 'بكلماتك: لماذا تظهر قطرات ماء على كأس بارد؟'}]},
+    {id: 'homework', type: 'homework', title: 'واجب الدرس', instructions: 'ضع مكعب جليد في صحن وراقبه كل عشر دقائق، ثم أجب.', narration: {mode: 'live'}, questions: [
+      {id: 'h1', kind: 'choice', prompt: 'أي تغيير يحدث عندما يتحول البخار إلى ماء؟', options: ['الانصهار', 'التكاثف', 'التجمد'], answer: 1},
+      {id: 'h2', kind: 'text', prompt: 'صف ما حدث لمكعب الجليد، ولماذا.'}]},
+    {id: 'evaluate', type: 'evaluation', title: 'تقييم الطلاب', narration: {mode: 'live'}, criteria: ['المشاركة', 'فهم الدرس', 'الواجب']}
+  ]};
+}
 
 export function defaultPlan() {
   return {version: 1, title: 'الضوء والظل', subject: 'science', grade: 4, steps: [

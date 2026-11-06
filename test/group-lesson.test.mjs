@@ -76,8 +76,8 @@ test('teacher-only controls validate input; narration only for prepared steps', 
   assert.equal(publicView(s, plan, 'a', []).strokes.length, 1);
   assert.throws(() => run(s, {op: 'stroke', points: [[10, 10], [2000, 300]], color: '#c0392b'}));
   s = run(s, {op: 'go', index: step('explain')}, {op: 'shadow', command: {op: 'reveal', show: false}}, {op: 'narrate', target: 'students'});
-  assert.equal(publicView(s, plan, 'a', []).shadow.reveal, false);
-  assert.equal('length' in publicView(s, plan, 'a', []).shadow, false);
+  assert.equal(publicView(s, plan, 'a', []).activity.reveal, false);
+  assert.equal(publicView(s, plan, 'a', []).activity.values.hour, 8, 'the sun stays visible; the board hides the shadow');
   assert.equal(publicView(s, plan, 'a', []).narrate.target, 'students');
   assert.equal(publicView(s, plan, null, []).narrate, undefined);
   assert.equal(narrationFor(s, plan, 'explain').mode, 'speech');
@@ -196,11 +196,11 @@ test('narrator tour: teacher leads segments, moves the scene, mutes and hides; s
   assert.throws(() => run(run(initialState(plan)), {op: 'narrator', action: 'start'}), 'only on the interactive step');
   s = run(s, {op: 'shadow', command: {op: 'reveal', show: false}}, {op: 'explore', on: true}, {op: 'narrator', action: 'start'});
   let v = publicView(s, plan, 'a', []);
-  assert.equal(v.narrator.segment, 0); assert.equal(v.explore, false); assert.equal(v.shadow.reveal, true);
+  assert.equal(v.narrator.segment, 0); assert.equal(v.explore, false); assert.equal(v.activity.reveal, true);
   assert.equal(v.narrator.speak, false, 'default voice is on the display screen');
   assert.equal(publicView(s, plan, null, []).narrator.speak, true);
   s = run(s, {op: 'narrator', action: 'goto', segment: 3});
-  assert.equal(publicView(s, plan, 'a', []).shadow.hour, 12);
+  assert.equal(publicView(s, plan, 'a', []).activity.values.hour, 12);
   s = run(s, {op: 'narrator', action: 'target', to: 'both'}, {op: 'narrator', action: 'mute', on: true});
   assert.equal(publicView(s, plan, 'a', []).narrator.speak, false, 'muted');
   assert.equal(publicView(s, plan, 'a', []).narrator.text, plan.steps[idx].narrator.segments[3].text, 'caption stays when muted');
@@ -265,3 +265,35 @@ test('user guide page is served and the markdown copy is in sync', async t => {
   for (const s of GUIDE) assert.ok(html.includes(`id="${s.id}"`), s.id);
   assert.match(html, /<kbd>PageDown<\/kbd>/);
 });
+
+test('activity engine: states of matter values, phases, hidden prediction and a full lesson template', async () => {
+  const {ACTIVITIES, cleanValues, tweenValues, segmentLabel} = await import('../public/activities.js');
+  const {phaseOf, renderMatter} = await import('../public/matter-model.js');
+  const {matterPlan, LESSON_TEMPLATES} = await import('../public/group-plan.js');
+  assert.deepEqual([-5, 0, 40, 100, 115].map(phaseOf), ['solid', 'melting', 'liquid', 'boiling', 'gas']);
+  assert.deepEqual(cleanValues('matter', {temp: 300}), {temp: 120});
+  assert.deepEqual(cleanValues('matter', {temp: 12.6}), {temp: 13});
+  assert.throws(() => cleanValues('matter', {temp: 'hot'}));
+  assert.throws(() => cleanValues('shadows', {material: 'steel'}));
+  assert.throws(() => cleanValues('rockets', {}));
+  assert.deepEqual(tweenValues('matter', {temp: 0}, {temp: 100}, 0.5), {temp: 50});
+  assert.match(segmentLabel('matter', {temp: 100}), /١٠٠°س/);
+  assert.match(renderMatter({temp: 110}), /p-fly/);
+  const hidden = renderMatter({temp: 110}, {hidden: true});
+  assert.ok(!/particle/.test(hidden) && /توقّع/.test(hidden), 'prediction hides the state');
+  assert.ok(!/style=/.test(renderMatter({temp: -10})), 'no inline styles (strict CSP)');
+  const plan2 = validatePlan(matterPlan());
+  assert.deepEqual(Object.keys(LESSON_TEMPLATES), ['light', 'matter']);
+  const i = plan2.steps.findIndex(s => s.type === 'interactive');
+  assert.equal(plan2.steps[i].activity, 'matter');
+  let s = run2(plan2, initialState(plan2), {op: 'go', index: i}, {op: 'activity', action: 'set', values: {temp: 100}});
+  assert.equal(publicView(s, plan2, 'a', []).activity.values.temp, 100);
+  s = run2(plan2, s, {op: 'narrator', action: 'start'});
+  assert.equal(publicView(s, plan2, 'a', []).activity.values.temp, -10, 'narrator segment moves the scene');
+  assert.deepEqual(publicView(run2(plan2, s, {op: 'activity', action: 'set', values: {hour: 9}}), plan2, 'a', []).activity.values, {temp: -10}, 'keys of another activity are ignored');
+  // An old lesson saved before the engine (segment values on the segment itself) still loads.
+  const old = structuredClone(defaultPlan()); old.steps[1].narrator = {segments: [{id: 'o1', hour: 9, height: 1.5, material: 'paper', text: 'مقطع قديم'}]};
+  assert.deepEqual(validatePlan(old).steps[1].narrator.segments[0].values, {hour: 9, height: 1.5, material: 'paper'});
+  assert.equal(Object.keys(ACTIVITIES).length, 2);
+});
+function run2(p, state, ...cmds) { return cmds.reduce((s, c) => teacherCommand(s, p, c), state); }

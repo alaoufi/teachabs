@@ -1,6 +1,6 @@
 // Pure state machine for a live group lesson. The teacher controls sequence, visibility and what is shown to everyone.
 import {publicStep, RATING} from './public/group-plan.js';
-import {changeShadow, visibleShadow, initialShadow} from './shadow-activity.mjs';
+import {activityOf, cleanValues} from './public/activities.js';
 import {UserError} from './store.mjs';
 import {TOOLS, TEXT_SIZES, LIMITS as INK, colorAllowed, clampCamera} from './public/group-ink.js';
 
@@ -9,7 +9,7 @@ export const MAX_STUDENTS = 40, MAX_STROKES = INK.items, MAX_POINTS = INK.points
 const INKABLE = ['page', 'board', 'interactive', 'questions'];
 
 export function initialState(plan) {
-  return {live: true, index: 0, shown: !plan.steps[0].startHidden, revealed: {}, open: {}, display: {}, strokes: {}, camera: {}, narrator: initialNarrator(), shadow: initialShadow(), explore: false, homework: 'none', evaluationPublished: false, narrate: null, seq: 0};
+  return {live: true, index: 0, shown: !plan.steps[0].startHidden, revealed: {}, open: {}, display: {}, strokes: {}, camera: {}, narrator: initialNarrator(), acts: {}, explore: false, homework: 'none', evaluationPublished: false, narrate: null, seq: 0};
 }
 
 const current = (state, plan) => plan.steps[state.index];
@@ -18,10 +18,16 @@ export const initialNarrator = () => ({visible: true, muted: false, segment: -1,
 
 /** Move the shared scene to a narrated segment so everyone sees the sun where the narrator is talking about it. */
 function goSegment(s, step, index) {
-  const g = step.narrator.segments[index];
+  const g = step.narrator.segments[index], act = actOf(s, step);
   s.narrator.segment = index; s.narrator.seq = s.seq; s.explore = false;
-  s.shadow = {...s.shadow, hour: g.hour, height: g.height, material: g.material, reveal: true, step: (s.shadow.step || 0) + 1};
+  s.acts[step.id] = {...act, values: {...act.values, ...g.values}, reveal: true};
   return s;
+}
+
+/** Shared state of an interactive step: the activity's values and whether results are revealed. */
+export function actOf(state, step) {
+  const a = state.acts?.[step.id];
+  return a && a.values ? a : {values: activityOf(step.activity).initial(), reveal: true};
 }
 
 function addInk(s, step, item) {
@@ -34,7 +40,7 @@ function addInk(s, step, item) {
 export function teacherCommand(state, plan, cmd) {
   need(cmd && typeof cmd.op === 'string', 'أمر غير صالح.');
   const s = structuredClone(state), step = current(s, plan);
-  s.seq++; s.camera ||= {}; s.strokes ||= {}; s.narrator ||= initialNarrator();
+  s.seq++; s.camera ||= {}; s.strokes ||= {}; s.narrator ||= initialNarrator(); s.acts ||= {};
   switch (cmd.op) {
     case 'go': {
       need(Number.isInteger(cmd.index) && cmd.index >= 0 && cmd.index < plan.steps.length, 'خطوة غير موجودة.');
@@ -107,10 +113,18 @@ export function teacherCommand(state, plan, cmd) {
     case 'undo-stroke': s.strokes[step.id] = (s.strokes[step.id] || []).slice(0, -1); return s;
     case 'clear-strokes': s.strokes[step.id] = []; return s;
     case 'camera': s.camera[step.id] = clampCamera(cmd); return s;
-    case 'shadow': {
+    case 'shadow': // older clients
+      return teacherCommand(state, plan, {op: 'activity', ...({set: {action: 'set', values: cmd.command}, reveal: {action: 'reveal', show: cmd.command?.show}, reset: {action: 'reset'}})[cmd.command?.op] || {action: 'unknown'}});
+    case 'activity': {
       need(step.type === 'interactive', 'هذه الخطوة ليست الشرح التفاعلي.');
-      need(['set', 'reveal', 'reset'].includes(cmd.command?.op), 'أمر غير متاح في الحصة الجماعية.');
-      s.shadow = changeShadow(s.shadow, 'teacher', cmd.command); return s;
+      const act = actOf(s, step);
+      if (cmd.action === 'set') {
+        let values; try { values = cleanValues(step.activity, cmd.values, act.values); } catch (e) { throw new UserError(e.message); }
+        s.acts[step.id] = {...act, values}; return s;
+      }
+      if (cmd.action === 'reveal') { need(typeof cmd.show === 'boolean', 'قيمة غير صالحة.'); s.acts[step.id] = {...act, reveal: cmd.show}; return s; }
+      if (cmd.action === 'reset') { s.acts[step.id] = {values: activityOf(step.activity).initial(), reveal: true}; return s; }
+      throw new UserError('أمر غير متاح في الحصة الجماعية.');
     }
     case 'narrator': {
       need(step.type === 'interactive' && step.narrator, 'المتحدث متاح في خطوة الشرح التفاعلي.');
@@ -191,7 +205,7 @@ export function teacherView(state, plan, students, responses) {
     return [s.id, {answers, submitted: Object.keys(answers).length, ...scoreOf(hw, answers)}];
   })) : {};
   const ev = evaluationStep(plan), evaluations = ev ? Object.fromEntries(responses.filter(r => r.kind === 'evaluation').map(r => [r.student, r.data])) : {};
-  return {role: 'teacher', state: {...state, shadow: visibleShadow(state.shadow, 'teacher')}, current: step.id, students, results, homework, evaluations};
+  return {role: 'teacher', state, act: step.type === 'interactive' ? actOf(state, step) : null, current: step.id, students, results, homework, evaluations};
 }
 
 export function publicView(state, plan, student, responses, studentNames = {}) {
@@ -204,7 +218,7 @@ export function publicView(state, plan, student, responses, studentNames = {}) {
     if (step.type === 'board') view.places = Object.fromEntries(Object.entries(state.places?.[step.id] || {}).filter(([id]) => revealed.includes(id)));
     view.camera = state.camera?.[step.id] || {z: 1, x: 0, y: 0};
     if (step.type === 'interactive') {
-      view.shadow = visibleShadow(state.shadow, 'student'); view.explore = state.explore;
+      view.activity = {id: step.activity, ...actOf(state, step)}; view.explore = state.explore;
       const n = state.narrator || initialNarrator(), g = step.narrator?.segments[n.segment];
       if (n.visible && g) view.narrator = {segment: n.segment, total: step.narrator.segments.length, text: g.text, seq: n.seq, muted: n.muted,
         speak: !n.muted && (n.target === 'both' || n.target === (student ? 'students' : 'screen')), recorded: Boolean(g.audio)};

@@ -2,8 +2,7 @@
 import {STEP_TYPES, NARRATION, SUBJECTS, ORIGINAL_PAGES, LIMITS, renderOriginalPage, validatePlan} from './group-plan.js';
 import {el} from './group-view.js';
 import {openTextPicker, downloadJSON, safeName} from './text-library.js';
-import {NARRATOR_SCRIPTS} from './narrator-scripts.js';
-import {MATERIALS, formatHour} from './science-shadow-model.js';
+import {ACTIVITIES, activityOf, segmentLabel} from './activities.js';
 
 const root = document.getElementById('planner'), id = root.dataset.id;
 const $ = x => document.getElementById(x);
@@ -150,7 +149,9 @@ function stepEditor(step) {
         'أؤكد أن لدي حق عرض هذه الصفحة على طلابي (مثل ترخيص المدرسة أو مادة من إعدادي). لا تنشر الصفحة خارج الحصة.'));
     }
   } else if (step.type === 'interactive') {
-    box.append(field('النشاط', el('select', {disabled: true}, el('option', {}, 'الضوء والظل — علوم الصف الرابع'))), el('p', {class: 'pl-hint', text: 'تحرك الشمس أثناء الحصة، وتخفي الظل ليتوقع الطلاب ثم تكشفه.'}), narratorEditor(step));
+    box.append(field('النشاط', el('select', {onchange: e => { if (!confirm('تغيير النشاط يستبدل مقاطع المتحدث بجولة النشاط الجديد. متابعة؟')) { e.target.value = step.activity; return; } step.activity = e.target.value; step.narrator = {segments: activityOf(step.activity).narrator()}; touch(); render(); }},
+      Object.values(ACTIVITIES).map(a => el('option', {value: a.id, selected: a.id === step.activity}, a.title)))),
+      el('p', {class: 'pl-hint', text: 'تتحكم بالنشاط أثناء الحصة، وتخفي النتيجة ليتوقع الطلاب ثم تكشفها، ويمكن أن يشرحه المتحدث.'}), narratorEditor(step));
   } else if (step.type === 'board') {
     step.items.forEach((item, i) => {
       const card = el('div', {class: 'pl-item'}, el('div', {class: 'pl-q-head'}, el('b', {text: `عنصر ${i + 1} · ${item.kind === 'image' ? 'صورة' : 'نص'}`}), smallButtons(step.items, i, `العنصر ${i + 1}`)));
@@ -186,22 +187,25 @@ function snippetsEditor(step) {
 }
 
 function narratorEditor(step) {
-  step.narrator ||= {segments: structuredClone(NARRATOR_SCRIPTS.shadows.segments)};
+  const a = activityOf(step.activity);
+  step.narrator ||= {segments: a.narrator()};
   const segs = step.narrator.segments;
-  const box = el('div', {class: 'pl-narrator'}, el('b', {text: '🎙 المتحدث: جولة مشروحة للشمس والظل'}),
-    el('p', {class: 'pl-hint', text: 'كل مقطع يحرّك الشمس إلى وقت محدد ويشرح بجملة تظهر مكتوبة. يُقرأ بصوت الجهاز، أو بصوتك إن سجلته. في الحصة تتحكم بالتشغيل والكتم والإخفاء.'}));
+  const box = el('div', {class: 'pl-narrator'}, el('b', {text: '🎙 المتحدث: جولة مشروحة — ' + a.title}),
+    el('p', {class: 'pl-hint', text: 'كل مقطع يضبط النشاط على قيم محددة ويشرح بجملة تظهر مكتوبة. يُقرأ بصوت الجهاز، أو بصوتك إن سجلته. في الحصة تتحكم بالتشغيل والكتم والإخفاء.'}));
   segs.forEach((g, i) => {
-    const card = el('div', {class: 'pl-q pl-seg'}, el('div', {class: 'pl-q-head'}, el('b', {text: `مقطع ${i + 1} · ${formatHour(g.hour)}`}), smallButtons(segs, i, `المقطع ${i + 1}`)),
+    g.values ||= Object.fromEntries(a.params.map(p => [p.key, g[p.key] ?? a.initial()[p.key]]));
+    const fields = a.params.map(p => p.kind === 'range'
+      ? field(p.label, el('select', {onchange: e => { g.values[p.key] = Number(e.target.value); touch(); render(); }},
+        Array.from({length: Math.round((p.max - p.min) / (p.segStep || p.step)) + 1}, (_, k) => +(p.min + k * (p.segStep || p.step)).toFixed(3)).map(v => el('option', {value: v, selected: v === g.values[p.key]}, p.format(v)))))
+      : field(p.label, el('select', {onchange: e => { g.values[p.key] = e.target.value; touch(); }}, Object.entries(p.options).map(([k, label]) => el('option', {value: k, selected: k === g.values[p.key]}, label)))));
+    box.append(el('div', {class: 'pl-q pl-seg'}, el('div', {class: 'pl-q-head'}, el('b', {text: `مقطع ${i + 1} · ${segmentLabel(a.id, g.values)}`}), smallButtons(segs, i, `المقطع ${i + 1}`)),
       field('ما يقوله المتحدث', area(g.text, 300, v => { g.text = v; }, 2)),
-      el('div', {class: 'pl-row'},
-        field('وقت الشمس', el('select', {onchange: e => { g.hour = Number(e.target.value); touch(); render(); }}, Array.from({length: 21}, (_, k) => 7 + k / 2).map(h => el('option', {value: h, selected: h === g.hour}, formatHour(h))))),
-        field('المادة', el('select', {onchange: e => { g.material = e.target.value; touch(); }}, Object.entries(MATERIALS).map(([k, m]) => el('option', {value: k, selected: k === (g.material || 'wood')}, m.name))))),
-      el('div', {class: 'pl-row'}, libraryButton('من النصوص التوضيحية', t => { g.text = t.slice(0, 300); }), ...audioControls('seg-' + step.id + '-' + g.id, g, 'تسجيل المقطع')));
-    box.append(card);
+      el('div', {class: 'pl-row'}, ...fields),
+      el('div', {class: 'pl-row'}, libraryButton('من النصوص التوضيحية', t => { g.text = t.slice(0, 300); }), ...audioControls('seg-' + step.id + '-' + g.id, g, 'تسجيل المقطع'))));
   });
   box.append(el('div', {class: 'pl-row'},
-    segs.length < LIMITS.segments ? el('button', {type: 'button', class: 'outline', onclick: () => { segs.push({id: uid('n'), hour: 12, height: 1.5, material: 'wood', text: ''}); touch(); render(); }}, '+ مقطع') : null,
-    el('button', {type: 'button', class: 'quiet', onclick: () => { if (confirm('استبدال المقاطع بالجولة الجاهزة؟')) { step.narrator = {segments: structuredClone(NARRATOR_SCRIPTS.shadows.segments)}; touch(); render(); } }}, 'استعادة الجولة الجاهزة')));
+    segs.length < LIMITS.segments ? el('button', {type: 'button', class: 'outline', onclick: () => { segs.push({id: uid('n'), values: a.initial(), text: ''}); touch(); render(); }}, '+ مقطع') : null,
+    el('button', {type: 'button', class: 'quiet', onclick: () => { if (confirm('استبدال المقاطع بالجولة الجاهزة؟')) { step.narrator = {segments: a.narrator()}; touch(); render(); } }}, 'استعادة الجولة الجاهزة')));
   return box;
 }
 
@@ -225,7 +229,7 @@ function render() {
 
 const templates = {
   page: () => ({type: 'page', title: 'صفحة المنهج', source: 'original', page: 'science-4-light'}),
-  interactive: () => ({type: 'interactive', title: 'شرح تفاعلي', activity: 'shadows'}),
+  interactive: () => ({type: 'interactive', title: 'شرح تفاعلي', activity: plan.steps.find(x => x.type === 'interactive')?.activity || 'shadows'}),
   board: () => ({type: 'board', title: 'على السبورة', items: [{id: uid('i'), kind: 'text', text: ''}]}),
   questions: () => ({type: 'questions', title: 'أسئلة', questions: [{id: uid('q'), kind: 'choice', prompt: '', options: ['', ''], answer: 0}]}),
   homework: () => ({type: 'homework', title: 'الواجب', instructions: '', questions: [{id: uid('q'), kind: 'choice', prompt: '', options: ['', ''], answer: 0}]}),

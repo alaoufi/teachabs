@@ -238,3 +238,50 @@ body:has(.gl-display) main{padding-top:10px}
 .guide-section li{margin:5px 0}.guide kbd{font-family:inherit;font-size:.85em;background:#fff;border:1px solid #b7ceca;border-bottom-width:3px;border-radius:6px;padding:0 6px;white-space:nowrap}
 .guide-foot{display:flex;gap:12px;flex-wrap:wrap;align-items:center;margin:16px 0}
 @media(max-width:600px){.guide-toc ol{columns:1}}
+
+/* ---- stage 040: narrator strip under the board ---- */
+.gl-narrator{position:relative;inset:auto;display:flex;align-items:center;gap:10px;max-width:none;margin:8px auto 0;pointer-events:auto;
+ width:min(100%,calc((100vh - 110px) * 1.6667));background:#fffaf0;border:1px solid #f2d39b;border-radius:16px;padding:6px 10px;box-shadow:0 6px 14px #0b1f2a1f}
+.gl-teacher .gl-narrator{width:min(100%,calc((100vh - 170px) * 1.6667))}
+.gl-narrator .gl-bubble{flex:1;border:0;box-shadow:none;background:transparent;padding:2px 4px;border-radius:0}
+.gl-narrator .gl-avatar{width:clamp(44px,6vw,70px)}
+.gl-stage:has(> .gl-narrator)::before{display:none}
+@media(max-width:760px){.gl-narrator{bottom:auto;inset-inline-end:auto;max-width:none;padding:4px 8px}.gl-caption{font-size:13px}}
+
+/* ---- floating board for students: always on top while scrolling, optional full screen ---- */
+body:has(.gl-student)>header,body:has(.gl-student)>footer,body:has(.gl-student) .demo{display:none}
+body:has(.gl-student) main{padding-top:6px}
+.gl-top-student{margin-bottom:4px}.gl-top-student h1{font-size:clamp(18px,4.5vw,26px)!important;margin:0}.gl-hello{font-size:13px;color:var(--forest);font-weight:700}
+.gl-student .gl-stage{position:sticky;top:0;z-index:20;background:var(--paper,#faf8f2);padding-top:6px;padding-bottom:10px;box-shadow:0 10px 14px -12px #0b1f2a59}
+.gl-student .gl-board{width:min(100%,calc((62vh - 40px) * 1.6667))}
+.gl-student .gl-narrator{width:min(100%,calc((62vh - 40px) * 1.6667))}
+.gl-status-small{font-size:13px;padding:4px 10px!important;margin:6px 0!important}
+.gl-stage.is-max{position:fixed!important;inset:0;z-index:1000;background:#0e1d24;display:flex;flex-direction:column;justify-content:center;padding:8px!important;margin:0}
+.gl-stage.is-max .gl-board{width:min(100%,calc((100vh - 110px) * 1.6667))!important}
+.gl-stage.is-max .gl-narrator{width:min(100%,calc((100vh - 110px) * 1.6667))!important}
+.gl-stage.is-max::after,.gl-stage.is-max::before{display:none}
+html.gl-noscroll,html.gl-noscroll body{overflow:hidden}
+@media(orientation:landscape) and (max-height:500px){.gl-student .gl-stage{position:relative}}
+
+/* ---- states of matter activity ---- */
+.matter-scene .m-tick{font:600 11px system-ui,sans-serif;fill:#123b41}.matter-scene .m-temp{font:800 16px system-ui,sans-serif;fill:#b32519}
+.matter-scene .m-phase{font:800 19px system-ui,sans-serif;fill:#123b41}.matter-scene .m-small{font:600 12px system-ui,sans-serif;fill:#4c6a6e}
+.matter-scene .m-q{font:800 64px system-ui,sans-serif;fill:#8aa0ad;text-anchor:middle}.matter-scene .m-icon{font-size:26px}
+.particle{transform-box:fill-box;transform-origin:center}
+.p-vib{animation:p-vib .25s ease-in-out infinite alternate}.p-loose{animation-duration:.4s}
+.p-flow{animation:p-flow 1.6s ease-in-out infinite alternate}.p-fast{animation-duration:.8s}
+.p-fly{animation:p-fly 1.1s ease-in-out infinite alternate}
+.pd1{animation-delay:-.3s}.pd2{animation-delay:-.6s}.pd3{animation-delay:-.9s}
+@keyframes p-vib{from{transform:translate(-1.5px,0)}to{transform:translate(1.5px,1px)}}
+@keyframes p-flow{0%{transform:translate(0,0)}50%{transform:translate(9px,-5px)}100%{transform:translate(-8px,4px)}}
+@keyframes p-fly{0%{transform:translate(0,0)}50%{transform:translate(22px,-16px)}100%{transform:translate(-20px,14px)}}
+.m-bubble{animation:m-rise 1.4s ease-in infinite}.mb1{animation-delay:-.35s}.mb2{animation-delay:-.7s}.mb3{animation-delay:-1.05s}
+@keyframes m-rise{from{transform:translateY(0);opacity:1}to{transform:translateY(-50px);opacity:0}}
+.m-steam{animation:m-steam 2.4s ease-in-out infinite alternate;opacity:.85}
+@keyframes m-steam{from{transform:translateY(4px);opacity:.5}to{transform:translateY(-8px);opacity:.95}}
+.m-flame{transform-box:fill-box;transform-origin:50% 100%;animation:m-flame .35s ease-in-out infinite alternate}.m-flame.is-strong{animation-duration:.2s}
+@keyframes m-flame{from{transform:scaleY(.9)}to{transform:scaleY(1.12)}}
+@media(prefers-reduced-motion:reduce){.particle,.m-bubble,.m-steam,.m-flame{animation:none!important}}
+.gl-stage>.gl-zoom{position:static;display:flex;justify-content:center;margin:6px auto 0;width:max-content;background:#fff;box-shadow:0 2px 8px #0002;opacity:1}
+.gl-stage>.gl-narrator+.gl-zoom,.gl-stage>.gl-zoom{order:2}
+.gl-stage.is-max>.gl-zoom{background:#ffffffe6}

@@ -25,5 +25,20 @@ export const EXPLAIN_TEXTS = [
   {id: 'ls-dis-1', lesson: 'science-4-light', topic: 'discuss', title: 'توقّع', body: 'إذا ارتفعت الشمس في السماء، ماذا تتوقع أن يحدث لطول ظلك؟ ولماذا؟'},
   {id: 'ls-dis-2', lesson: 'science-4-light', topic: 'discuss', title: 'قارن', body: 'لماذا يصنع اللوح الخشبي ظلًا داكنًا، بينما يصنع الورق المشمّع ظلًا باهتًا؟'},
   {id: 'ls-act-1', lesson: 'science-4-light', topic: 'activity', title: 'تجربة المصباح', body: 'ضع قلمًا واقفًا على الطاولة، وحرّك مصباحًا من فوقه إلى جانبه، وراقب كيف يطول الظل ويقصر.'},
-  {id: 'ls-sum-1', lesson: 'science-4-light', topic: 'summary', title: 'خلاصة الدرس', body: 'الضوء يسير مستقيمًا، والجسم المعتم يحجبه فيتكون ظل في الجهة المقابلة للضوء، ويطول الظل كلما انخفض مصدر الضوء.'}
+  {id: 'ls-sum-1', lesson: 'science-4-light', topic: 'summary', title: 'خلاصة الدرس', body: 'الضوء يسير مستقيمًا، والجسم المعتم يحجبه فيتكون ظل في الجهة المقابلة للضوء، ويطول الظل كلما انخفض مصدر الضوء.'},
+  {id: 'mt-idea-1', lesson: 'science-4-matter', topic: 'idea', title: 'حالات المادة الثلاث', body: 'توجد المادة في ثلاث حالات: صلبة وسائلة وغازية. الماء مثال يمكن أن نراه في الحالات الثلاث.'},
+  {id: 'mt-idea-2', lesson: 'science-4-matter', topic: 'idea', title: 'الصلب', body: 'جزيئات المادة الصلبة متقاربة ومرتبة وتهتز في مكانها، لذلك يكون للصلب شكل ثابت وحجم ثابت.'},
+  {id: 'mt-idea-3', lesson: 'science-4-matter', topic: 'idea', title: 'السائل', body: 'جزيئات السائل قريبة لكنها تنزلق فوق بعضها، لذلك يكون حجمه ثابتًا ويأخذ شكل الإناء.'},
+  {id: 'mt-idea-4', lesson: 'science-4-matter', topic: 'idea', title: 'الغاز', body: 'جزيئات الغاز متباعدة وتتحرك بسرعة في كل اتجاه، لذلك ينتشر الغاز ويملأ المكان كله.'},
+  {id: 'mt-idea-5', lesson: 'science-4-matter', topic: 'idea', title: 'تغيرات الحالة', body: 'الانصهار: صلب إلى سائل. التبخر والغليان: سائل إلى غاز. التكاثف: غاز إلى سائل. التجمد: سائل إلى صلب.'},
+  {id: 'mt-ex-1', lesson: 'science-4-matter', topic: 'example', title: 'الآيس كريم', body: 'يذوب الآيس كريم في يوم حار لأن الحرارة تجعله ينصهر من الحالة الصلبة إلى السائلة.'},
+  {id: 'mt-ex-2', lesson: 'science-4-matter', topic: 'example', title: 'كأس الماء البارد', body: 'تظهر قطرات على السطح الخارجي لكأس بارد لأن بخار الماء في الهواء يبرد عند الكأس فيتكاثف.'},
+  {id: 'mt-ex-3', lesson: 'science-4-matter', topic: 'example', title: 'قِدر الماء', body: 'عندما يغلي الماء في القِدر يتحول جزء منه إلى بخار، فتقل كمية الماء مع الوقت.'},
+  {id: 'mt-mis-1', lesson: 'science-4-matter', topic: 'mistake', title: 'فقاعات الغليان', body: 'الفقاعات الكبيرة في الماء المغلي ليست هواء؛ إنها بخار ماء تكوّن داخل السائل.'},
+  {id: 'mt-mis-2', lesson: 'science-4-matter', topic: 'mistake', title: 'السحابة البيضاء فوق الإبريق', body: 'بخار الماء نفسه لا يُرى؛ السحابة البيضاء قطرات ماء صغيرة تكاثفت عندما برد البخار.'},
+  {id: 'mt-dis-1', lesson: 'science-4-matter', topic: 'discuss', title: 'توقّع', body: 'إذا وضعنا كأس ماء في الثلاجة طوال الليل، ماذا تتوقع أن يحدث؟ ولماذا؟'},
+  {id: 'mt-act-1', lesson: 'science-4-matter', topic: 'activity', title: 'سباق الجليد', body: 'ضع مكعبي جليد، أحدهما في الشمس والآخر في الظل. أيهما ينصهر أولًا؟ سجّل الوقت.'},
+  {id: 'mt-sum-1', lesson: 'science-4-matter', topic: 'summary', title: 'خلاصة الدرس', body: 'للمادة ثلاث حالات. التسخين يحوّل الصلب إلى سائل والسائل إلى غاز، والتبريد يعيد الغاز سائلًا والسائل صلبًا.'}
 ];
+
+export const TEXT_LESSONS = {'science-4-light': 'الضوء والظل', 'science-4-matter': 'حالات المادة'};

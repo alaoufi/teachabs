@@ -1,7 +1,7 @@
 // Explanatory text bank: ready texts from the repository plus the teacher's own saved texts.
 // The teacher picks a text, edits it, then uses it or saves the edit as a new text for later lessons.
 // A copy of the teacher's texts is kept in this browser and can be downloaded, so nothing depends on the trial server.
-import {EXPLAIN_TEXTS, TEXT_TOPICS} from './explain-texts.js';
+import {EXPLAIN_TEXTS, TEXT_TOPICS, TEXT_LESSONS} from './explain-texts.js';
 import {el} from './group-view.js';
 
 const BACKUP_KEY = 'gl-text-library-v1';
@@ -56,9 +56,9 @@ export function openTextPicker({title = 'النصوص التوضيحية', useLa
     const groups = [];
     const own = mine.filter(match);
     groups.push(el('h3', {text: 'نصوصي المحفوظة'}), own.length ? el('div', {class: 'tl-group'}, own.map(t => item(t, true))) : el('p', {class: 'tl-empty', text: 'لم تحفظ نصوصًا بعد. اختر نصًا جاهزًا وعدّله ثم «احفظ كنص جديد».'}));
-    for (const [topic, name] of Object.entries(TEXT_TOPICS)) {
-      const items = EXPLAIN_TEXTS.filter(t => t.topic === topic && match(t));
-      if (items.length) groups.push(el('h3', {text: 'جاهز: ' + name}), el('div', {class: 'tl-group'}, items.map(t => item(t, false))));
+    for (const [lesson, lessonName] of Object.entries(TEXT_LESSONS)) for (const [topic, name] of Object.entries(TEXT_TOPICS)) {
+      const items = EXPLAIN_TEXTS.filter(t => t.lesson === lesson && t.topic === topic && match(t));
+      if (items.length) groups.push(el('h3', {text: `جاهز · ${lessonName}: ${name}`}), el('div', {class: 'tl-group'}, items.map(t => item(t, false))));
     }
     list.replaceChildren(...groups);
   }

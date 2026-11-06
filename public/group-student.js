@@ -3,7 +3,8 @@ import {publicStep} from './group-plan.js';
 import {el, renderStep, renderInk, playNarration, stopNarration, renderNarrator, setSpeaking} from './group-view.js';
 import {speakingMs} from './narrator-scripts.js';
 import {attachBoardTools} from './group-board-tools.js';
-import {renderScene, lessonState, formatHour, formatNumber} from './science-shadow-model.js';
+import {formatNumber} from './science-shadow-model.js';
+import {activityOf} from './activities.js';
 
 const app = document.getElementById('gl-app'), code = app.dataset.code, role = app.dataset.role, student = role === 'student';
 const $ = x => document.getElementById(x);
@@ -12,7 +13,7 @@ const classBase = '/class/' + code;
 let renderKey = '', shownStep = null, lastSegment = 0, speakTimer = 0, wasMuted = false;
 const tools = attachBoardTools({mode: 'viewer'});
 let view = null, content = null, contentKey = null, homework = null, lastNarration = 0, pendingNarration = null, plan = null;
-let explore = {hour: 9, height: 1.5, material: 'wood'};
+let explore = null;
 const sent = {};
 
 async function getJSON(url) { const r = await fetch(url); const d = await r.json().catch(() => ({})); if (!r.ok) throw new Error(d.error || 'تعذّر التحميل.'); return d; }
@@ -80,17 +81,18 @@ function renderEvaluation() {
 }
 
 function renderExplore() {
-  delete $('gl-content').dataset.step;
-  // Each student explores privately; nothing is sent while exploring. The slider is kept so dragging is smooth.
+  // Each student explores privately (nothing is sent). One slider per activity; it is kept while dragging for smoothness.
+  const a = activityOf(view.activity.id), p = a.params.find(x => x.key === a.exploreKey) || a.params[0];
+  if (!explore || explore.id !== a.id) explore = {id: a.id, values: {...view.activity.values}};
   let wrap = $('gl-content').querySelector('.gl-explore');
-  if (!wrap) {
-    const hour = el('input', {type: 'range', min: 7, max: 17, step: 0.25, value: explore.hour, 'aria-label': 'الوقت', oninput: e => { explore.hour = Number(e.target.value); renderExplore(); }});
-    wrap = el('div', {class: 'gl-explore'}, el('h2', {class: 'gl-step-title', text: 'استكشف بنفسك'}), el('div', {class: 'gl-scene'}), el('label', {class: 'gl-field'}, el('span', {class: 'gl-explore-text'}), hour));
+  delete $('gl-content').dataset.step;
+  if (!wrap || wrap.dataset.activity !== a.id) {
+    const input = el('input', {type: 'range', min: p.min, max: p.max, step: p.step, value: explore.values[p.key], 'aria-label': p.label, oninput: e => { explore.values[p.key] = Number(e.target.value); renderExplore(); }});
+    wrap = el('div', {class: 'gl-explore', 'data-activity': a.id}, el('h2', {class: 'gl-step-title', text: 'استكشف بنفسك'}), el('div', {class: 'gl-scene'}), el('label', {class: 'gl-field'}, el('span', {class: 'gl-explore-text'}), input));
     $('gl-content').replaceChildren(wrap);
   }
-  const s = lessonState(explore);
-  wrap.querySelector('.gl-scene').innerHTML = renderScene(s);
-  wrap.querySelector('.gl-explore-text').textContent = `الوقت: ${formatHour(s.hour)} · طول الظل ${formatNumber(s.length)} م`;
+  wrap.querySelector('.gl-scene').innerHTML = a.render(explore.values, {hidden: false});
+  wrap.querySelector('.gl-explore-text').textContent = `${p.label}: ${p.format(explore.values[p.key])} · ${a.facts(explore.values, false)}`;
 }
 
 /** Shows the narrator's caption and plays its voice here when the teacher chose this kind of device. */
@@ -128,8 +130,8 @@ async function render() {
     if (student && view.step.type === 'interactive' && view.explore) { renderExplore(); renderKey = ''; }
     else {
       // Redraw content only when it changed, so camera moves and ink stay smooth.
-      const key = JSON.stringify([contentKey, view.shadow, view.display, view.places, content ? 1 : 0]);
-      if (key !== renderKey) { renderKey = key; renderStep($('gl-content'), content, {shadow: view.shadow, display: view.display, places: view.places}); }
+      const key = JSON.stringify([contentKey, view.activity, view.display, view.places, content ? 1 : 0]);
+      if (key !== renderKey) { renderKey = key; renderStep($('gl-content'), content, {shadow: view.activity, display: view.display, places: view.places}); }
       if (view.step.id !== shownStep) { shownStep = view.step.id; const c = $('gl-content'); c.classList.remove('gl-enter'); void c.offsetWidth; c.classList.add('gl-enter'); tools.resetForStep(); }
     }
     renderInk($('gl-ink'), view.strokes || []);

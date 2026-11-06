@@ -5,7 +5,8 @@ import {attachBoardTools} from './group-board-tools.js';
 import {renderNarrator, setSpeaking} from './group-view.js';
 import {openTextPicker} from './text-library.js';
 import {speakingMs} from './narrator-scripts.js';
-import {MATERIALS, formatHour, formatNumber, lessonState} from './science-shadow-model.js';
+import {formatNumber} from './science-shadow-model.js';
+import {activityOf, segmentLabel} from './activities.js';
 
 const app = document.getElementById('gl-app'), code = app.dataset.code, base = '/teach/live/' + code;
 const $ = x => document.getElementById(x);
@@ -49,9 +50,10 @@ function renderBoard() {
     else { const a = r.answers[d.student]?.[q.id]; display = {mode: 'spotlight', prompt: q.prompt, answer: a ? (q.kind === 'choice' ? q.options[a.choice] : a.text) : null, name: d.named ? nameOf(d.student) : null}; }
   }
   const places = view.state.places?.[s.id] || {};
-  const key = JSON.stringify([s.id, revealed, view.state.shadow, display, places]);
+  const actView = s.type === 'interactive' ? {id: s.activity, ...view.act} : null;
+  const key = JSON.stringify([s.id, revealed, actView, display, places]);
   if (key !== contentKey) {
-    contentKey = key; renderStep($('gl-content'), content, {teacher: true, revealed, shadow: view.state.shadow, display, places});
+    contentKey = key; renderStep($('gl-content'), content, {teacher: true, revealed, shadow: actView, display, places});
     if (s.id !== lastStep) { $('gl-content').classList.remove('gl-enter'); void $('gl-content').offsetWidth; $('gl-content').classList.add('gl-enter'); }
   }
   if (s.id !== lastStep) { lastStep = s.id; tools.resetForStep(); renderSnippets(s); }
@@ -102,7 +104,7 @@ function narratorPanel(s) {
       el('label', {class: 'gl-check'}, el('input', {type: 'checkbox', checked: autoAdvance, onchange: e => { autoAdvance = e.target.checked; clearTimeout(advanceTimer); }}), 'انتقال تلقائي بعد كل مقطع'),
       el('label', {class: 'gl-check'}, el('input', {type: 'checkbox', checked: listenHere, onchange: e => { listenHere = e.target.checked; if (!listenHere) stopNarration(); }}), 'أسمعه على جهازي أيضًا')),
     el('ol', {class: 'gl-segs'}, segs.map((g, i) => el('li', {class: i === n.segment ? 'is-current' : ''},
-      el('button', {type: 'button', onclick: () => act('goto', {segment: i})}, el('small', {text: (g.audio ? '🎤 ' : '') + formatHour(g.hour)}), el('span', {text: g.text}))))),
+      el('button', {type: 'button', onclick: () => act('goto', {segment: i})}, el('small', {text: (g.audio ? '🎤 ' : '') + segmentLabel(s.activity, g.values)}), el('span', {text: g.text}))))),
     el('p', {class: 'gl-hint', text: 'يظهر كلام المتحدث مكتوبًا دائمًا. الصوت من تسجيلك إن سجلته، وإلا من صوت الجهاز العربي إن وُجد. يمكنك الشرح بصوتك بدلًا منه بكتم صوته.'}));
 }
 
@@ -130,26 +132,34 @@ function renderNarration() {
     el('button', {type: 'button', class: 'quiet', onclick: stopNarration}, 'إيقاف'));
 }
 
+/** Controls built from the activity's params, so every lesson's activity gets the same teacher tools. */
+function activityControls(s) {
+  const a = activityOf(s.activity), act = view.act, v = act.values;
+  const set = values => command({op: 'activity', action: 'set', values});
+  const box = el('div', {class: 'gl-act-controls'});
+  for (const p of a.params) {
+    if (p.kind === 'range') {
+      const input = el('input', {type: 'range', min: p.min, max: p.max, step: p.step, value: v[p.key], 'aria-label': p.label, onchange: e => set({[p.key]: Number(e.target.value)})});
+      box.append(el('div', {class: 'gl-row'},
+        p.big ? el('button', {type: 'button', onclick: () => set({[p.key]: Math.max(p.min, v[p.key] - p.big)})}, p.earlier || '−') : null,
+        el('output', {text: `${p.label}: ${p.format(v[p.key])}`}),
+        p.big ? el('button', {type: 'button', onclick: () => set({[p.key]: Math.min(p.max, v[p.key] + p.big)})}, p.later || '+') : null),
+        el('label', {class: 'gl-field'}, p.label, input));
+    } else box.append(el('div', {class: 'gl-row', role: 'group', 'aria-label': p.label}, Object.entries(p.options).map(([k, label]) => el('button', {type: 'button', 'aria-pressed': String(v[p.key] === k), onclick: () => set({[p.key]: k})}, label))));
+  }
+  box.append(el('div', {class: 'gl-row'},
+    el('button', {type: 'button', class: act.reveal ? '' : 'is-warn', 'aria-pressed': String(!act.reveal), onclick: () => command({op: 'activity', action: 'reveal', show: !act.reveal})}, act.reveal ? a.hideLabel : a.revealLabel),
+    el('button', {type: 'button', 'aria-pressed': String(view.state.explore), onclick: () => command({op: 'explore', on: !view.state.explore})}, view.state.explore ? 'إيقاف الاستكشاف الفردي' : 'اسمح للطلاب بالاستكشاف على أجهزتهم'),
+    el('button', {type: 'button', class: 'quiet', onclick: () => command({op: 'activity', action: 'reset'})}, 'إعادة')),
+    el('p', {class: 'gl-hint', text: 'الآن: ' + a.facts(v, false)}));
+  return box;
+}
+
 function renderPanel() {
   const s = step(), panel = $('gl-panel');
   const head = el('h2', {text: STEP_TYPES[s.type].label});
   if (s.type === 'page') return panel.replaceChildren(head, el('p', {text: 'اكتب على الصفحة بالقلم أثناء الشرح. الطلاب يرون الكتابة مباشرة. انتقل إلى «التالي» للشرح التفاعلي.'}));
-  if (s.type === 'interactive') {
-    const sh = view.state.shadow, full = lessonState(sh);
-    const set = values => command({op: 'shadow', command: {op: 'set', ...values}});
-    const hour = el('input', {type: 'range', min: 7, max: 17, step: 0.25, value: sh.hour, 'aria-label': 'وقت اليوم', onchange: e => set({hour: Number(e.target.value)})});
-    const height = el('input', {type: 'range', min: 1, max: 2, step: 0.1, value: sh.height, 'aria-label': 'طول اللوح', onchange: e => set({height: Number(e.target.value)})});
-    return panel.replaceChildren(head,
-      el('div', {class: 'gl-row'}, el('button', {type: 'button', onclick: () => set({hour: Math.max(7, sh.hour - 1)})}, 'ساعة أبكر'), el('output', {text: formatHour(sh.hour)}), el('button', {type: 'button', onclick: () => set({hour: Math.min(17, sh.hour + 1)})}, 'ساعة لاحقة')),
-      el('label', {class: 'gl-field'}, 'الوقت', hour), el('label', {class: 'gl-field'}, `طول اللوح ${formatNumber(sh.height)} م`, height),
-      el('div', {class: 'gl-row', role: 'group', 'aria-label': 'مادة اللوح'}, Object.entries(MATERIALS).map(([k, m]) => el('button', {type: 'button', 'aria-pressed': String(sh.material === k), onclick: () => set({material: k})}, `${m.name} (${m.kind})`))),
-      el('div', {class: 'gl-row'},
-        el('button', {type: 'button', class: sh.reveal ? '' : 'is-warn', 'aria-pressed': String(!sh.reveal), onclick: () => command({op: 'shadow', command: {op: 'reveal', show: !sh.reveal}})}, sh.reveal ? 'إخفاء الظل ليتوقع الطلاب' : 'اكشف الظل'),
-        el('button', {type: 'button', 'aria-pressed': String(view.state.explore), onclick: () => command({op: 'explore', on: !view.state.explore})}, view.state.explore ? 'إيقاف الاستكشاف الفردي' : 'اسمح للطلاب بالاستكشاف على أجهزتهم'),
-        el('button', {type: 'button', class: 'quiet', onclick: () => command({op: 'shadow', command: {op: 'reset'}})}, 'إعادة')),
-      el('p', {class: 'gl-hint', text: `الآن: ارتفاع الشمس ${formatNumber(full.elevation)}° وطول الظل ${formatNumber(full.length)} م.`}),
-      s.narrator ? narratorPanel(s) : null);
-  }
+  if (s.type === 'interactive') return panel.replaceChildren(head, activityControls(s), s.narrator ? narratorPanel(s) : null);
   if (s.type === 'board') {
     const revealed = view.state.revealed[s.id] || [];
     return panel.replaceChildren(head, el('div', {class: 'gl-row'},

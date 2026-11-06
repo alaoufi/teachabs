@@ -1,5 +1,5 @@
 // Group lesson service: planner, live teacher console, display screen and student seats.
-import {validatePlan, defaultPlan, PlanError, LIMITS} from './public/group-plan.js';
+import {validatePlan, defaultPlan, PlanError, LIMITS, LESSON_TEMPLATES} from './public/group-plan.js';
 import {initialState, teacherCommand, teacherView, publicView, checkAnswer, checkEvaluation, contentFor, narrationFor, segmentAudio, MAX_STUDENTS} from './group-session.mjs';
 import {UserError} from './store.mjs';
 import * as v from './group-views.mjs';
@@ -143,7 +143,7 @@ export function groupService(store) {
         let clean; try { clean = validatePlan(body); } catch (e) { if (e instanceof PlanError) throw new UserError(e.message); throw e; }
         return send(res, {id: g.createPlan(teacher.id, clean)});
       }
-      if (path === '/teach/plans/new' && method === 'POST') { await fields(req); return redirect('/teach/plans/' + g.createPlan(teacher.id, validatePlan(defaultPlan()))); }
+      if (path === '/teach/plans/new' && method === 'POST') { const data = await fields(req), t = LESSON_TEMPLATES[data.template] || LESSON_TEMPLATES.light; return redirect('/teach/plans/' + g.createPlan(teacher.id, validatePlan(t.plan()))); }
       const pm = path.match(/^\/teach\/plans\/([0-9a-f-]{36})(\.json|\/delete|\/start)?$/);
       if (pm) {
         const [, id, action] = pm; need(UUID.test(id), 'الدرس غير موجود.', 404);

@@ -16,7 +16,7 @@ const assert = require('node:assert/strict'), fs = require('node:fs'), path = re
     const tour = store.tour();
     await tc.addCookies([{name: 'ks', value: store.session(tour.teacher), url: base}]);
     const t = await tc.newPage(); watch(t); t.on('dialog', d => d.accept().catch(() => {}));
-    await t.goto(base + '/teach/plans'); await t.getByRole('button', {name: /درس جديد/}).click(); await t.waitForURL(/\/teach\/plans\/[0-9a-f-]{36}$/);
+    await t.goto(base + '/teach/plans'); await t.locator('.gl-templates button', {hasText: 'الضوء والظل'}).click(); await t.waitForURL(/\/teach\/plans\/[0-9a-f-]{36}$/);
     await t.waitForSelector('#pl-steps li');
     await t.locator('#pl-steps li').nth(0).locator('summary').click();
     const snippetInputs = t.locator('#pl-steps li').nth(0).locator('.pl-snippets input');
@@ -123,7 +123,7 @@ const assert = require('node:assert/strict'), fs = require('node:fs'), path = re
     results.push('PageDown/ArrowRight move between steps; ink and prepared texts belong to their step');
 
     // Prepared board cards are dragged into place; students see the same layout.
-    await t.locator('body').press('PageDown'); await t.locator('body').press('PageDown');
+    await t.locator('#gl-steps li').nth(2).locator('button').click(); // the prepared board step
     await s.waitForFunction(() => document.querySelector('#gl-content').dataset.type === 'board');
     await t.getByRole('button', {name: 'إظهار الكل'}).click();
     await s.waitForFunction(() => document.querySelectorAll('.gl-item').length === 3);

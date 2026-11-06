@@ -1,11 +1,11 @@
 // HTML scaffolds for the group lesson. Dynamic parts are filled by same-origin modules.
 import {e} from './views.mjs';
-import {STEP_TYPES, STEP_ORDER} from './public/group-plan.js';
+import {STEP_TYPES, STEP_ORDER, LESSON_TEMPLATES} from './public/group-plan.js';
 import {COLORS, SIZE_NAMES} from './public/group-ink.js';
 
 const TOOL_BUTTONS = [['select', '➤', 'تحريك', 'V'], ['hand', '✋', 'يد', 'H'], ['pen', '✎', 'قلم', 'P'], ['brush', '🖌', 'فرشاة', 'B'], ['marker', '▮', 'تظليل', 'M'], ['text', 'ت', 'كتابة', 'T'], ['eraser', '⌫', 'ممحاة', 'E']];
 
-const css = '<link rel="stylesheet" href="/group-lesson.css?v=1">';
+const css = '<link rel="stylesheet" href="/group-lesson.css?v=2">';
 const dateText = t => new Intl.DateTimeFormat('ar-SA', {dateStyle: 'medium', timeStyle: 'short', timeZone: 'Asia/Riyadh'}).format(t);
 
 export function plansPage(plans, sessions) {
@@ -16,7 +16,7 @@ export function plansPage(plans, sessions) {
   const live = sessions.length ? `<h2>حصص سابقة وجارية</h2><ul class="gl-list">${sessions.map(s => `<li class="gl-row"><div><b>${e(s.title)}</b><small>الرمز ${e(s.code)} · ${dateText(s.created)} · ${s.live ? 'جارية' : 'انتهى العرض'}</small></div><a class="outline" href="/teach/live/${e(s.code)}">فتح إدارة الحصة</a></li>`).join('')}</ul>` : '';
   return `${css}<section class="gl-wrap" dir="rtl"><div class="section-head welcome-panel"><div class="eyebrow">الحصة الجماعية</div><h1>دروسي</h1>
   <p>رتّب درسك قبل الحصة بالتسلسل: ${STEP_ORDER.map(t => STEP_TYPES[t].short).join(' ← ')}. أثناء الحصة تتحكم بما يظهر للطلاب وما يختفي. <a class="textlink" href="/guide">دليل الاستخدام</a></p></div>
-  <div class="gl-actions"><form method="post" action="/teach/plans/new"><button class="btn">درس جديد من النموذج الجاهز (الضوء والظل)</button></form>
+  <div class="gl-actions gl-templates"><span class="gl-tpl-label">درس جديد من نموذج جاهز (علوم الصف الرابع):</span>${Object.entries(LESSON_TEMPLATES).map(([id, t]) => `<form method="post" action="/teach/plans/new"><input type="hidden" name="template" value="${id}"><button class="btn">${e(t.title)}</button></form>`).join('')}
   <button type="button" class="outline" id="plans-import-btn">استيراد درس من ملف</button><input type="file" id="plans-import" accept=".json,application/json" hidden></div>
   <p id="plans-status" class="gl-status" role="status" aria-live="polite" hidden></p>
   <ul class="gl-list">${list}</ul>${live}
@@ -36,11 +36,12 @@ export function plannerPage(id, title) {
   <form method="post" action="/teach/plans/${e(id)}/start" class="gl-start"><button class="btn">بدء الحصة بهذا الترتيب</button><small>احفظ قبل البدء؛ تبدأ الحصة بآخر نسخة محفوظة.</small></form>
   <form method="post" action="/teach/plans/${e(id)}/delete" class="gl-delete"><button class="quiet">حذف الدرس</button></form>
   <noscript><p class="error">ترتيب الدرس يحتاج JavaScript.</p></noscript>
- </section><script type="module" src="/group-planner.js?v=1"></script>`;
+ </section><script type="module" src="/group-planner.js?v=2"></script>`;
 }
 
-const zoomBar = (follow = false) => `<div class="gl-zoom" role="group" aria-label="تكبير السبورة"><button type="button" data-zoom="in" aria-label="تكبير" title="تكبير (+)">＋</button><button type="button" data-zoom="out" aria-label="تصغير" title="تصغير (−)">－</button><button type="button" data-zoom="fit" title="ملاءمة (0)">ملاءمة</button>${follow ? '<button type="button" data-zoom="follow" hidden>اتبع المعلم</button>' : ''}</div>`;
-const boardShell = (extra = '', follow = false) => `<div class="gl-stage"><div class="gl-board" id="gl-board" aria-live="polite"><div class="gl-camera" id="gl-camera"><div class="gl-content" id="gl-content"></div><svg class="gl-ink" id="gl-ink" viewBox="0 0 1000 600" preserveAspectRatio="none" aria-hidden="true"></svg></div>${zoomBar(follow)}</div>${extra}</div>`;
+const zoomBar = (follow = false) => `<div class="gl-zoom" role="group" aria-label="تكبير السبورة"><button type="button" data-zoom="in" aria-label="تكبير" title="تكبير (+)">＋</button><button type="button" data-zoom="out" aria-label="تصغير" title="تصغير (−)">－</button><button type="button" data-zoom="fit" title="ملاءمة (0)">ملاءمة</button>${follow ? '<button type="button" data-zoom="follow" hidden>اتبع المعلم</button><button type="button" data-zoom="max" aria-pressed="false" title="السبورة بملء الشاشة">⛶</button>' : ''}</div>`;
+// Students get the zoom controls under the board so they never cover the lesson on a small phone.
+const boardShell = (extra = '', follow = false) => `<div class="gl-stage"><div class="gl-board" id="gl-board" aria-live="polite"><div class="gl-camera" id="gl-camera"><div class="gl-content" id="gl-content"></div><svg class="gl-ink" id="gl-ink" viewBox="0 0 1000 600" preserveAspectRatio="none" aria-hidden="true"></svg></div>${follow ? '' : zoomBar(false)}</div>${follow ? zoomBar(true) : ''}${extra}</div>`;
 
 export function teacherPage(code, title, base) {
   const join = `${base}/join?code=${code}`;
@@ -71,7 +72,7 @@ export function teacherPage(code, title, base) {
     <section><h2>التقييم</h2><div id="gl-evaluation"></div></section></aside>
   </div>
   <p class="gl-note">الصوت المباشر: في الفصل الحضوري يُسمع صوت المعلم مباشرة. البث الصوتي المباشر عن بُعد لعدة طلاب غير متوفر في هذه المرحلة.</p>
- </section><script type="module" src="/group-teacher.js?v=1"></script>`;
+ </section><script type="module" src="/group-teacher.js?v=2"></script>`;
 }
 
 export function displayPage(code, title) {
@@ -80,19 +81,19 @@ export function displayPage(code, title) {
   <p id="gl-status" class="gl-status" role="status" aria-live="polite">جارٍ الاتصال…</p>
   ${boardShell()}<p id="gl-wait" class="gl-wait" hidden></p>
   <button type="button" id="gl-audio" class="outline" hidden>تفعيل صوت الشرح على هذه الشاشة</button>
- </section><script type="module" src="/group-student.js?v=1"></script>`;
+ </section><script type="module" src="/group-student.js?v=2"></script>`;
 }
 
 export function studentPage(code, name, title) {
+  // The board floats on top: it stays in view while the student scrolls to answer, and can fill the screen.
   return `${css}<section class="gl-wrap gl-student" dir="rtl" id="gl-app" data-code="${e(code)}" data-role="student">
-  <div class="gl-top"><div><div class="eyebrow">مرحبًا ${e(name)}</div><h1>${e(title)}</h1></div><span class="gl-progress" id="gl-progress"></span></div>
-  <p id="gl-status" class="gl-status" role="status" aria-live="polite">جارٍ الاتصال…</p>
-  <button type="button" id="gl-audio" class="outline" hidden>تفعيل صوت الشرح</button>
+  <div class="gl-top gl-top-student"><div><span class="gl-hello">مرحبًا ${e(name)}</span><h1>${e(title)}</h1></div><div class="gl-actions"><span class="gl-progress" id="gl-progress"></span><button type="button" id="gl-audio" class="outline" hidden>تفعيل صوت الشرح</button></div></div>
   ${boardShell('', true)}<p id="gl-wait" class="gl-wait" hidden></p>
+  <p id="gl-status" class="gl-status gl-status-small" role="status" aria-live="polite">جارٍ الاتصال…</p>
   <section class="gl-answer" id="gl-answer" hidden aria-label="أجب عن الأسئلة"></section>
   <section class="gl-homework" id="gl-hw" hidden aria-label="الواجب"></section>
   <section class="gl-myeval" id="gl-eval" hidden aria-label="تقييمي"></section>
- </section><script type="module" src="/group-student.js?v=1"></script>`;
+ </section><script type="module" src="/group-student.js?v=2"></script>`;
 }
 
 export function joinPage(code) {

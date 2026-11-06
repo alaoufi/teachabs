@@ -27,7 +27,7 @@ export function attachBoardTools({mode, send = () => {}, items = () => [], canIn
     }
     if (!teacher && mode === 'viewer' && share) { state.following = false; followButton(); }
   }
-  function followButton() { const b = board.querySelector('[data-zoom=follow]'); if (b) b.hidden = state.following; }
+  function followButton() { const b = board.parentElement.querySelector('[data-zoom=follow]'); if (b) b.hidden = state.following; }
   /** Called with the teacher's camera from each live update. */
   function remoteCamera(c) {
     state.remote = clampCamera(c || {});
@@ -39,10 +39,15 @@ export function attachBoardTools({mode, send = () => {}, items = () => [], canIn
     const [px, py] = center || [state.camera.x + BOARD.width / state.camera.z / 2, state.camera.y + BOARD.height / state.camera.z / 2];
     setCamera(zoomAround(state.camera, factor, px, py), {animate: true});
   };
-  for (const b of board.querySelectorAll('[data-zoom]')) b.addEventListener('click', () => {
+  for (const b of board.parentElement.querySelectorAll('[data-zoom]')) b.addEventListener('click', () => {
     const z = b.dataset.zoom;
     if (z === 'in') zoomBy(1.4); else if (z === 'out') zoomBy(1 / 1.4);
     else if (z === 'fit') setCamera({z: 1, x: 0, y: 0}, {animate: true});
+    else if (z === 'max') {
+      const stage = board.parentElement, on = !stage.classList.contains('is-max');
+      stage.classList.toggle('is-max', on); document.documentElement.classList.toggle('gl-noscroll', on);
+      b.setAttribute('aria-pressed', String(on)); b.textContent = on ? '✕' : '⛶'; b.title = on ? 'إغلاق ملء الشاشة' : 'السبورة بملء الشاشة';
+    }
     else { state.following = true; followButton(); state.camera = state.remote; applyCamera(camera, state.camera, {animate: true}); }
   });
   board.addEventListener('wheel', e => {
