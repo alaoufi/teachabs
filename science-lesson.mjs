@@ -15,7 +15,7 @@ export function scienceShadowLesson() {
   <span class="sl-badge">علوم · الصف الرابع الابتدائي · نموذج درس تفاعلي</span>
   <h1>الضوء والظل: لماذا يتغير ظلّي خلال اليوم؟</h1>
   <p>حرّك الشمس، وغيّر طول اللوح ومادته، وشاهد الظل يتغير أمامك مباشرة.</p>
-  <nav class="sl-nav" aria-label="أقسام الدرس"><a href="#sl-explain">الفكرة</a><a href="#sl-lab">المختبر</a><a href="#sl-challenges">التحديات</a><a href="#sl-quiz">تحقّق من فهمك</a><a href="#sl-teacher">للمعلم</a></nav>
+  <nav class="sl-nav" aria-label="أقسام الدرس"><a href="/lessons">جميع الدروس</a><a href="#sl-explain">الفكرة</a><a href="#sl-lab">المختبر</a><a href="#sl-challenges">التحديات</a><a href="#sl-quiz">تحقّق من فهمك</a><a href="#sl-teacher">للمعلم</a></nav>
  </header>
  <p class="sl-notice"><strong>محتوى أصلي للتجربة.</strong> الشرح والرسوم من إعداد المشروع، وليست منقولة من كتاب مدرسي. النموذج مبسّط لتوضيح الفكرة، ولا يحفظ أي بيانات.</p>
 
@@ -66,7 +66,7 @@ export function scienceShadowLesson() {
    <li><b>مطابقة المنهج:</b> الموضوع مفهوم علمي عام مناسب للمرحلة. لم تُطابَق الصياغة مع وحدات كتاب العلوم المعتمد أو أرقام صفحاته، ويلزم التحقق قبل ربطه بدرس رسمي.</li>
    <li><b>الخصوصية:</b> الصفحة تعمل في المتصفح فقط، ولا ترسل الإجابات أو تحفظها.</li>
   </ul>
-  <p><a href="/demo">العودة إلى أقسام التجربة</a></p>
+  <p><a href="/lessons">جميع الدروس</a> · <a href="/demo">أقسام التجربة</a></p>
  </section>
  <noscript><p class="sl-notice">فعّل JavaScript لتحريك الشمس والتحديات. الشرح وصورة البداية متاحان للقراءة.</p></noscript>
 </article><script type="module" src="/science-shadow.js"></script>`;

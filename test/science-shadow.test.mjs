@@ -109,3 +109,25 @@ test('lesson page is discoverable, self-contained and stores nothing', async t =
     assert.equal(r.status, 200, asset);
   }
 });
+
+test('lessons page lists the interactive lesson, and the class catalog links to it', async t => {
+  const {interactiveLessons, LESSONS_ROUTE} = await import('../interactive-lessons.mjs');
+  const {allowedLessons} = await import('../lesson-catalog.mjs');
+  assert.deepEqual(interactiveLessons.map(l => l.href), [SCIENCE_SHADOW_ROUTE]);
+  const inClass = allowedLessons({subject: 'science', grade: 4}).find(l => l.id === 'science-g4-shadows');
+  assert.equal(inClass?.interactive, SCIENCE_SHADOW_ROUTE);
+  assert.deepEqual(inClass.aidIds, []);
+  assert.equal(allowedLessons({subject: 'science', grade: 6}).some(l => l.id === 'science-g4-shadows'), false);
+  assert.equal(allowedLessons({subject: 'math', grade: 4}).some(l => l.id === 'science-g4-shadows'), false);
+  const store = openStore(':memory:'), app = createApp(store);
+  await new Promise(r => app.listen(0, '127.0.0.1', r));
+  t.after(async () => { app.closeAllConnections(); await new Promise(r => app.close(r)); store.close(); });
+  const base = 'http://127.0.0.1:' + app.address().port;
+  const response = await fetch(base + LESSONS_ROUTE), html = await response.text();
+  assert.equal(response.status, 200);
+  assert.equal(response.headers.get('set-cookie'), null);
+  assert.match(html, new RegExp(`href="${SCIENCE_SHADOW_ROUTE}"`));
+  for (const part of ['الضوء والظل', 'العلوم · الصف الرابع الابتدائي', 'لم تُطابَق']) assert.ok(html.includes(part), part);
+  assert.match(await (await fetch(base + '/demo')).text(), /href="\/lessons"/);
+  assert.match(await (await fetch(base + SCIENCE_SHADOW_ROUTE)).text(), /href="\/lessons"/);
+});

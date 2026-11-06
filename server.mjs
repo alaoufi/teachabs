@@ -4,6 +4,7 @@ import {serveAsset} from './asset-response.mjs';
 import { demoHub } from './demo.mjs';
 import { classroomLab } from './classroom-lab.mjs';
 import { scienceShadowLesson, SCIENCE_SHADOW_ROUTE } from './science-lesson.mjs';
+import { lessonsIndex, LESSONS_ROUTE } from './interactive-lessons.mjs';
 import http from 'node:http';
 import { readFile } from 'node:fs/promises';
 import { pathToFileURL } from 'node:url';
@@ -77,6 +78,7 @@ export function createApp(store,{origin=process.env.APP_ORIGIN}={}) {
           res.setHeader('Permissions-Policy','camera=(), microphone=(), display-capture=()');
           return html('مختبر الفصل التعليمي',classroomLab());
         }
+        if(route===LESSONS_ROUTE)return html('الدروس التفاعلية',lessonsIndex());
         if(route===SCIENCE_SHADOW_ROUTE){
           res.setHeader('Content-Security-Policy',"default-src 'self'; script-src 'self'; connect-src 'none'; img-src 'self' data:; frame-src 'none'; frame-ancestors 'none'; base-uri 'none'; form-action 'none'; object-src 'none'");
           res.setHeader('Permissions-Policy','camera=(), microphone=(), display-capture=(), geolocation=()');

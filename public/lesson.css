@@ -16,3 +16,5 @@
 .place #pv-submit:not([hidden]){display:block;margin-top:12px}.place #pv-error{color:#8e372a}.place p:empty{display:none}.place .pv-tools [draggable=true]:enabled{cursor:grab}
 @media(max-width:520px){.pv-trays{gap:6px}.pv-tray{padding:9px}.pv-tray .pv-tools{gap:2px}.pv-tray button{font-size:12px;padding:4px 6px}}
 .pv-exchange{margin-block:10px}.place #pv-observe{margin-block:12px;padding:10px 14px;background:#edf3e8;border-inline-start:4px solid var(--forest);border-radius:8px}.place #pv-equation{display:inline-block;margin-inline:8px;font-size:1.15em}
+
+.interactive-lesson-link{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px}.interactive-lesson-link a{display:inline-flex;align-items:center;min-height:44px;padding:8px 18px;border-radius:12px;background:#126b68;color:#fff;font-weight:700;text-decoration:none}.interactive-lesson-link a:focus-visible{outline:3px solid #d18522;outline-offset:3px}

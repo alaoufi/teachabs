@@ -21,3 +21,5 @@ body{background:radial-gradient(ellipse at 100% 0,#e4f0e6 0,transparent 42%),var
 @media(max-width:900px){.role-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:560px){.role-grid{grid-template-columns:1fr;gap:78px}.role-card{padding:64px 22px 24px}.welcome-panel{padding:24px;margin-bottom:78px}.brand{font-size:19px}.welcome-panel h1{font-size:30px}}
 @media(prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important;scroll-behavior:auto!important}}
+
+.lessons-group{margin:22px 0}.lessons-group h2{font-size:22px;margin:0 0 12px}.lesson-card{display:flex;flex-direction:column;align-items:flex-start;gap:6px;border-radius:22px;box-shadow:var(--depth-shadow);background:linear-gradient(150deg,#fffaf0,#eef6fb)}.lesson-card h3{margin:0;font-size:22px}.lesson-card p{margin:0}.lesson-card .btn{margin-top:auto;min-height:44px;display:inline-flex;align-items:center}.lesson-question{font-weight:700;color:var(--forest)}.lesson-status{font-size:12px;font-weight:700;background:#fff3d6;color:#7a4b00;border-radius:20px;padding:2px 10px}

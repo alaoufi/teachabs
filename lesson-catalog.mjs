@@ -8,6 +8,7 @@ export const lessons=[
 {id:'math-g4-fractions',subject:'math',grade:4,title:'الكسور — نموذج تجريبي',aidIds:['fraction']},
 {id:'math-g1-line',subject:'math',grade:1,title:'خط الأعداد — نموذج تجريبي',aidIds:['number-line','library-number-line']},
 {id:'science-g4-water',subject:'science',grade:4,title:'دورة الماء — نموذج تجريبي',aidIds:['water']},
+{id:'science-g4-shadows',subject:'science',grade:4,title:'الضوء والظل — درس تفاعلي أصلي',aidIds:[],interactive:'/interactive-lessons/science-4-shadows'},
 {id:'science-g4-observation',subject:'science',grade:4,title:'الملاحظة العلمية — نموذج تجريبي',aidIds:[]}
 ];
 export const allowedLessons=context=>lessons.filter(l=>context?.preview||(!l.previewOnly&&l.subject===context?.subject&&l.grade===context?.grade));
