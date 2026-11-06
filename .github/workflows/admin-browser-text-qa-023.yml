@@ -1,0 +1,95 @@
+name: Synthetic administration browser text QA 023
+run-name: Browser-only text QA 023 · ${{ github.sha }}
+
+on:
+  push:
+    branches:
+      - codex/admin-browser-text-qa-023
+
+permissions:
+  contents: read
+
+jobs:
+  browser:
+    if: github.repository == 'alaoufi/teachabs' && github.event.repository.private == false && github.event.created == true && github.event.deleted == false && github.run_attempt == 1
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    env:
+      EXPECTED_APP_REVISION: 25e11ce2e33aef92fbeb20eb3c6b6933278f90ac
+    steps:
+      - name: Check out the exact isolated QA commit
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 2
+
+      - name: Verify unchanged application source
+        shell: bash
+        run: |
+          set -euo pipefail
+          export QA_OUTPUT_DIR="$RUNNER_TEMP/admin-browser-text-qa-023"
+          echo "QA_OUTPUT_DIR=$QA_OUTPUT_DIR" >> "$GITHUB_ENV"
+          test "$(git rev-parse HEAD^)" = "$EXPECTED_APP_REVISION"
+          python3 - <<'PY'
+          import os, pathlib, subprocess
+          allowed = {'.github/workflows/admin-browser-text-qa-023.yml', 'ci/browser-text-qa-023/fixture.mjs', 'ci/browser-text-qa-023/review_browser.py', 'ci/browser-text-qa-023/README.md'}
+          changed = set(subprocess.check_output(['git','diff','--name-only',os.environ['EXPECTED_APP_REVISION'],'HEAD'],text=True).splitlines())
+          assert changed == allowed, f'Unexpected changed paths: {sorted(changed)}'
+          out = pathlib.Path(os.environ['QA_OUTPUT_DIR']); out.mkdir(parents=True,exist_ok=True)
+          (out/'source-revision.txt').write_text('Application: '+os.environ['EXPECTED_APP_REVISION']+'\nQA: '+os.environ['GITHUB_SHA']+'\nBrowser screenshots are not Android validation.\n')
+          PY
+
+      - name: Set up official Node 24
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: '24'
+          package-manager-cache: false
+
+      - name: Run administration and school source tests
+        run: node --test test/admin*.test.mjs test/school*.test.mjs
+
+      - name: Validate all synthetic fixture records
+        run: node ci/browser-text-qa-023/fixture.mjs --check
+
+      - name: Use preinstalled Chrome and isolated Playwright
+        shell: bash
+        run: |
+          set -euo pipefail
+          browser="$(command -v google-chrome || command -v chromium || command -v chromium-browser || true)"
+          test -n "$browser" || { echo 'No preinstalled Chrome/Chromium; stopping without installing or changing security settings.'; exit 1; }
+          echo "QA_BROWSER_PATH=$browser" >> "$GITHUB_ENV"
+          "$browser" --version
+          node --version
+          python3 -m venv "$RUNNER_TEMP/browser-qa-venv"
+          "$RUNNER_TEMP/browser-qa-venv/bin/python" -m pip install --disable-pip-version-check 'playwright==1.62.0'
+
+      - name: Run one sandbox-enabled synthetic browser session
+        shell: bash
+        run: |
+          set -euo pipefail
+          "$RUNNER_TEMP/browser-qa-venv/bin/python" ci/browser-text-qa-023/review_browser.py
+
+      - name: Save screenshots and exact results for three days
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: admin-browser-text-qa-023-${{ github.sha }}
+          path: ${{ runner.temp }}/admin-browser-text-qa-023/
+          retention-days: 3
+          if-no-files-found: warn
+          include-hidden-files: false
+
+      - name: Record browser-only limits
+        if: always()
+        shell: bash
+        run: |
+          {
+            echo '## Administration browser text QA 023'
+            echo "Application source: $EXPECTED_APP_REVISION"
+            echo "QA source: $GITHUB_SHA"
+            echo 'Only the initial creation of this isolated branch may run this job, once.'
+            echo 'Synthetic in-memory records; the browser visits only a loopback app. External page requests are blocked.'
+            echo 'Chromium sandbox remains enabled. A sandbox launch failure stops testing without changing permissions or security settings.'
+            echo 'Read browser-report.json for passed, failed, and unexecuted checks. Partial screenshots do not imply a complete pass.'
+            echo 'No public preview endpoint, real database, production login, deployment, KVM, emulator, or Android runtime test.'
+          } >> "$GITHUB_STEP_SUMMARY"
