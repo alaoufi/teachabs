@@ -115,3 +115,37 @@ body:has(.adm) main{padding-top:12px}
 @media(max-width:700px){.adm-workspace{padding:16px;border-radius:20px}.adm-workspace .adm-heading h1{font-size:24px}.adm .adm-section-guide{margin-bottom:16px}.adm-workspace .adm-stats strong{font-size:20px}.adm-workspace .adm-audit-event{padding:15px}.adm-workspace .adm-record-actions{padding-inline-start:0}}
 @media(max-width:360px){.adm-workspace{padding:12px}.adm-workspace .adm-heading h1{font-size:21px}.adm-workspace .adm-heading-icon{display:none}.adm-workspace .adm-stats{grid-template-columns:1fr}.adm-workspace .adm-stats>div{display:grid;grid-template-columns:1fr auto;align-items:center;gap:2px 10px}.adm-workspace .adm-stats strong{margin:0}.adm-workspace .adm-stats small{grid-column:2}.adm-workspace .adm-form-actions{align-items:stretch;flex-direction:column}}
 @media print{.adm .adm-skip-link,.adm .adm-section-guide{display:none}.adm-workspace{padding:0;border:0;background:white;box-shadow:none}.adm-workspace .adm-audit-event{box-shadow:none;break-inside:avoid}}
+
+/* Administration 010: an independent visual shell, scoped away from classrooms. */
+body:has(.adm)>header,body:has(.adm)>footer{display:none}
+body:has(.adm) main{margin-top:0;padding-top:20px;padding-bottom:36px}
+.adm .adm-masthead{position:relative;display:flex;align-items:center;justify-content:space-between;gap:18px;margin:0 0 24px;padding:20px 24px;border:1px solid #245f50;border-radius:22px;background:linear-gradient(120deg,#123f36,#21604f);box-shadow:0 5px 0 #b9cfc2,0 14px 28px #193f3412;color:#fffef8}
+.adm .adm-brand{display:flex;align-items:center;gap:13px;color:#fffef8;font-size:20px;font-weight:750;text-decoration:none;line-height:1.5}
+.adm .adm-brand small{display:block;margin-top:2px;color:#c5ded1;font-size:12px;font-weight:400}
+.adm .adm-brand-mark{display:grid;place-items:center;width:48px;height:48px;flex:none;border:1px solid #98b8a8;border-radius:15px;background:#ffffff12;box-shadow:0 3px 0 #10372d}
+.adm .adm-brand-mark svg{width:27px;height:27px}
+.adm .adm-session{display:flex;align-items:center;gap:18px;max-width:45%}
+.adm .adm-session-name{font-size:14px;color:#e8f1e9;overflow-wrap:anywhere}
+.adm .adm-session .adm-form{margin:0;display:block}
+.adm .adm-session .btn{min-height:44px;padding:8px 17px;border:1px solid #8caf9e;border-radius:11px;background:#ffffff0c;color:#fffef8;box-shadow:none}
+.adm .adm-session .btn:hover{background:#ffffff1a}
+.adm .adm-brand:focus-visible,.adm .adm-session .btn:focus-visible{outline-color:#f4cf7d}
+.adm .adm-agent-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:20px;align-items:start}
+.adm .adm-agent-card{padding:20px;border:1px solid #cfddd3;border-radius:20px;background:#fffefb;box-shadow:0 5px 0 #dbe5dd,0 12px 24px #173e3407}
+.adm .adm-agent-head{display:flex;align-items:center;gap:10px;margin-bottom:18px;padding-bottom:16px;border-bottom:1px solid #e0e8de;background:none;box-shadow:none}
+.adm .adm-agent-head>div{flex:1;min-width:0}
+.adm .adm-agent-head h2{font-size:17px}
+.adm .adm-agent-head p{margin:3px 0 0;font-size:12px;overflow-wrap:anywhere}
+.adm .adm-agent-head .adm-badge{font-size:10px;white-space:normal}
+.adm .adm-agent-head .adm-avatar{background:#e7edf6;color:#345b88;border-radius:50%;width:39px;height:39px;font-size:17px}
+.adm .adm-agent-fields{padding:0;margin:0 0 14px;border:0;min-inline-size:0}
+.adm .adm-agent-fields legend{margin-bottom:8px;font-size:13px;font-weight:700}
+.adm .adm-agent-capabilities{display:grid;grid-template-columns:1fr;gap:8px}
+.adm .adm-agent-capabilities .adm-check{margin:0;padding:10px;background:#f1f5ed;border:1px solid #e1e8dd;border-radius:10px;font-size:13px}
+.adm .adm-agent-card>.adm-form>.btn{justify-self:start}
+.adm .adm-agent-renew{margin-top:14px;padding-top:14px;border-top:1px solid #e0e8de}
+.adm .adm-agent-renew .btn{background:#fffefb;color:#476653;border:1px solid #bdcdbf;box-shadow:none}
+@media(max-width:1100px){.adm .adm-agent-grid{grid-template-columns:1fr}}
+@media(max-width:700px){body:has(.adm) main{padding-top:12px}.adm .adm-masthead{padding:16px;margin-bottom:18px;gap:12px;border-radius:18px}.adm .adm-brand{font-size:17px;gap:9px}.adm .adm-brand-mark{width:39px;height:39px;border-radius:12px}.adm .adm-session{gap:8px;max-width:none}.adm .adm-session-name{display:none}.adm .adm-session .btn{padding:8px 12px;font-size:13px}.adm .adm-agent-card{padding:16px}.adm .adm-agent-grid{gap:16px}}
+@media(max-width:360px){.adm .adm-brand{font-size:15px}.adm .adm-brand-mark{width:33px;height:33px}.adm .adm-brand small{font-size:11px}.adm .adm-agent-head{flex-wrap:wrap}.adm .adm-agent-head .adm-badge{margin-inline-start:49px}}
+@media print{.adm .adm-session{display:none}.adm .adm-masthead{background:white;color:#173e34;border-color:#cedacf;box-shadow:none}.adm .adm-brand{color:#173e34}.adm .adm-brand small{color:#52685e}.adm .adm-agent-grid{display:block}.adm .adm-agent-card{margin-bottom:18px;box-shadow:none;break-inside:avoid}}

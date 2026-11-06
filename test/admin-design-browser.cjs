@@ -18,7 +18,7 @@ const path=require('node:path');
   await context.addCookies([{name:'ks',value:store.session(ids.supervisor),url:base}]);
   const page=await context.newPage(),errors=[];
   page.on('pageerror',error=>errors.push(error.message));
-  const routes=['accounts','accounts/new','finance','registration','education','education/teachers/new','operations','technical','libraries','audit'];
+  const routes=['accounts','accounts/new','agents','finance','registration','education','education/teachers/new','operations','technical','libraries','audit'];
   const widths=[320,390,768,1280];
   for(const width of widths){
    await page.setViewportSize({width,height:900});

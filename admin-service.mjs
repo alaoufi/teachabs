@@ -10,11 +10,12 @@ export function adminService(store) {
     const path=url.pathname;
     if(path==='/admin/demo/switch'&&req.method==='POST'){if(req.headers.origin!==base)throw new UserError('Untrusted origin',403);limit(req,'admin-write',180);const data=await fields(req);return enter(admin.switchDemo(u.id,data.adminRole));}
     const profile=admin.profile(u.id);
-    const invitation=result=>ui.adminInviteResult(profile,{...result,activationUrl:new URL('/activate?code='+result.token,base).href});
+    const invitation=(result,section='accounts')=>ui.adminInviteResult(profile,{...result,activationUrl:new URL('/activate?code='+result.token,base).href,section});
     if(req.method==='GET') {
       if(path==='/admin')return html('الإدارة',ui.adminHome(profile,admin.overview(u.id)));
       if(path==='/admin/school')return html('الصفوف والفصول',ui.adminSchool(profile,admin.school(u.id)));
       if(path==='/admin/accounts')return html('أعضاء الإدارة',ui.adminAccounts(profile,admin.members(u.id)));
+      if(path==='/admin/agents')return html('وكلاء التسجيل',ui.adminRegistrationAgents(profile,store.registration.agents(u.id)));
       if(path==='/admin/accounts/new'){admin.requireAccess(u.id,'supervisor');return html('إضافة عضو إدارة',ui.adminAccountForm(profile));}
       const account=path.match(/^\/admin\/accounts\/([\da-f-]{36})$/i);
       if(account){const member=admin.members(u.id).find(m=>m.id===account[1]);if(!member)throw new UserError('العضو غير متاح.',404);return html('صلاحيات العضو',ui.adminAccountForm(profile,member));}
@@ -30,8 +31,12 @@ export function adminService(store) {
       if(req.headers.origin!==base)throw new UserError('تعذّر التحقق من مصدر الطلب. افتح التطبيق مجددًا.',403);
       limit(req,'admin-write',180);
       const data=await fields(req);
-      if(path==='/admin/registration-agents/new')return html('دعوة وكيل تسجيل',invitation(admin.createRegistrationAgent(u.id,{...data,register_parent:data.register_parent==='on',register_child:data.register_child==='on',manage_status:data.manage_status==='on'})),201);
-      if(path==='/admin/registration-agents/renew')return html('تجديد دعوة وكيل',invitation(admin.renewInvitation(u.id,data.agent,'agent')));
+      if(path==='/admin/agents'){
+        store.registration.setPermissions(u.id,data.agent,{register_parent:data.register_parent==='on',register_child:data.register_child==='on',manage_status:data.manage_status==='on'},Number(data.rev));
+        return redirect('/admin/agents');
+      }
+      if(path==='/admin/registration-agents/new'||path==='/admin/agents/new')return html('دعوة وكيل تسجيل',invitation(admin.createRegistrationAgent(u.id,{...data,register_parent:data.register_parent==='on',register_child:data.register_child==='on',manage_status:data.manage_status==='on'}),'registration-agents'),201);
+      if(path==='/admin/registration-agents/renew'||path==='/admin/agents/renew')return html('تجديد دعوة وكيل',invitation(admin.renewInvitation(u.id,data.agent,'agent'),'registration-agents'));
       const renew=path.match(/^\/admin\/(accounts|education\/teachers)\/([\da-f-]{36})\/renew$/i);
       if(renew)return html('تجديد رابط التفعيل',invitation(admin.renewInvitation(u.id,renew[2],renew[1]==='accounts'?'member':'teacher')));
       if(path==='/admin/demo/switch')return enter(admin.switchDemo(u.id,data.adminRole));
