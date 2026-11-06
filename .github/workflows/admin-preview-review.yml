@@ -4,7 +4,7 @@ run-name: Native Android review · ${{ github.sha }}
 on:
   push:
     branches:
-      - codex/admin-cloud-build-014
+      - codex/admin-kvm-review-approved-015
     paths:
       - .github/workflows/admin-preview-review.yml
       - ci/capture-admin-preview.py
@@ -19,9 +19,10 @@ concurrency:
 
 jobs:
   native-review:
-    if: github.repository == 'alaoufi/teachabs' && github.event.repository.private == false
+    # The user's approval covers this branch's initial review, not future pushes.
+    if: github.repository == 'alaoufi/teachabs' && github.event.repository.private == false && github.event.created == true
     runs-on: ubuntu-24.04
-    timeout-minutes: 50
+    timeout-minutes: 35
     env:
       REVIEW_SOURCE: 72cda6b1b90977d50a90c28bff5de36065f9e01e
       REVIEW_APK_SHA256: 79e8113e809cd6945f5ae5dc4185063c1e1aafd65ef51cedeadcc52247bb54b3
@@ -55,7 +56,7 @@ jobs:
             echo "ImageOS=$ImageOS ImageVersion=$ImageVersion"
             id
             ls -l /dev/kvm || true
-            echo 'Software CPU emulation only: no KVM permission or security setting changes.'
+            echo 'One approved review: temporary KVM ACL for this runner user only; original ACL will be restored.'
           } > "$RUNNER_TEMP/native-review-diagnostics/host.txt"
 
       - name: Install missing emulator runtime library from Ubuntu repositories
@@ -63,7 +64,7 @@ jobs:
         run: |
           set -euo pipefail
           sudo apt-get update -qq > "$RUNNER_TEMP/native-review-diagnostics/apt-update.log" 2>&1
-          sudo apt-get install -y --no-install-recommends libpulse0 \
+          sudo apt-get install -y --no-install-recommends libpulse0 acl \
             > "$RUNNER_TEMP/native-review-diagnostics/apt-install.log" 2>&1
 
       - name: Install official emulator packages only if licenses are already accepted
@@ -78,7 +79,19 @@ jobs:
           test -f "$ANDROID_HOME/system-images/android-34/google_apis/x86_64/package.xml"
           "$ANDROID_HOME/emulator/emulator" -version > "$RUNNER_TEMP/native-review-diagnostics/emulator-version.txt" 2>&1
 
-      - name: Create disposable emulator and boot without KVM
+      - name: Grant the approved temporary KVM access to this runner user only
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -c /dev/kvm
+          getfacl -p /dev/kvm > "$RUNNER_TEMP/native-review-diagnostics/kvm-acl.before"
+          sudo setfacl -m "u:$(id -un):rw" /dev/kvm
+          getfacl -p /dev/kvm > "$RUNNER_TEMP/native-review-diagnostics/kvm-acl.granted"
+          test -r /dev/kvm && test -w /dev/kvm
+          "$ANDROID_HOME/emulator/emulator" -accel-check \
+            > "$RUNNER_TEMP/native-review-diagnostics/acceleration-check.txt" 2>&1
+
+      - name: Create disposable emulator and boot with approved acceleration
         shell: bash
         run: |
           set -euo pipefail
@@ -88,12 +101,12 @@ jobs:
             > "$RUNNER_TEMP/native-review-diagnostics/avd-create.log" 2>&1
           nohup "$ANDROID_HOME/emulator/emulator" @teachabs-review -port 5554 \
             -no-window -no-audio -no-boot-anim -no-snapshot -gpu swiftshader \
-            -accel off -memory 2048 -cores 2 -camera-back none -camera-front none \
+            -accel on -memory 2048 -cores 2 -camera-back none -camera-front none \
             > "$RUNNER_TEMP/native-review-diagnostics/emulator.log" 2>&1 &
           emulator_pid=$!
           echo "EMULATOR_PID=$emulator_pid" >> "$GITHUB_ENV"
           ADB="$ANDROID_HOME/platform-tools/adb"
-          deadline=$((SECONDS + 900))
+          deadline=$((SECONDS + 300))
           while [ "$SECONDS" -lt "$deadline" ]; do
             if ! kill -0 "$emulator_pid" 2>/dev/null; then
               tail -n 80 "$RUNNER_TEMP/native-review-diagnostics/emulator.log" >&2
@@ -107,7 +120,7 @@ jobs:
             fi
             sleep 10
           done
-          echo 'Software emulator did not finish booting within 15 minutes.' >&2
+          echo 'Accelerated emulator did not finish booting within five minutes.' >&2
           exit 1
 
       - name: Capture all 171 native route and accessibility configurations
@@ -127,6 +140,29 @@ jobs:
             > "$RUNNER_TEMP/native-review-diagnostics/logcat.txt" 2>&1 || true
           timeout 10 "$ANDROID_HOME/platform-tools/adb" -s emulator-5554 emu kill || true
           if [ -n "${EMULATOR_PID:-}" ]; then kill "$EMULATOR_PID" 2>/dev/null || true; fi
+
+      - name: Restore and verify the original KVM permissions
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/native-review-diagnostics"
+          if [ -n "${EMULATOR_PID:-}" ]; then
+            for attempt in $(seq 1 10); do
+              if ! kill -0 "$EMULATOR_PID" 2>/dev/null; then break; fi
+              sleep 1
+            done
+            if kill -0 "$EMULATOR_PID" 2>/dev/null; then kill -KILL "$EMULATOR_PID" 2>/dev/null || true; fi
+          fi
+          BEFORE="$RUNNER_TEMP/native-review-diagnostics/kvm-acl.before"
+          if [ -f "$BEFORE" ]; then
+            sudo setfacl --restore="$BEFORE"
+            getfacl -p /dev/kvm > "$RUNNER_TEMP/native-review-diagnostics/kvm-acl.restored"
+            diff -u "$BEFORE" "$RUNNER_TEMP/native-review-diagnostics/kvm-acl.restored"
+            echo 'original-kvm-acl-restored-and-verified' > "$RUNNER_TEMP/native-review-diagnostics/kvm-restoration.txt"
+          else
+            echo 'no-kvm-acl-grant-performed' > "$RUNNER_TEMP/native-review-diagnostics/kvm-restoration.txt"
+          fi
 
       - name: Save native report and partial failure diagnostics
         if: always()
@@ -178,5 +214,6 @@ jobs:
             echo 'The exact existing APK is used without enabling JavaScript or WebView debugging.'
             echo 'Read capture-report.json for completed cases and failures. Partial evidence is not a pass.'
             echo 'Accessibility rectangles are not glyph measurements. Screenshots need visual review.'
-            echo 'No KVM permissions, security settings, paid resources, persistent credentials or new SDK licenses are changed.'
+            echo 'Only the approved temporary KVM ACL was granted. Check kvm-restoration.txt and the restore step for removal.'
+            echo 'No paid resources, persistent credentials or new SDK license acceptance.'
           } >> "$GITHUB_STEP_SUMMARY"

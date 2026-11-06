@@ -170,11 +170,33 @@ def main():
                 "density": device("shell", "wm", "density"),
                 "fontScale": device("shell", "settings", "get", "system", "font_scale")}
 
-    def dump(name):
-        device("shell", "uiautomator", "dump", remote + "/tree.xml")
-        path = args.output / (name + ".xml")
-        device("pull", remote + "/tree.xml", str(path))
-        return path
+    def dump(name, case):
+        try:
+            device("shell", "uiautomator", "dump", remote + "/tree.xml")
+            path = args.output / (name + ".xml")
+            device("pull", remote + "/tree.xml", str(path))
+            ET.parse(path)  # Malformed XML also leaves this position unconfirmed.
+            return path
+        except BaseException as xml_error:
+            # One bounded diagnostic attempt only. It cannot confirm a route or
+            # complete a case, and its failure must not replace the XML failure.
+            diagnostic = {"kind": "unconfirmed-diagnostic-only", "routeConfirmed": False,
+                          "visualApproval": False, "position": name,
+                          "xmlFailure": str(xml_error), "timeoutSeconds": 20,
+                          "status": "attempted"}
+            case.setdefault("diagnostics", []).append(diagnostic)
+            case["routeConfirmed"] = False
+            case["status"] = "failed-unconfirmed"
+            try:
+                png = device("exec-out", "screencap", "-p", binary=True, timeout=20)
+                require(png[:8] == b"\x89PNG\r\n\x1a\n", "Invalid diagnostic screenshot PNG")
+                path = args.output / (name + "-unconfirmed.png")
+                path.write_bytes(png)
+                diagnostic.update(status="saved", screenshot=path.name,
+                                  screenshotSha256=hashlib.sha256(png).hexdigest())
+            except BaseException as diagnostic_error:
+                diagnostic.update(status="failed", error=str(diagnostic_error))
+            raise
 
     def snapshot(name, xml, width):
         path = args.output / (name + ".png")
@@ -229,7 +251,7 @@ def main():
                     confirmed = False
                     for attempt in range(4):
                         time.sleep(0.5)
-                        xml = dump(name + "-top")
+                        xml = dump(name + "-top", case)
                         geometry = text_geometry(xml, physical, 2400)
                         activity = device("shell", "dumpsys", "activity", "activities")
                         foreground = re.search(r"(?:mResumedActivity|topResumedActivity)[^\n]*app\.teachabs\.adminpreview", activity)
@@ -242,7 +264,7 @@ def main():
                     require(confirmed, f"Required route was not confirmed by UIAutomator h1: {route}")
                     device("shell", "input", "swipe", str(physical // 2), "1900", str(physical // 2), "600", "450")
                     time.sleep(0.4)
-                    xml = dump(name + "-scroll")
+                    xml = dump(name + "-scroll", case)
                     case["positions"]["scroll"] = snapshot(name + "-scroll", xml, physical)
                     case["status"] = "completed"
                     report["completedCases"].append(name)
