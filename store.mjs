@@ -1,3 +1,4 @@
+import {createGroupStore} from './group-store.mjs';
 import {createAdminStore} from './admin-model.mjs';
 import {registrationService} from './registration.mjs';
 import { DatabaseSync } from 'node:sqlite';
@@ -218,7 +219,8 @@ export function openStore(path) {
   const writeBoard=(id,state)=>run('INSERT INTO lesson_boards VALUES(?,?,?) ON CONFLICT(id) DO UPDATE SET state=excluded.state,updated=excluded.updated',id,JSON.stringify(state),Date.now());
   const admin=createAdminStore({db,one,all,run,transaction,user,UserError,subjects,grades,duration,validEmail,secret,hash,tour});
   const adminActive=id=>{const m=one('SELECT active FROM admin_members WHERE user=?',id);return !m||m.active===1;};
-  return {admin,registration,readBoard,writeBoard,close:()=>db.close(),user,parent,invite,activate,login,child,ownedChild,slot,offers,book,bookings,cancel,withdraw,tour,
+  const group=createGroupStore({db,one,all,run,transaction});
+  return {admin,group,registration,readBoard,writeBoard,close:()=>db.close(),user,parent,invite,activate,login,child,ownedChild,slot,offers,book,bookings,cancel,withdraw,tour,
     placeActivity,changePlace,childResults,
     children:id=>all('SELECT * FROM children WHERE parent=? ORDER BY rowid',id),
     schedule:id=>all(`SELECT s.*,EXISTS(SELECT 1 FROM bookings b WHERE b.slot=s.id AND b.status='confirmed') booked FROM slots s WHERE teacher=? AND active=1 AND start>? ORDER BY start`,id,Date.now()),

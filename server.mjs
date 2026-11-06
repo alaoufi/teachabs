@@ -1,5 +1,6 @@
 import {registrationDashboard,registrationAdmin} from './registration-views.mjs';
 import { adminService } from './admin-service.mjs';
+import { groupService } from './group-lesson.mjs';
 import {serveAsset} from './asset-response.mjs';
 import { demoHub } from './demo.mjs';
 import { classroomLab } from './classroom-lab.mjs';
@@ -27,6 +28,8 @@ files['/classroom-lab-model.js']='text/javascript; charset=utf-8';
 files['/classroom-lab.css']='text/css; charset=utf-8';
 files['/science-shadow.js']='text/javascript; charset=utf-8';
 files['/shadow-client.js']='text/javascript; charset=utf-8';
+for(const f of ['group-plan.js','group-view.js','group-planner.js','group-teacher.js','group-student.js'])files['/'+f]='text/javascript; charset=utf-8';
+files['/group-lesson.css']='text/css; charset=utf-8';
 files['/science-shadow-model.js']='text/javascript; charset=utf-8';
 files['/science-shadow.css']='text/css; charset=utf-8';
 async function fields(req){
@@ -39,6 +42,7 @@ async function fields(req){
 export function createApp(store,{origin=process.env.APP_ORIGIN}={}) {
   const lessons=lessonService(store);
   const administration=adminService(store);
+  const groups=groupService(store);
   const limits=new Map();
   function limit(req,key,max){
     const now=Date.now();
@@ -72,6 +76,7 @@ export function createApp(store,{origin=process.env.APP_ORIGIN}={}) {
       route=url.pathname;const q=Object.fromEntries(url.searchParams);
       const uid=store.resolve(cookie);u=uid?store.user(uid):null;
       if(administration.matches(route)&&route!=='/admin/registration-agents')return await administration.handle({req,url,u,base,html,redirect,fields,limit,enter});
+      if(groups.matches(route))return await groups.handle({req,res,url,u,base,html,redirect,fields});
       if(lessons.matches(route))return await lessons.handle({req,res,url,u,cookie,base,html,redirect,fields,limit});
       if(req.method==='GET'){
         if(route==='/classroom-lab'){

@@ -1,0 +1,207 @@
+// Planner: the teacher orders the lesson steps before class and prepares content, questions and narration.
+import {STEP_TYPES, NARRATION, SUBJECTS, ORIGINAL_PAGES, LIMITS, renderOriginalPage} from './group-plan.js';
+import {el} from './group-view.js';
+
+const root = document.getElementById('planner'), id = root.dataset.id;
+const $ = x => document.getElementById(x);
+const status = (text, bad = false) => { $('pl-status').textContent = text; $('pl-status').classList.toggle('is-error', bad); };
+let plan = null, dirty = false;
+const uid = prefix => prefix + '-' + Math.random().toString(36).slice(2, 8);
+const touch = () => { dirty = true; status('توجد تعديلات غير محفوظة.'); };
+window.addEventListener('beforeunload', e => { if (dirty) { e.preventDefault(); e.returnValue = ''; } });
+
+function field(label, input) { return el('label', {class: 'pl-field'}, el('span', {text: label}), input); }
+function textInput(value, max, onInput, attrs = {}) { return el('input', {value: value ?? '', maxlength: max, ...attrs, oninput: e => { onInput(e.target.value); touch(); }}); }
+function area(value, max, onInput, rows = 2) { const t = el('textarea', {maxlength: max, rows, oninput: e => { onInput(e.target.value); touch(); }}); t.value = value ?? ''; return t; }
+function move(list, i, d) { const j = i + d; if (j < 0 || j >= list.length) return; [list[i], list[j]] = [list[j], list[i]]; touch(); render(); }
+function smallButtons(list, i, label) {
+  return el('span', {class: 'pl-move'},
+    el('button', {type: 'button', 'aria-label': `تحريك ${label} لأعلى`, disabled: i === 0, onclick: () => move(list, i, -1)}, '▲'),
+    el('button', {type: 'button', 'aria-label': `تحريك ${label} لأسفل`, disabled: i === list.length - 1, onclick: () => move(list, i, 1)}, '▼'),
+    el('button', {type: 'button', class: 'quiet', 'aria-label': `حذف ${label}`, onclick: () => { if (confirm('حذف ' + label + '؟')) { list.splice(i, 1); touch(); render(); } }}, 'حذف'));
+}
+
+// Shrinks a picture so it fits the per-image limit; JPEG keeps photos small.
+function readImage(file) {
+  return new Promise((resolve, reject) => {
+    if (!/^image\/(png|jpeg|webp)$/.test(file.type)) return reject(new Error('اختر صورة PNG أو JPEG أو WebP.'));
+    const img = new Image(), url = URL.createObjectURL(file);
+    img.onload = () => {
+      let scale = Math.min(1, 1600 / img.width, 1000 / img.height), data;
+      for (let attempt = 0; attempt < 6; attempt++) {
+        const c = document.createElement('canvas'); c.width = Math.round(img.width * scale); c.height = Math.round(img.height * scale);
+        const ctx = c.getContext('2d'); ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, c.width, c.height); ctx.drawImage(img, 0, 0, c.width, c.height);
+        data = c.toDataURL('image/jpeg', 0.82);
+        if (data.length <= LIMITS.image) break;
+        scale *= 0.75;
+      }
+      URL.revokeObjectURL(url);
+      data.length <= LIMITS.image ? resolve(data) : reject(new Error('الصورة كبيرة جدًا.'));
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('تعذّر قراءة الصورة.')); };
+    img.src = url;
+  });
+}
+function imagePicker(label, onPick) {
+  return field(label, el('input', {type: 'file', accept: 'image/png,image/jpeg,image/webp', onchange: async e => {
+    const file = e.target.files[0]; if (!file) return;
+    try { onPick(await readImage(file)); touch(); render(); } catch (err) { status(err.message, true); }
+  }}));
+}
+
+// ---- narration (live voice, recorded clip, or device speech) ----
+let recorder = null;
+function narrationEditor(step) {
+  const n = step.narration ||= {mode: 'live'};
+  const box = el('div', {class: 'pl-narration'});
+  const select = el('select', {onchange: e => { step.narration = {mode: e.target.value}; touch(); render(); }}, Object.entries(NARRATION).map(([k, v]) => el('option', {value: k, selected: k === n.mode}, v)));
+  box.append(field('الشرح الصوتي لهذه الخطوة', select));
+  if (n.mode === 'live') box.append(el('p', {class: 'pl-hint', text: 'تشرح بصوتك أثناء الحصة.'}));
+  if (n.mode === 'speech') {
+    box.append(field('النص الذي يقرؤه الجهاز', area(n.text, 600, v => { n.text = v; }, 3)));
+    box.append(el('button', {type: 'button', class: 'outline', onclick: () => {
+      if (!('speechSynthesis' in window)) return status('هذا المتصفح لا يدعم القراءة الآلية.', true);
+      speechSynthesis.cancel(); const u = new SpeechSynthesisUtterance(n.text || ''); u.lang = 'ar-SA';
+      const arabic = speechSynthesis.getVoices().find(v => v.lang?.toLowerCase().startsWith('ar')); if (arabic) u.voice = arabic; else status('لا يوجد صوت عربي مثبت على هذا الجهاز؛ قد تختلف القراءة على أجهزة الطلاب.', true);
+      speechSynthesis.speak(u);
+    }}, 'استمع للتجربة'));
+  }
+  if (n.mode === 'recorded') {
+    if (n.audio) box.append(el('audio', {controls: true, src: n.audio}), el('button', {type: 'button', class: 'quiet', onclick: () => { delete n.audio; touch(); render(); }}, 'حذف التسجيل'));
+    const rec = el('button', {type: 'button', class: 'outline'}, recorder?.step === step.id ? '■ إيقاف التسجيل' : (n.audio ? 'إعادة التسجيل' : '● بدء التسجيل'));
+    rec.addEventListener('click', async () => {
+      if (recorder?.step === step.id) return recorder.media.stop();
+      if (recorder) return status('أوقف التسجيل الجاري أولًا.', true);
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({audio: {echoCancellation: true, noiseSuppression: true}});
+        const type = ['audio/webm;codecs=opus', 'audio/ogg;codecs=opus', 'audio/mp4'].find(t => MediaRecorder.isTypeSupported?.(t)) || '';
+        const media = new MediaRecorder(stream, type ? {mimeType: type, audioBitsPerSecond: 48000} : {}), chunks = [];
+        recorder = {step: step.id, media};
+        media.ondataavailable = e => chunks.push(e.data);
+        media.onstop = () => {
+          stream.getTracks().forEach(t => t.stop()); clearTimeout(recorder?.timer); recorder = null;
+          const reader = new FileReader();
+          reader.onload = () => { if (reader.result.length > LIMITS.audio) status('التسجيل طويل؛ اجعله أقصر من دقيقة ونصف.', true); else { n.audio = reader.result.replace(/^data:audio\/([a-z0-9]+);codecs=([a-z0-9.]+);/, 'data:audio/$1;codecs=$2;'); touch(); } render(); };
+          reader.readAsDataURL(new Blob(chunks, {type: media.mimeType || 'audio/webm'}));
+        };
+        media.start(); recorder.timer = setTimeout(() => media.state === 'recording' && media.stop(), 90_000);
+        status('جارٍ التسجيل… تحدث بوضوح ثم اضغط إيقاف (حد أقصى دقيقة ونصف).'); render();
+      } catch { recorder = null; status('تعذّر استخدام الميكروفون. اسمح للمتصفح باستخدامه ثم أعد المحاولة.', true); }
+    });
+    box.append(rec);
+  }
+  return box;
+}
+
+function questionsEditor(step) {
+  const wrap = el('div', {class: 'pl-questions'});
+  step.questions.forEach((q, i) => {
+    const card = el('div', {class: 'pl-q'}, el('div', {class: 'pl-q-head'}, el('b', {text: `سؤال ${i + 1} · ${q.kind === 'text' ? 'إجابة مكتوبة' : 'اختيار'}`}), smallButtons(step.questions, i, `السؤال ${i + 1}`)),
+      field('نص السؤال', textInput(q.prompt, 200, v => { q.prompt = v; })));
+    if (q.kind !== 'text') {
+      q.options.forEach((o, j) => card.append(el('div', {class: 'pl-option'},
+        el('input', {type: 'radio', name: 'ans-' + q.id, checked: q.answer === j, 'aria-label': `الخيار ${j + 1} هو الصحيح`, onchange: () => { q.answer = j; touch(); }}),
+        textInput(o, 100, v => { q.options[j] = v; }, {'aria-label': `الخيار ${j + 1}`}),
+        q.options.length > 2 ? el('button', {type: 'button', class: 'quiet', onclick: () => { q.options.splice(j, 1); if (q.answer >= q.options.length) q.answer = 0; touch(); render(); }}, 'حذف') : null)));
+      if (q.options.length < 4) card.append(el('button', {type: 'button', class: 'quiet', onclick: () => { q.options.push(''); touch(); render(); }}, '+ خيار'));
+      card.append(el('p', {class: 'pl-hint', text: 'حدد الدائرة بجانب الإجابة الصحيحة.'}));
+    }
+    wrap.append(card);
+  });
+  if (step.questions.length < LIMITS.questions) wrap.append(el('div', {class: 'pl-row'},
+    el('button', {type: 'button', class: 'outline', onclick: () => { step.questions.push({id: uid('q'), kind: 'choice', prompt: '', options: ['', ''], answer: 0}); touch(); render(); }}, '+ سؤال اختيار'),
+    el('button', {type: 'button', class: 'outline', onclick: () => { step.questions.push({id: uid('q'), kind: 'text', prompt: ''}); touch(); render(); }}, '+ سؤال بإجابة مكتوبة')));
+  return wrap;
+}
+
+function stepEditor(step) {
+  const box = el('div', {class: 'pl-body'});
+  if (step.type === 'page') {
+    const original = step.source !== 'upload';
+    box.append(el('div', {class: 'pl-row', role: 'radiogroup', 'aria-label': 'مصدر الصفحة'},
+      el('label', {class: 'pl-radio'}, el('input', {type: 'radio', name: 'src-' + step.id, checked: original, onchange: () => { Object.assign(step, {source: 'original', page: step.page || 'science-4-light'}); delete step.image; touch(); render(); }}), 'صفحة أصلية للتجربة'),
+      el('label', {class: 'pl-radio'}, el('input', {type: 'radio', name: 'src-' + step.id, checked: !original, onchange: () => { step.source = 'upload'; touch(); render(); }}), 'رفع صورة صفحة')));
+    if (original) {
+      box.append(field('الصفحة', el('select', {onchange: e => { step.page = e.target.value; touch(); render(); }}, Object.entries(ORIGINAL_PAGES).map(([k, p]) => el('option', {value: k, selected: k === step.page}, p.title)))));
+      const preview = el('div', {class: 'pl-preview'}); preview.innerHTML = renderOriginalPage(step.page); box.append(preview);
+    } else {
+      box.append(imagePicker('صورة الصفحة', data => { step.image = data; }));
+      if (step.image) box.append(el('img', {class: 'pl-preview', src: step.image, alt: 'معاينة الصفحة'}));
+      box.append(el('label', {class: 'pl-check'}, el('input', {type: 'checkbox', checked: step.rights === true, onchange: e => { step.rights = e.target.checked; touch(); }}),
+        'أؤكد أن لدي حق عرض هذه الصفحة على طلابي (مثل ترخيص المدرسة أو مادة من إعدادي). لا تنشر الصفحة خارج الحصة.'));
+    }
+  } else if (step.type === 'interactive') {
+    box.append(field('النشاط', el('select', {disabled: true}, el('option', {}, 'الضوء والظل — علوم الصف الرابع'))), el('p', {class: 'pl-hint', text: 'تحرك الشمس أثناء الحصة، وتخفي الظل ليتوقع الطلاب ثم تكشفه.'}));
+  } else if (step.type === 'board') {
+    step.items.forEach((item, i) => {
+      const card = el('div', {class: 'pl-item'}, el('div', {class: 'pl-q-head'}, el('b', {text: `عنصر ${i + 1} · ${item.kind === 'image' ? 'صورة' : 'نص'}`}), smallButtons(step.items, i, `العنصر ${i + 1}`)));
+      if (item.kind === 'image') card.append(el('img', {class: 'pl-thumb', src: item.image, alt: ''}), field('وصف قصير (اختياري)', textInput(item.caption, 100, v => { item.caption = v; })));
+      else card.append(field('النص', area(item.text, 300, v => { item.text = v; })));
+      box.append(card);
+    });
+    if (step.items.length < LIMITS.items) box.append(el('div', {class: 'pl-row'},
+      el('button', {type: 'button', class: 'outline', onclick: () => { step.items.push({id: uid('i'), kind: 'text', text: ''}); touch(); render(); }}, '+ نص مجهز'),
+      imagePicker('+ صورة مجهزة', data => { step.items.push({id: uid('i'), kind: 'image', image: data, caption: ''}); })));
+    box.append(el('p', {class: 'pl-hint', text: 'تبدأ العناصر مخفية في الحصة، وتظهرها واحدًا واحدًا أثناء الشرح.'}));
+  } else if (step.type === 'questions') {
+    box.append(questionsEditor(step), el('p', {class: 'pl-hint', text: 'في الحصة تفتح الإجابة، وترى النتائج وحدك، ثم تختار ما تعرضه للجميع.'}));
+  } else if (step.type === 'homework') {
+    box.append(field('تعليمات الواجب', area(step.instructions, 300, v => { step.instructions = v; })), questionsEditor(step));
+  } else {
+    step.criteria.forEach((c, i) => box.append(el('div', {class: 'pl-option'}, textInput(c, 40, v => { step.criteria[i] = v; }, {'aria-label': `المعيار ${i + 1}`}),
+      step.criteria.length > 1 ? el('button', {type: 'button', class: 'quiet', onclick: () => { step.criteria.splice(i, 1); touch(); render(); }}, 'حذف') : null)));
+    if (step.criteria.length < LIMITS.criteria) box.append(el('button', {type: 'button', class: 'quiet', onclick: () => { step.criteria.push(''); touch(); render(); }}, '+ معيار'));
+    box.append(el('p', {class: 'pl-hint', text: 'تقدير من ١ إلى ٤ لكل معيار مع ملاحظة. يرى كل طالب تقييمه وحده عندما تنشره.'}));
+  }
+  return box;
+}
+
+const openSteps = new Set();
+function render() {
+  $('pl-heading').textContent = plan.title || 'درس بلا عنوان';
+  $('pl-meta').replaceChildren(
+    field('عنوان الدرس', textInput(plan.title, 80, v => { plan.title = v; $('pl-heading').textContent = v; })),
+    field('المادة', el('select', {onchange: e => { plan.subject = e.target.value; touch(); }}, Object.entries(SUBJECTS).map(([k, v]) => el('option', {value: k, selected: k === plan.subject}, v)))),
+    field('الصف', el('select', {onchange: e => { plan.grade = Number(e.target.value); touch(); }}, [1, 2, 3, 4, 5, 6].map(g => el('option', {value: g, selected: g === plan.grade}, 'الصف ' + ['', 'الأول', 'الثاني', 'الثالث', 'الرابع', 'الخامس', 'السادس'][g])))));
+  $('pl-steps').replaceChildren(...plan.steps.map((step, i) => {
+    const details = el('details', {class: 'pl-step', open: openSteps.has(step.id), ontoggle: e => e.target.open ? openSteps.add(step.id) : openSteps.delete(step.id)},
+      el('summary', {}, el('span', {class: 'pl-num', text: String(i + 1)}), el('span', {class: 'pl-type', text: STEP_TYPES[step.type].short}), el('span', {class: 'pl-title', text: step.title || 'بلا عنوان'})),
+      el('div', {class: 'pl-step-tools'}, smallButtons(plan.steps, i, `الخطوة ${i + 1}`)),
+      field('عنوان الخطوة', textInput(step.title, 80, v => { step.title = v; details.querySelector('.pl-title').textContent = v || 'بلا عنوان'; })),
+      el('label', {class: 'pl-check'}, el('input', {type: 'checkbox', checked: step.startHidden === true, onchange: e => { step.startHidden = e.target.checked; touch(); }}), 'تبدأ مخفية عن الطلاب حتى أظهرها'),
+      stepEditor(step), narrationEditor(step));
+    return el('li', {}, details);
+  }));
+}
+
+const templates = {
+  page: () => ({type: 'page', title: 'صفحة المنهج', source: 'original', page: 'science-4-light'}),
+  interactive: () => ({type: 'interactive', title: 'شرح تفاعلي', activity: 'shadows'}),
+  board: () => ({type: 'board', title: 'على السبورة', items: [{id: uid('i'), kind: 'text', text: ''}]}),
+  questions: () => ({type: 'questions', title: 'أسئلة', questions: [{id: uid('q'), kind: 'choice', prompt: '', options: ['', ''], answer: 0}]}),
+  homework: () => ({type: 'homework', title: 'الواجب', instructions: '', questions: [{id: uid('q'), kind: 'choice', prompt: '', options: ['', ''], answer: 0}]}),
+  evaluation: () => ({type: 'evaluation', title: 'تقييم الطلاب', criteria: ['المشاركة', 'فهم الدرس']})
+};
+for (const button of document.querySelectorAll('[data-add]')) button.addEventListener('click', () => {
+  if (plan.steps.length >= LIMITS.steps) return status('وصلت إلى الحد الأقصى للخطوات.', true);
+  const step = {id: uid('s'), narration: {mode: 'live'}, ...templates[button.dataset.add]()};
+  plan.steps.push(step); openSteps.add(step.id); touch(); render();
+  document.querySelector('#pl-steps li:last-child summary')?.scrollIntoView({block: 'center'});
+});
+
+$('pl-save').addEventListener('click', async () => {
+  const button = $('pl-save'); button.disabled = true; status('جارٍ الحفظ…');
+  try {
+    const r = await fetch(location.pathname, {method: 'POST', headers: {'content-type': 'application/json'}, body: JSON.stringify(plan)});
+    const data = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(data.error || 'تعذّر الحفظ.');
+    dirty = false; status('حُفظ الدرس. يمكنك بدء الحصة.');
+  } catch (e) { status(e.message, true); } finally { button.disabled = false; }
+});
+for (const form of document.querySelectorAll('.gl-start, .gl-delete')) form.addEventListener('submit', e => {
+  if (form.classList.contains('gl-delete') && !confirm('حذف الدرس نهائيًا؟')) return e.preventDefault();
+  if (form.classList.contains('gl-start') && dirty && !confirm('توجد تعديلات غير محفوظة. البدء بآخر نسخة محفوظة؟')) return e.preventDefault();
+  dirty = false;
+});
+
+fetch(location.pathname + '.json').then(r => r.json()).then(data => { plan = data; render(); status('رتّب الخطوات وجهزها، ثم احفظ.'); }).catch(() => status('تعذّر تحميل الدرس.', true));
