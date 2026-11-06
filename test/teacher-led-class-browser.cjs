@@ -22,6 +22,7 @@ const assert = require('node:assert/strict'), fs = require('node:fs'), path = re
     for (const p of [t, s]) p.on('pageerror', e => errors.push(e.message));
     await t.goto(base + '/lesson/teacher'); await t.locator('form[action*="seat=teacher"] button').click();
     await s.goto(base + '/lesson/preview');
+    for (const p of [t, s]) await p.locator('.class-activity details:has(#shadow-activity) > summary').click(); // optional panel, closed by default
     for (const p of [t, s]) await p.waitForFunction(() => !document.querySelector('#sa-hour').disabled || document.querySelector('#sa-role').textContent.includes('المعلم يقود'));
     await t.waitForFunction(() => !document.querySelector('#sa-hour').disabled);
     assert.equal(await s.locator('#sa-hour').isDisabled(), true, 'student cannot drive before handover');

@@ -33,7 +33,7 @@ const nameOf = id => view.students.find(s => s.id === id)?.name || 'طالب';
 
 function renderSequence() {
   // A compact strip above the board: number and short name of each step; the current one is marked.
-  $('gl-steps').replaceChildren(...plan.steps.map((s, i) => el('li', {class: (i === view.state.index ? 'is-current' : '') + (i === view.state.index && !view.state.shown ? ' is-hidden-step' : '')},
+  $('gl-steps').replaceChildren(...plan.steps.map((s, i) => el('li', {'data-type': s.type, class: (i === view.state.index ? 'is-current' : '') + (i === view.state.index && !view.state.shown ? ' is-hidden-step' : '')},
     el('button', {type: 'button', title: `${i + 1}. ${s.title} (${STEP_TYPES[s.type].label})`, 'aria-current': i === view.state.index ? 'step' : null, onclick: () => command({op: 'go', index: i})},
       el('span', {class: 'gl-num', text: String(i + 1)}), el('span', {class: 'gl-step-name', text: STEP_TYPES[s.type].short})))));
   $('gl-prev').disabled = view.state.index === 0; $('gl-next').disabled = view.state.index === plan.steps.length - 1;

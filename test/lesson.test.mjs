@@ -57,7 +57,7 @@ test('تجربة نافذتي الدرس لها إذن منفصل عن حساب 
   assert.equal(entry.status,200);
   assert.match(await entry.text(),/action="\/lesson\/preview\/start\?seat=teacher"/);
   const fromHome=await fetch(base+'/');
-  assert.match(await fromHome.text(),/href="\/lesson\/teacher"/);
+  assert.match(await fromHome.text(),/href="\/demo#group"/); // «مدخل المعلم» opens the one-board class
   const cold=await fetch(base+'/lesson/preview?seat=teacher',{redirect:'manual'});
   assert.equal(cold.headers.get('location'),'/lesson/teacher');
   const teacherTour=await fetch(base+'/lesson/preview/start?seat=teacher',{method:'POST',headers:{origin:base},redirect:'manual'});

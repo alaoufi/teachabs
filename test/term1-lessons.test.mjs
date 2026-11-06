@@ -60,9 +60,9 @@ test('place value: digits, values, expanded form, hidden value, place-dependent 
 test('cells and place-value templates: six ordered steps, original pages, valid narrator and texts', () => {
   for (const [id, page, subject] of [['cells', 'science-4-cells', 'science'], ['placevalue', 'math-4-placevalue', 'math']]) {
     const plan = validatePlan(LESSON_TEMPLATES[id].plan());
-    assert.deepEqual(plan.steps.map(s => s.type), ['page', 'interactive', 'board', 'questions', 'homework', 'evaluation']);
+    assert.deepEqual(plan.steps.map(s => s.type), ['page', 'board', 'interactive', 'questions', 'homework', 'evaluation']);
     assert.equal(plan.subject, subject); assert.equal(plan.steps[0].page, page); assert.ok(ORIGINAL_PAGES[page]);
-    assert.ok(plan.steps[1].narrator.segments.length >= 7);
+    assert.ok(plan.steps[2].narrator.segments.length >= 7);
     for (const q of plan.steps[3].questions.filter(q => q.kind === 'choice')) assert.ok(q.answer >= 0 && q.answer < q.options.length);
     const list = Object.values(texts).find(Array.isArray);
     assert.ok(list.filter(t => t.lesson === page).length >= 10, page); assert.ok(TEXT_LESSONS[page]);

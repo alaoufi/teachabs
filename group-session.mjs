@@ -99,7 +99,7 @@ export function teacherCommand(state, plan, cmd) {
       item.x = Math.round(clampX(cmd.x)); item.y = Math.round(clampY(cmd.y)); return s;
     }
     case 'place': {
-      need(step.type === 'board' && step.items.some(i => i.id === cmd.item), 'العنصر غير موجود في السبورة المجهزة.', 404);
+      need(step.type === 'board' && step.items.some(i => i.id === cmd.item), 'العنصر غير موجود في النصوص المجهزة.', 404);
       s.places ||= {};
       if (cmd.reset === true) { const p = {...(s.places[step.id] || {})}; delete p[cmd.item]; s.places[step.id] = p; return s; }
       need(Number.isFinite(cmd.x) && Number.isFinite(cmd.y) && cmd.x >= 0 && cmd.x <= 1000 && cmd.y >= 0 && cmd.y <= 600, 'موضع غير صالح.');

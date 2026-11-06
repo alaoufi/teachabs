@@ -19,7 +19,7 @@ const assert = require('node:assert/strict'), fs = require('node:fs'), path = re
     assert.deepEqual(await t.locator('.gl-templates form button').allTextContents(), ['الضوء والظل', 'حالات المادة']);
     await t.locator('.gl-templates button', {hasText: 'حالات المادة'}).click(); await t.waitForURL(/\/teach\/plans\/[0-9a-f-]{36}$/);
     await t.waitForSelector('#pl-steps li');
-    const inter = t.locator('#pl-steps li').nth(1); await inter.locator('summary').click();
+    const inter = t.locator('#pl-steps li').nth(2); await inter.locator('summary').click();
     assert.equal(await inter.locator('.pl-body select').first().inputValue(), 'matter');
     assert.equal(await inter.locator('.pl-seg').count(), 7);
     assert.match(await inter.locator('.pl-seg').nth(3).locator('.pl-q-head b').textContent(), /١٠٠°س/);
@@ -32,7 +32,7 @@ const assert = require('node:assert/strict'), fs = require('node:fs'), path = re
     await s.goto(base + '/join?code=' + code); await s.getByLabel('اسمك الأول').fill('نورة'); await s.getByRole('button', {name: 'دخول الحصة'}).click();
     await s.waitForSelector('#gl-content .gl-page svg');
     assert.equal(await s.locator('body > header').isVisible(), false, 'site header hidden for students');
-    await t.locator('#gl-next').click(); await s.waitForSelector('#gl-content .matter-scene');
+    await t.locator('#gl-steps li[data-type=interactive] button').click(); await s.waitForSelector('#gl-content .matter-scene');
     const phase = p => p.evaluate(() => document.querySelector('#gl-content .m-phase')?.textContent);
     assert.equal(await phase(s), 'سائل (ماء)');
     // Teacher heats the water to boiling with the slider; everyone sees boiling.

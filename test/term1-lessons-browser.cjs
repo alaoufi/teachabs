@@ -33,7 +33,7 @@ const assert = require('node:assert/strict'), fs = require('node:fs'), path = re
     const s = await sc.newPage(); watch(s);
     await s.goto(base + '/join?code=' + code); await s.getByLabel('اسمك الأول').fill('ريم'); await s.getByRole('button', {name: 'دخول الحصة'}).click();
     await s.waitForSelector('#gl-content .gl-page');
-    await t.locator('#gl-next').click(); await s.waitForSelector('#gl-content .cells-scene');
+    await t.locator('#gl-steps li[data-type=interactive] button').click(); await s.waitForSelector('#gl-content .cells-scene');
     const quick = t.locator('#gl-quick');
     for (let i = 0; i < 3; i++) await quick.getByRole('button', {name: /تكبير/}).click();
     await s.waitForFunction(() => document.querySelector('#gl-content .cells-scene .c-crumb.is-on text')?.textContent === 'الخلية');
@@ -66,14 +66,14 @@ const assert = require('node:assert/strict'), fs = require('node:fs'), path = re
     // ---- place value ----
     await t.goto(base + '/teach/plans');
     await math.locator('li.is-ready button').click(); await t.waitForURL(/\/teach\/plans\/[0-9a-f-]{36}$/); await t.waitForSelector('#pl-steps li');
-    const inter = t.locator('#pl-steps li').nth(1); await inter.locator('summary').click();
+    const inter = t.locator('#pl-steps li').nth(2); await inter.locator('summary').click();
     assert.equal(await inter.locator('.pl-seg').count(), 7);
     assert.equal(await inter.locator('.pl-seg').first().locator('input[type=number]').inputValue(), '7', 'large ranges use a number box, not a giant menu');
     await t.getByRole('button', {name: 'بدء الحصة بهذا الترتيب'}).click(); await t.waitForURL(/\/teach\/live\/[A-Z0-9]{6}$/);
     const code2 = t.url().split('/').pop();
     await s.goto(base + '/join?code=' + code2); await s.getByLabel('اسمك الأول').fill('ريم'); await s.getByRole('button', {name: 'دخول الحصة'}).click();
     await s.waitForSelector('#gl-content .gl-page');
-    await t.locator('#gl-next').click(); await s.waitForSelector('#gl-content .pv-scene');
+    await t.locator('#gl-steps li[data-type=interactive] button').click(); await s.waitForSelector('#gl-content .pv-scene');
     assert.match(await s.locator('#gl-content .pv-scene').textContent(), /٤٠٬٠٠٠/);
     await quick.locator('select[aria-label="المنزلة"]').selectOption('thousands');
     await quick.getByRole('button', {name: '+ ١٬٠٠٠'}).click();

@@ -3,14 +3,17 @@
 import {ACTIVITIES, cleanValues} from './activities.js';
 
 export const STEP_TYPES = {
-  page: {label: 'عرض المنهج على السبورة', short: 'المنهج'},
+  page: {label: 'صفحة المنهج على السبورة', short: 'المنهج'},
   interactive: {label: 'الشرح التفاعلي المطوّر', short: 'الشرح التفاعلي'},
-  board: {label: 'أدوات السبورة المجهزة مسبقًا', short: 'السبورة المجهزة'},
+  board: {label: 'نصوص وصور مجهزة قبل الحصة', short: 'النصوص المجهزة'},
   questions: {label: 'أسئلة يجيب عنها الطلاب', short: 'الأسئلة'},
   homework: {label: 'الواجب', short: 'الواجب'},
   evaluation: {label: 'تقييم الطلاب', short: 'التقييم'}
 };
-export const STEP_ORDER = ['page', 'interactive', 'board', 'questions', 'homework', 'evaluation'];
+// The order of a lesson on the one board: the curriculum page, prepared texts, the interactive explanation, then questions.
+export const STEP_ORDER = ['page', 'board', 'interactive', 'questions', 'homework', 'evaluation'];
+/** Puts a template's steps in the lesson order (stable within a type). */
+export function inLessonOrder(plan) { plan.steps.sort((a, b) => STEP_ORDER.indexOf(a.type) - STEP_ORDER.indexOf(b.type)); return plan; }
 
 export const NARRATION = {
   live: 'شرح مباشر بصوت المعلم',
@@ -162,10 +165,10 @@ export const RATING = ['', 'يحتاج دعمًا', 'مقبول', 'جيد', 'م�
 
 /** Ready lesson templates for grade 4 (original content). Cells and place value follow the 1447 AH Ministry book order; light and matter are not in term 1. */
 export const LESSON_TEMPLATES = {
-  cells: {title: 'الخلايا', subject: 'science', plan: () => cellsPlan()},
-  placevalue: {title: 'القيمة المنزلية ضمن مئات الألوف', subject: 'math', plan: () => placeValuePlan()},
-  light: {title: 'الضوء والظل', subject: 'science', plan: () => defaultPlan()},
-  matter: {title: 'حالات المادة', subject: 'science', plan: () => matterPlan()}
+  cells: {title: 'الخلايا', subject: 'science', plan: () => inLessonOrder(cellsPlan())},
+  placevalue: {title: 'القيمة المنزلية ضمن مئات الألوف', subject: 'math', plan: () => inLessonOrder(placeValuePlan())},
+  light: {title: 'الضوء والظل', subject: 'science', plan: () => inLessonOrder(defaultPlan())},
+  matter: {title: 'حالات المادة', subject: 'science', plan: () => inLessonOrder(matterPlan())}
 };
 
 /** Science 4, term 1, unit 1, chapter 1, lesson 1 (order from the 1447 AH Ministry book; content is original). */
@@ -173,7 +176,7 @@ export function cellsPlan() {
   return {version: 1, title: 'الخلايا', subject: 'science', grade: 4, steps: [
     {id: 'curriculum', type: 'page', title: 'نقرأ صفحة الدرس', source: 'original', page: 'science-4-cells', narration: {mode: 'live'}, snippets: ['الخلية', 'النسيج', 'العضو', 'الجهاز الحيوي', 'النواة', 'جدار الخلية']},
     {id: 'explain', type: 'interactive', title: 'نجرب: نكبّر حتى نرى الخلية', activity: 'cells', snippets: ['خلايا ← نسيج ← عضو ← جهاز', 'النباتية فقط: جدار وبلاستيدات خضراء'], narration: {mode: 'live'}},
-    {id: 'board-notes', type: 'board', title: 'نلخص على السبورة', narration: {mode: 'live'}, items: [
+    {id: 'board-notes', type: 'board', title: 'النقاط الأساسية', narration: {mode: 'live'}, items: [
       {id: 'n1', kind: 'text', text: 'الخلية أصغر وحدة في بناء المخلوق الحي.'},
       {id: 'n2', kind: 'text', text: 'خلايا متشابهة ← نسيج ← عضو ← جهاز حيوي ← مخلوق حي.'},
       {id: 'n3', kind: 'text', text: 'في الخليتين: غشاء خلوي ونواة وسيتوبلازم وميتوكندريا.'},
@@ -196,7 +199,7 @@ export function placeValuePlan() {
   return {version: 1, title: 'القيمة المنزلية ضمن مئات الألوف', subject: 'math', grade: 4, steps: [
     {id: 'curriculum', type: 'page', title: 'نقرأ صفحة الدرس', source: 'original', page: 'math-4-placevalue', narration: {mode: 'live'}, snippets: ['المنزلة', 'القيمة', 'الصيغة القياسية', 'الصيغة التحليلية', 'الألوف', 'الآحاد']},
     {id: 'explain', type: 'interactive', title: 'نجرب: لوحة المنازل', activity: 'placevalue', snippets: ['كل منزلة = ١٠ أمثال التي على يمينها', 'الصفر يحفظ المنزلة الفارغة'], narration: {mode: 'live'}},
-    {id: 'board-notes', type: 'board', title: 'نلخص على السبورة', narration: {mode: 'live'}, items: [
+    {id: 'board-notes', type: 'board', title: 'النقاط الأساسية', narration: {mode: 'live'}, items: [
       {id: 'n1', kind: 'text', text: 'منزلة الرقم تحدد قيمته: ٤ في عشرات الألوف = ٤٠٬٠٠٠'},
       {id: 'n2', kind: 'text', text: 'الألوف: مئات الألوف · عشرات الألوف · آحاد الألوف'},
       {id: 'n3', kind: 'text', text: 'الآحاد: المئات · العشرات · الآحاد'},
@@ -218,7 +221,7 @@ export function matterPlan() {
   return {version: 1, title: 'حالات المادة', subject: 'science', grade: 4, steps: [
     {id: 'curriculum', type: 'page', title: 'نقرأ صفحة الدرس', source: 'original', page: 'science-4-matter', narration: {mode: 'live'}, snippets: ['صلب', 'سائل', 'غاز', 'انصهار', 'تجمد', 'تبخر', 'تكاثف']},
     {id: 'explain', type: 'interactive', title: 'نجرب: نسخّن الماء ونبرّده', activity: 'matter', snippets: ['التسخين ← انصهار ثم غليان', 'التبريد ← تكاثف ثم تجمد'], narration: {mode: 'live'}},
-    {id: 'board-notes', type: 'board', title: 'نلخص على السبورة', narration: {mode: 'live'}, items: [
+    {id: 'board-notes', type: 'board', title: 'النقاط الأساسية', narration: {mode: 'live'}, items: [
       {id: 'n1', kind: 'text', text: 'الصلب له شكل ثابت وحجم ثابت.'},
       {id: 'n2', kind: 'text', text: 'السائل له حجم ثابت ويأخذ شكل الإناء.'},
       {id: 'n3', kind: 'text', text: 'الغاز ينتشر ويملأ المكان كله.'},
@@ -238,7 +241,7 @@ export function defaultPlan() {
   return {version: 1, title: 'الضوء والظل', subject: 'science', grade: 4, steps: [
     {id: 'curriculum', type: 'page', title: 'نقرأ صفحة الدرس', source: 'original', page: 'science-4-light', narration: {mode: 'live'}, snippets: ['مصدر الضوء', 'جسم معتم', 'الظل', 'خط مستقيم']},
     {id: 'explain', type: 'interactive', title: 'نجرب: كيف يتغير الظل؟', activity: 'shadows', snippets: ['صباحًا: ظل طويل', 'ظهرًا: ظل قصير', 'الظل عكس الشمس'], narration: {mode: 'speech', text: 'انظروا إلى الشمس. عندما تكون منخفضة في الصباح يكون الظل طويلًا، وعندما ترتفع قرب الظهر يقصر الظل.'}},
-    {id: 'board-notes', type: 'board', title: 'نلخص على السبورة', narration: {mode: 'live'}, items: [
+    {id: 'board-notes', type: 'board', title: 'النقاط الأساسية', narration: {mode: 'live'}, items: [
       {id: 'n1', kind: 'text', text: 'الضوء ينتقل في خطوط مستقيمة.'},
       {id: 'n2', kind: 'text', text: 'الظل منطقة لا يصلها الضوء لأن جسمًا معتمًا حجبه.'},
       {id: 'n3', kind: 'text', text: 'الشمس منخفضة ← ظل طويل. الشمس مرتفعة ← ظل قصير.'}]},

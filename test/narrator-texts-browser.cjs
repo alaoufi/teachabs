@@ -19,7 +19,7 @@ const assert = require('node:assert/strict'), fs = require('node:fs'), path = re
     await t.goto(base + '/teach/plans'); await t.locator('.gl-templates button', {hasText: 'الضوء والظل'}).click(); await t.waitForURL(/\/teach\/plans\/[0-9a-f-]{36}$/);
     const planUrl = t.url();
     await t.waitForSelector('#pl-steps li');
-    const interactive = t.locator('#pl-steps li').nth(1);
+    const interactive = t.locator('#pl-steps li').nth(2);
     await interactive.locator('summary').click();
     assert.equal(await interactive.locator('.pl-seg').count(), 7, 'ready narrator tour has 7 segments');
     await interactive.locator('.pl-seg').nth(0).locator('textarea').fill('مرحبًا يا أبطال! انظروا إلى الشمس في الصباح الباكر.');
@@ -49,9 +49,9 @@ const assert = require('node:assert/strict'), fs = require('node:fs'), path = re
     await t.waitForTimeout(600);
     await t.reload(); await t.waitForSelector('#pl-draft:not([hidden])');
     await t.getByRole('button', {name: 'استعادة التعديل'}).click();
-    await t.locator('#pl-steps li').nth(1).locator('summary').click();
-    assert.equal(await t.locator('#pl-steps li').nth(1).locator('.pl-seg').nth(0).locator('textarea').inputValue(), 'مرحبًا يا أبطال! انظروا إلى الشمس في الصباح الباكر.');
-    assert.equal(await t.locator('#pl-steps li').nth(1).locator('.pl-seg audio').count(), 1, 'recording survives in the local draft');
+    await t.locator('#pl-steps li').nth(2).locator('summary').click();
+    assert.equal(await t.locator('#pl-steps li').nth(2).locator('.pl-seg').nth(0).locator('textarea').inputValue(), 'مرحبًا يا أبطال! انظروا إلى الشمس في الصباح الباكر.');
+    assert.equal(await t.locator('#pl-steps li').nth(2).locator('.pl-seg audio').count(), 1, 'recording survives in the local draft');
     await t.getByRole('button', {name: 'حفظ الدرس'}).click(); await t.waitForFunction(() => document.querySelector('#pl-status').textContent.includes('حُفظ'));
     assert.equal(await t.evaluate(k => localStorage.getItem(k), 'gl-plan-draft-' + planUrl.split('/').pop()), null, 'draft cleared after save');
     results.push('local draft restored after reload, then saved to the server and cleared');
@@ -60,7 +60,7 @@ const assert = require('node:assert/strict'), fs = require('node:fs'), path = re
     const [download] = await Promise.all([t.waitForEvent('download'), t.getByRole('button', {name: 'تنزيل الدرس كملف'}).click()]);
     const file = path.join(out, 'lesson-export.json'); await download.saveAs(file);
     const exported = JSON.parse(fs.readFileSync(file, 'utf8'));
-    assert.equal(exported.format, 'teachabs-lesson'); assert.ok(exported.plan.steps[1].narrator.segments[1].audio);
+    assert.equal(exported.format, 'teachabs-lesson'); assert.ok(exported.plan.steps[2].narrator.segments[1].audio);
     await t.goto(base + '/teach/plans');
     await t.locator('#plans-import').setInputFiles(file); await t.waitForURL(/\/teach\/plans\/[0-9a-f-]{36}$/);
     assert.notEqual(t.url(), planUrl);
@@ -77,7 +77,7 @@ const assert = require('node:assert/strict'), fs = require('node:fs'), path = re
     await s.addInitScript(() => { window.__played = 0; const play = HTMLMediaElement.prototype.play; HTMLMediaElement.prototype.play = function () { window.__played++; return play.call(this); }; });
     await s.goto(base + '/join?code=' + code); await s.getByLabel('اسمك الأول').fill('ليان'); await s.getByRole('button', {name: 'دخول الحصة'}).click();
     await s.waitForSelector('#gl-content .gl-page svg');
-    await t.locator('#gl-next').click(); await s.waitForSelector('#gl-content .gl-scene svg');
+    await t.locator('#gl-steps li[data-type=interactive] button').click(); await s.waitForSelector('#gl-content .gl-scene svg');
     await t.locator('.gl-narr-panel select').selectOption('students');
     await t.getByRole('button', {name: '▶ ابدأ الجولة'}).click();
     await s.waitForFunction(() => document.querySelector('.gl-narrator .gl-caption')?.textContent.startsWith('مرحبًا يا أبطال'));

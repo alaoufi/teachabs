@@ -115,15 +115,14 @@ const assert = require('node:assert/strict'), fs = require('node:fs'), path = re
 
     // Presenter keys move through the sequence.
     await t.locator('body').press('PageDown');
-    await s.waitForSelector('#gl-content .gl-scene svg');
-    await t.waitForFunction(() => document.querySelectorAll('.gl-snip').length === 3); // snippets follow the step
+    await s.waitForFunction(() => document.querySelector('#gl-content').dataset.type === 'board'); // the prepared texts come right after the page
     await t.locator('body').press('ArrowRight');
     await s.waitForSelector('#gl-content .gl-page svg');
     assert.ok(await s.locator('#gl-ink text').count() >= 1, 'ink stays with its step');
     results.push('PageDown/ArrowRight move between steps; ink and prepared texts belong to their step');
 
     // Prepared board cards are dragged into place; students see the same layout.
-    await t.locator('#gl-steps li').nth(2).locator('button').click(); // the prepared board step
+    await t.locator('#gl-steps li[data-type=board] button').click(); // the prepared board step
     await s.waitForFunction(() => document.querySelector('#gl-content').dataset.type === 'board');
     await t.getByRole('button', {name: 'إظهار الكل'}).click();
     await s.waitForFunction(() => document.querySelectorAll('.gl-item').length === 3);

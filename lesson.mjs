@@ -34,7 +34,7 @@ function lobby(user, teacherEntry=false) {
 function classroom({seat, booking, preview}) {
   const name = seat === 'teacher' ? 'المعلم' : 'الطالب';
   const back = preview ? '/lesson' : '/booking/' + booking.id;
-  return `<link rel="stylesheet" href="/lesson.css?v=class3"><section id="classroom" data-seat="${seat}" data-grade="${preview?0:booking.grade}" data-subject="${preview?'preview':e(booking.subject)}">
+  return `<link rel="stylesheet" href="/lesson.css?v=class4"><section id="classroom" data-seat="${seat}" data-grade="${preview?0:booking.grade}" data-subject="${preview?'preview':e(booking.subject)}">
     <div class="lesson-head"><div><div class="eyebrow"><i></i>${preview?'تجربة محلية بمقعدين':'الحصة الفردية'}</div>
     <h1>${preview?'الفصل التجريبي':'حصة '+e(subjects[booking.subject])}</h1>
     <p>${preview?'أنت في مقعد '+name:e(booking.childName)+' مع '+e(booking.teacherName)+' · مقعد '+name} · التسجيل متوقف</p></div>
@@ -42,6 +42,7 @@ function classroom({seat, booking, preview}) {
     <noscript><p class="error">افتح الحصة في المتصفح مع تفعيل جافاسكربت لتشغيل السبورة والاتصال.</p></noscript>
     <div class="lesson-status"><strong id="status" role="status">جارٍ فتح الفصل…</strong>
     ${preview?'<a class="textlink" target="_blank" rel="noopener" href="/lesson/preview?seat='+opposite(seat)+'">فتح نافذة '+(seat==='teacher'?'الطالب':'المعلم')+'</a>':''}</div>
+    ${seat==='teacher'?'<p class="one-board-note">للدرس الكامل على <b>سبورة واحدة</b> بالترتيب (المنهج ← النصوص المجهزة ← الشرح التفاعلي ← الأسئلة): <a class="textlink" href="/teach/plans">افتح «دروسي»</a></p>':''}
     <div class="lesson-flow">
     <section class="panel class-voice" aria-labelledby="voice-title"><div class="voice-row"><div><h2 id="voice-title">صوت الحصة</h2>
     <p>${seat==='teacher'?'شغّل الميكروفون واشرح بصوتك وأنت تحرك النشاط وتكتب على السبورة.':'استمع لشرح معلمك، وشغّل الميكروفون عندما تريد أن تجيب.'}</p></div>
@@ -51,7 +52,7 @@ function classroom({seat, booking, preview}) {
     <details class="class-video"><summary>الصورة — اختيارية</summary><div class="screen"><video id="remote" autoplay playsinline></video><span>الطرف الآخر</span></div>
     <video id="local" muted autoplay playsinline hidden></video></details>
     ${preview?'<small>عند التجربة على جهاز واحد، استخدم سماعات وجرّب الكاميرا من نافذة واحدة كل مرة.</small>':''}</section>
-    ${preview||booking.subject==='science'?'<section class="panel class-activity"><details open><summary>نشاط الدرس: الضوء والظل</summary>'+shadowPanel(seat)+'</details></section>':''}
+    ${preview||booking.subject==='science'?'<section class="panel class-activity"><details><summary>نشاط الضوء والظل (اختياري، يفتح عند الحاجة)</summary>'+shadowPanel(seat)+'</details></section>':''}
     ${preview||booking.subject==='math'?'<section class="panel class-activity"><details><summary>نشاط الآحاد والعشرات</summary>'+placeBoard(seat,preview)+'</details></section>':''}
     <section class="panel class-board"><div class="lesson-head"><h2>السبورة المشتركة</h2>
     ${seat==='teacher'?'<button type="button" class="quiet" id="erase" hidden disabled>مسح السبورة</button>':''}</div>

@@ -43,7 +43,7 @@ const assert = require('node:assert/strict'), fs = require('node:fs'), path = re
     results.push(`curriculum step: whole board on screen at 1366x768 (${Math.round(first.board[4])}px wide), steps above, tools below, no scroll`);
 
     // interactive step, driven only from the quick controls above the board (the drawer stays closed)
-    await t.locator('#gl-next').click(); await t.waitForSelector('#gl-content .gl-scene');
+    await t.locator('#gl-steps li[data-type=interactive] button').click(); await t.waitForSelector('#gl-content .gl-scene');
     const before = await t.locator('#gl-quick .gl-quick-out').first().textContent();
     await t.locator('#gl-quick').getByRole('button', {name: 'سخّن ١٠°'}).click();
     await t.waitForFunction(b => document.querySelector('#gl-quick .gl-quick-out')?.textContent !== b, before);
@@ -56,7 +56,7 @@ const assert = require('node:assert/strict'), fs = require('node:fs'), path = re
     results.push('interactive step: heat and the narrator run from the quick bar above the board; every quick control visible; board and narrator still on screen');
 
     // board step quick buttons, then the questions step and the drawer
-    await t.locator('#gl-steps li').nth(2).locator('button').click();
+    await t.locator('#gl-steps li[data-type=board] button').click();
     await t.locator('#gl-quick').getByRole('button', {name: /إظهار التالي/}).click();
     await t.waitForFunction(() => [...document.querySelectorAll('#gl-quick button')].some(b => b.textContent.includes('إظهار التالي (٢/')));
     onScreen(await layout(), 800);

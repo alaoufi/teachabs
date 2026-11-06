@@ -66,7 +66,7 @@ export function createApp(store,{origin=process.env.APP_ORIGIN}={}) {
       const secure=origin?.startsWith('https://')?'; Secure':'';
       res.setHeader('Set-Cookie','ks='+value+'; Path=/; HttpOnly; SameSite=Lax; Max-Age='+age+secure);
     };
-    const enter=id=>{store.logout(cookie);setCookie(store.session(id),604800);return redirect('/app');};
+    const enter=(id,next='/app')=>{store.logout(cookie);setCookie(store.session(id),604800);return redirect(next);};
     const role=expected=>{if(u?.role!==expected)throw new UserError('هذا الإجراء غير متاح لهذا الحساب.',403);};
     const booking=id=>{const row=store.bookings(u.id).find(b=>b.id===id);if(!row)throw new UserError('الحجز غير متاح.',404);return row;};
     try {
@@ -139,8 +139,9 @@ export function createApp(store,{origin=process.env.APP_ORIGIN}={}) {
           if(u && !u.scope)throw new UserError('سجّل الخروج من الحساب الفعلي قبل بدء تجربة.',409);
           limit(req,'demo',15);
           if(data.role==='admin')return enter(store.admin.demo().supervisor);
-          if(u&&['parent','teacher'].includes(u.role))return enter(u.role===data.role?u.id:store.switchTour(u.id));
-          const tour=store.tour();return enter(tour[data.role]);
+          if(u&&['parent','teacher'].includes(u.role))return enter(u.role===data.role?u.id:store.switchTour(u.id),data.role==='teacher'&&data.next==='/teach/plans'?'/teach/plans':'/app');
+          const next=data.role==='teacher'&&data.next==='/teach/plans'?'/teach/plans':'/app'; // the one-board class opens directly
+          const tour=store.tour();return enter(tour[data.role],next);
         }
         if(['/login','/register','/activate','/tour'].includes(route))limit(req,route,route==='/login'?25:15);
         if(route==='/tour')return enter(store.tour().parent);

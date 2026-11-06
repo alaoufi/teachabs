@@ -138,7 +138,7 @@ function stepEditor(step) {
     const original = step.source !== 'upload';
     box.append(el('div', {class: 'pl-row', role: 'radiogroup', 'aria-label': 'مصدر الصفحة'},
       el('label', {class: 'pl-radio'}, el('input', {type: 'radio', name: 'src-' + step.id, checked: original, onchange: () => { Object.assign(step, {source: 'original', page: step.page || 'science-4-light'}); delete step.image; touch(); render(); }}), 'صفحة أصلية للتجربة'),
-      el('label', {class: 'pl-radio'}, el('input', {type: 'radio', name: 'src-' + step.id, checked: !original, onchange: () => { step.source = 'upload'; touch(); render(); }}), 'رفع صورة صفحة')));
+      el('label', {class: 'pl-radio'}, el('input', {type: 'radio', name: 'src-' + step.id, checked: !original, onchange: () => { step.source = 'upload'; touch(); render(); }}), 'صفحة الكتاب الرسمي (ارفع صورتها)')));
     if (original) {
       box.append(field('الصفحة', el('select', {onchange: e => { step.page = e.target.value; touch(); render(); }}, Object.entries(ORIGINAL_PAGES).map(([k, p]) => el('option', {value: k, selected: k === step.page}, p.title)))));
       const preview = el('div', {class: 'pl-preview'}); preview.innerHTML = renderOriginalPage(step.page); box.append(preview);

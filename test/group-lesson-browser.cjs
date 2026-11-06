@@ -15,10 +15,10 @@ const assert = require('node:assert/strict'), fs = require('node:fs'), path = re
   try {
     const tc = await browser.newContext({viewport: {width: 1700, height: 1000}, permissions: ['microphone']}); tc.setDefaultTimeout(15000);
     const t = await tc.newPage(); watch(t); t.on('dialog', d => d.accept().catch(() => {}));
-    await t.goto(base + '/demo'); await t.locator('#group form button').click(); await t.waitForURL(/\/app/);
+    await t.goto(base + '/demo'); await t.locator('#group form button').click(); await t.waitForURL(/\/teach\/plans/);
     await t.goto(base + '/teach/plans'); await t.locator('.gl-templates button', {hasText: 'الضوء والظل'}).click(); await t.waitForURL(/\/teach\/plans\/[0-9a-f-]{36}$/);
     await t.waitForSelector('#pl-steps li');
-    assert.deepEqual(await t.locator('.pl-type').allTextContents(), ['المنهج', 'الشرح التفاعلي', 'السبورة المجهزة', 'الأسئلة', 'الواجب', 'التقييم']);
+    assert.deepEqual(await t.locator('.pl-type').allTextContents(), ['المنهج', 'النصوص المجهزة', 'الشرح التفاعلي', 'الأسئلة', 'الواجب', 'التقييم']);
     // Prepare: record a narration for the curriculum step with the synthetic microphone.
     await t.locator('#pl-steps li').nth(0).locator('summary').click();
     const first = t.locator('#pl-steps li').nth(0);
@@ -27,9 +27,9 @@ const assert = require('node:assert/strict'), fs = require('node:fs'), path = re
     await first.getByRole('button', {name: '■ إيقاف التسجيل'}).click();
     await first.locator('audio').waitFor();
     // Prepared board item and move a step to check ordering controls.
-    await t.locator('#pl-steps li').nth(2).locator('summary').click();
-    await t.locator('#pl-steps li').nth(2).getByRole('button', {name: '+ نص مجهز'}).click();
-    await t.locator('#pl-steps li').nth(2).locator('textarea').last().fill('تذكير: الظل في الجهة المقابلة للضوء.');
+    await t.locator('#pl-steps li').nth(1).locator('summary').click();
+    await t.locator('#pl-steps li').nth(1).getByRole('button', {name: '+ نص مجهز'}).click();
+    await t.locator('#pl-steps li').nth(1).locator('textarea').last().fill('تذكير: الظل في الجهة المقابلة للضوء.');
     await t.getByRole('button', {name: 'حفظ الدرس'}).click(); await t.waitForFunction(() => document.querySelector('#pl-status').textContent.includes('حُفظ'));
     await shot(t, 'group-planner');
     results.push('planner: six steps in the requested order, recorded narration, prepared item, saved');
@@ -69,7 +69,7 @@ const assert = require('node:assert/strict'), fs = require('node:fs'), path = re
     results.push('teacher hid and re-showed the step');
 
     // 2) Interactive explanation: predict, reveal, individual exploration.
-    await t.locator('#gl-next').click();
+    await t.locator('#gl-steps li[data-type=interactive] button').click();
     await students[0].waitForSelector('#gl-content .gl-scene svg');
     await t.locator('#gl-panel').getByRole('button', {name: 'إخفاء الظل ليتوقع الطلاب'}).click();
     await students[0].waitForFunction(() => !document.querySelector('#gl-content polygon.shadow') && document.querySelector('.gl-facts').textContent.includes('توقّع'));
@@ -85,7 +85,7 @@ const assert = require('node:assert/strict'), fs = require('node:fs'), path = re
     results.push('interactive: predict/reveal, teacher moved the sun, individual exploration on/off');
 
     // 3) Prepared board items revealed one by one.
-    await t.locator('#gl-next').click();
+    await t.locator('#gl-steps li[data-type=board] button').click();
     await students[0].waitForFunction(() => document.querySelector('#gl-content').dataset.type === 'board');
     assert.equal(await students[0].locator('.gl-item').count(), 0);
     await t.locator('.gl-reveal li').nth(0).getByRole('button', {name: 'إظهار'}).click();
@@ -96,7 +96,7 @@ const assert = require('node:assert/strict'), fs = require('node:fs'), path = re
     results.push('prepared board items: hidden at first, revealed one, then all');
 
     // 4) Questions: answers private to teacher, then shown as chosen.
-    await t.locator('#gl-next').click();
+    await t.locator('#gl-steps li[data-type=questions] button').click();
     await t.locator('#gl-panel').getByRole('button', {name: 'افتح الإجابة للطلاب'}).click();
     const choices = [1, 1, 0];
     for (const [i, p] of students.entries()) {
