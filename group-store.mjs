@@ -32,6 +32,9 @@ export function createGroupStore({db, one, all, run, transaction}) {
     },
     session: code => parse(one('SELECT * FROM group_sessions WHERE code=?', code)),
     sessions: teacher => all('SELECT code,created,json_extract(plan,\'$.title\') title,json_extract(state,\'$.live\') live FROM group_sessions WHERE teacher=? ORDER BY created DESC LIMIT 20', teacher),
+    /** The trial's most recent running class (trial teachers only, active in the last few hours): the app's «أنا الطالب». */
+    latestTrialLive: since => one("SELECT s.code FROM group_sessions s JOIN users u ON u.id=s.teacher WHERE u.scope<>'' AND json_extract(s.state,'$.live')=1 AND s.updated>? ORDER BY s.updated DESC LIMIT 1", since)?.code || null,
+    saveSessionPlan: (code, plan) => run('UPDATE group_sessions SET plan=?,updated=? WHERE code=?', JSON.stringify(plan), Date.now(), code),
     saveState: (code, state) => run('UPDATE group_sessions SET state=?,updated=? WHERE code=?', JSON.stringify(state), Date.now(), code),
     join(code, name, max) {
       return transaction(() => {

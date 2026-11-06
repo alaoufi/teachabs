@@ -14,12 +14,13 @@ const classBase = '/class/' + code;
 let renderKey = '', shownStep = null, lastSegment = 0, speakTimer = 0, wasMuted = false;
 const tools = attachBoardTools({mode: 'viewer'});
 let view = null, content = null, contentKey = null, homework = null, lastNarration = 0, pendingNarration = null, plan = null;
-let explore = null;
+let explore = null, lastPageKey = '';
 const sent = {};
 
 async function getJSON(url) { const r = await fetch(url); const d = await r.json().catch(() => ({})); if (!r.ok) throw new Error(d.error || 'تعذّر التحميل.'); return d; }
 async function stepContent(stepId, key) {
   if (student) return getJSON(`${classBase}/content?step=${encodeURIComponent(stepId)}`);
+  if (key.includes(':p') && key !== lastPageKey) { lastPageKey = key; plan = await getJSON('/teach/live/' + code + '/plan'); } // a new book page photo
   const step = plan.steps.find(s => s.id === stepId), revealed = key.split(':')[1] ? key.split(':')[1].split(',') : [];
   return publicStep(step, revealed);
 }
@@ -207,7 +208,18 @@ events.addEventListener('view', ev => {
   queue = queue.then(() => ready).then(async () => { view = next; status(student ? 'متصل بالحصة.' : 'شاشة العرض متصلة.'); await render(); }).catch(e => status(e.message, true));
 });
 events.addEventListener('removed', () => { events.close(); status('أخرجك المعلم من الحصة.', true); $('gl-board').hidden = true; if (student) voice.setMic(false).catch(() => {}); });
-events.onerror = () => status('انقطع الاتصال. تجري إعادة المحاولة…', true);
+events.onerror = async () => {
+  status('انقطع الاتصال. تجري إعادة المحاولة…', true);
+  // After a server restart the trial forgets its classes: say so clearly instead of retrying forever.
+  const r = await fetch(classBase + '/content?step=_').catch(() => null);
+  if (r && (r.status === 404 || r.status === 401)) { events.close(); classGone(); }
+};
+function classGone() {
+  if (document.getElementById('gl-gone')) return;
+  const box = document.createElement('div'); box.id = 'gl-gone'; box.className = 'gl-gone'; box.setAttribute('role', 'alertdialog');
+  box.innerHTML = '<div class="gl-start-card"><h2>انتهت هذه الحصة التجريبية</h2><p>أُعيد تشغيل خادم التجربة فمُسحت الحصص الجارية. ابدأ من جديد.</p><a class="btn" href="/start/student">ابدأ من جديد</a></div>';
+  document.body.append(box);
+}
 if (student) {
   events.addEventListener('rtc', ev => voice.message(JSON.parse(ev.data)).catch(() => {}));
   events.onopen = () => { if (entered) voice.hello(); }; // after a reconnect the teacher rebuilds the audio link

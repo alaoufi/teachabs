@@ -69,12 +69,13 @@ function renderQuick(s) {
     parts.push(el('button', {type: 'button', class: 'gl-mini', onclick: () => openDrawer(true)}, 'قيّم الطلاب'),
       el('button', {type: 'button', class: (view.state.evaluationPublished ? 'is-warn' : 'btn') + ' gl-mini', onclick: () => command({op: 'publish-evaluation', on: !view.state.evaluationPublished})}, view.state.evaluationPublished ? 'إخفاء التقييم' : 'نشر التقييم'));
   }
+  if (s.type === 'page') parts.push(el('button', {type: 'button', class: 'btn gl-mini', title: 'صوّر صفحة الكتاب أو اختر صورتها فتظهر على السبورة للجميع', onclick: () => $('gl-page-file').click()}, '📷 صفحة الكتاب'));
   if (s.type !== 'interactive' || !s.narrator) {
     if (s.narration.mode === 'live') parts.push(el('span', {class: 'gl-live-voice', text: '🎙 اشرح بصوتك'}));
-    else parts.push(el('span', {class: 'gl-quick-out', text: s.narration.mode === 'recorded' ? '🔈 تسجيلك:' : '🔈 قراءة الجهاز:'}),
-      el('button', {type: 'button', class: 'gl-mini', onclick: () => command({op: 'narrate', target: 'screen'})}, 'على شاشة العرض'),
-      el('button', {type: 'button', class: 'gl-mini', onclick: () => command({op: 'narrate', target: 'students'})}, 'على أجهزة الطلاب'),
-      el('button', {type: 'button', class: 'gl-mini', onclick: async () => { if (!await playNarration(s.narration)) status('تعذّر تشغيل الشرح هنا.', true); }}, 'هنا'),
+    else parts.push(el('span', {class: 'gl-quick-out', text: s.narration.mode === 'recorded' ? '🔊 شرح الدرس (تسجيلك):' : '🔊 شرح الدرس الصوتي:'}),
+      el('button', {type: 'button', class: 'gl-mini', onclick: () => command({op: 'narrate', target: 'screen'})}, '▶ شاشة العرض'),
+      el('button', {type: 'button', class: 'gl-mini', onclick: () => command({op: 'narrate', target: 'students'})}, '▶ على أجهزة الطلاب'),
+      el('button', {type: 'button', class: 'gl-mini', onclick: async () => { if (!await playNarration(s.narration)) status('تعذّر تشغيل الشرح هنا.', true); }}, '▶ هنا'),
       el('button', {type: 'button', class: 'quiet gl-mini', onclick: stopNarration}, '■'));
   }
   // Keep the focused button focused across live updates.
@@ -101,7 +102,7 @@ function renderBoard() {
   }
   const places = view.state.places?.[s.id] || {};
   const actView = s.type === 'interactive' ? {id: s.activity, ...view.act} : null;
-  const key = JSON.stringify([s.id, revealed, actView, display, places]);
+  const key = JSON.stringify([s.id, revealed, actView, display, places, view.state.pageVer || 0]);
   if (key !== contentKey) {
     contentKey = key; renderStep($('gl-content'), content, {teacher: true, revealed, shadow: actView, display, places});
     if (s.id !== lastStep) { $('gl-content').classList.remove('gl-enter'); void $('gl-content').offsetWidth; $('gl-content').classList.add('gl-enter'); }
@@ -326,6 +327,29 @@ function renderSnippets(s) {
   box.replaceChildren(el('span', {class: 'gl-snip-label', text: 'نصوص جاهزة:'}), ...list.map(t => el('button', {type: 'button', class: 'gl-snip', onclick: () => tools.prepareSnippet(t)}, t)));
 }
 
+// ---- the book page: photographed or picked during the class, shrunk on this device, shown on the board ----
+async function shrinkImage(file) {
+  const img = await createImageBitmap(file);
+  for (const [max, quality] of [[1600, 0.82], [1300, 0.75], [1000, 0.7], [800, 0.6]]) {
+    const k = Math.min(1, max / Math.max(img.width, img.height)), c = document.createElement('canvas');
+    c.width = Math.round(img.width * k); c.height = Math.round(img.height * k);
+    c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+    const data = c.toDataURL('image/jpeg', quality);
+    if (data.length <= 880_000) return data;
+  }
+  throw new Error('الصورة كبيرة جدًا. جرّب صورة أصغر.');
+}
+const pageFile = el('input', {type: 'file', id: 'gl-page-file', accept: 'image/*', capture: 'environment', hidden: true, onchange: async e => {
+  const file = e.target.files[0]; e.target.value = ''; if (!file) return;
+  try {
+    status('جارٍ رفع صفحة الكتاب…');
+    await post('/page-image', {step: step().id, image: await shrinkImage(file)});
+    plan = await fetch(base + '/plan').then(r => r.json()); contentKey = ''; render();
+    status('ظهرت صفحة الكتاب على السبورة للجميع.');
+  } catch (err) { status(err.message || 'تعذّر رفع الصورة.', true); }
+}});
+document.body.append(pageFile);
+
 // ---- live voice: the teacher decides who is heard ----
 const voice = teacherVoice({base, onChange: () => { renderVoice(); if (view) renderSide(); }});
 function renderVoice() {
@@ -347,4 +371,15 @@ const events = new EventSource(base + '/events');
 events.addEventListener('view', async ev => { await plansReady; view = JSON.parse(ev.data); status(view.state.live ? 'متصل. أنت تقود الحصة.' : 'العرض متوقف للطلاب.'); render(); renderVoice(); });
 events.addEventListener('rtc', ev => voice.message(JSON.parse(ev.data)).catch(() => {}));
 window.__voice = voice; // read by the browser tests
-events.onerror = () => status('انقطع الاتصال. تجري إعادة المحاولة…', true);
+events.onerror = async () => {
+  status('انقطع الاتصال. تجري إعادة المحاولة…', true);
+  // After a server restart the trial forgets its classes: say so clearly instead of retrying forever.
+  const r = await fetch(base + '/plan').catch(() => null);
+  if (r && (r.status === 404 || r.status === 401)) { events.close(); classGone(); }
+};
+function classGone() {
+  if (document.getElementById('gl-gone')) return;
+  const box = document.createElement('div'); box.id = 'gl-gone'; box.className = 'gl-gone'; box.setAttribute('role', 'alertdialog');
+  box.innerHTML = '<div class="gl-start-card"><h2>انتهت هذه الحصة التجريبية</h2><p>أُعيد تشغيل خادم التجربة فمُسحت الحصص الجارية. ابدأ من جديد.</p><a class="btn" href="/teach/plans">ابدأ من جديد</a></div>';
+  document.body.append(box);
+}

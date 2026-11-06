@@ -46,7 +46,7 @@ public class MainActivity extends Activity {
     static final String HOME = "https://abdulrahman-edu-trial.onrender.com/";
     static final String HOST = "abdulrahman-edu-trial.onrender.com";
     static final int FILE_REQUEST = 41, MIC_REQUEST = 42;
-    static final String VERSION = "0.8";
+    static final String VERSION = "0.9";
 
     WebView web;
     ProgressBar progress;
@@ -217,7 +217,7 @@ public class MainActivity extends Activity {
             ui.post(() -> {
                 label.setText("جارٍ الفتح…"); loading.setVisibility(View.VISIBLE);
                 ui.removeCallbacks(slowNote); ui.postDelayed(slowNote, 5000);
-                web.loadUrl(HOME + ("teacher".equals(who) ? "start/teacher" : "join"));
+                web.loadUrl(HOME + ("teacher".equals(who) ? "start/teacher" : "start/student")); // the student goes straight into the running trial class
             });
         }
         @JavascriptInterface public void retry() { ui.post(() -> warmUp()); }

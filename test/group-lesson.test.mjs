@@ -70,8 +70,10 @@ test('results stay with the teacher until shown; spotlight respects the name cho
 
 test('teacher-only controls validate input; narration only for prepared steps', () => {
   let s = initialState(plan);
-  for (const bad of [{op: 'go', index: 99}, {op: 'reveal', item: 'n1', show: true}, {op: 'stroke', points: [[0, 0]], color: '#173e34'}, {op: 'narrate', target: 'here'}, {op: 'nope'}])
+  for (const bad of [{op: 'go', index: 99}, {op: 'reveal', item: 'n1', show: true}, {op: 'stroke', points: [[0, 0]], color: '#173e34'}, {op: 'narrate', target: 'nowhere'}, {op: 'nope'}])
     assert.throws(() => run(s, bad));
+  assert.throws(() => run(run(s, {op: 'go', index: step('check')}), {op: 'narrate', target: 'students'}), /مباشر/, 'a live-voice step has no prepared narration');
+  assert.equal(run(s, {op: 'narrate', target: 'students'}).narrate.target, 'students', 'the curriculum page has a prepared audio explanation');
   s = run(s, {op: 'stroke', points: [[10, 10], [200, 300]], color: '#c0392b'});
   assert.equal(publicView(s, plan, 'a', []).strokes.length, 1);
   assert.throws(() => run(s, {op: 'stroke', points: [[10, 10], [2000, 300]], color: '#c0392b'}));

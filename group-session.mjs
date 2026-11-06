@@ -222,7 +222,7 @@ export function publicView(state, plan, student, responses, studentNames = {}) {
   const view = {role: student ? 'student' : 'display', live: state.live, title: plan.title, index: state.index, total: plan.steps.length, shown, seq: state.seq, voice: voiceOf(state)};
   if (shown) {
     const revealed = state.revealed[step.id] || [];
-    view.step = {id: step.id, type: step.type, title: step.title, key: `${step.id}:${revealed.join(',')}`};
+    view.step = {id: step.id, type: step.type, title: step.title, key: `${step.id}:${revealed.join(',')}${step.type === 'page' ? ':p' + (state.pageVer || 0) : ''}`};
     if (INKABLE.includes(step.type)) view.strokes = state.strokes[step.id] || [];
     if (step.type === 'board') view.places = Object.fromEntries(Object.entries(state.places?.[step.id] || {}).filter(([id]) => revealed.includes(id)));
     view.camera = state.camera?.[step.id] || {z: 1, x: 0, y: 0};

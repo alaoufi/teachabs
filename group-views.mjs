@@ -6,7 +6,7 @@ import {CURRICULUM_G4_T1, CURRICULUM_SOURCE, curriculumLessons} from './public/c
 
 const TOOL_BUTTONS = [['select', '➤', 'تحريك', 'V'], ['hand', '✋', 'يد', 'H'], ['pen', '✎', 'قلم', 'P'], ['brush', '🖌', 'فرشاة', 'B'], ['marker', '▮', 'تظليل', 'M'], ['text', 'ت', 'كتابة', 'T'], ['eraser', '⌫', 'ممحاة', 'E']];
 
-const css = '<link rel="stylesheet" href="/group-lesson.css?v=4">';
+const css = '<link rel="stylesheet" href="/group-lesson.css?v=4"><script type="module" src="/error-report.js"></script>';
 const dateText = t => new Intl.DateTimeFormat('ar-SA', {dateStyle: 'medium', timeStyle: 'short', timeZone: 'Asia/Riyadh'}).format(t);
 
 export function plansPage(plans, sessions) {
@@ -130,9 +130,9 @@ export function studentPage(code, name, title) {
  </section><script type="module" src="/group-student.js?v=3"></script>`;
 }
 
-export function joinPage(code) {
+export function joinPage(code, none = false) {
   return `${css}<section class="gl-wrap gl-joinpage narrow panel" dir="rtl"><div class="eyebrow">الحصة الجماعية</div><h1>الانضمام إلى الحصة</h1>
-  <form method="post" action="/join" class="gl-form"><label>رمز الحصة<input name="code" required minlength="6" maxlength="6" autocomplete="off" autocapitalize="characters" inputmode="text" value="${e(code)}" dir="ltr"></label>
+  ${none ? '<p class="gl-status">لا توجد حصة تجريبية جارية الآن. افتح «أنا المعلم» على جهاز آخر وابدأ حصة، ثم اضغط «أنا الطالب» من جديد، أو اكتب رمز الحصة هنا.</p>' : ''}<form method="post" action="/join" class="gl-form"><label>رمز الحصة<input name="code" required minlength="6" maxlength="6" autocomplete="off" autocapitalize="characters" inputmode="text" value="${e(code)}" dir="ltr"></label>
   <label>اسمك الأول<input name="name" required minlength="2" maxlength="30" autocomplete="given-name"></label>
   <button class="btn">دخول الحصة</button></form>
   <p class="gl-note">اكتب اسمك الأول فقط. يرى المعلم إجاباتك، ولا يظهر اسمك للآخرين إلا إذا اختار المعلم عرضه.</p></section>`;

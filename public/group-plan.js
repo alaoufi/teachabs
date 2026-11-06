@@ -174,9 +174,9 @@ export const LESSON_TEMPLATES = {
 /** Science 4, term 1, unit 1, chapter 1, lesson 1 (order from the 1447 AH Ministry book; content is original). */
 export function cellsPlan() {
   return {version: 1, title: 'الخلايا', subject: 'science', grade: 4, steps: [
-    {id: 'curriculum', type: 'page', title: 'نقرأ صفحة الدرس', source: 'original', page: 'science-4-cells', narration: {mode: 'live'}, snippets: ['الخلية', 'النسيج', 'العضو', 'الجهاز الحيوي', 'النواة', 'جدار الخلية']},
+    {id: 'curriculum', type: 'page', title: 'نقرأ صفحة الدرس', source: 'original', page: 'science-4-cells', narration: {mode: 'speech', text: 'درسنا اليوم: الخلايا. كل مخلوق حي، نباتًا كان أو حيوانًا أو إنسانًا، يتكون من خلية واحدة أو من خلايا كثيرة. والخلية هي أصغر وحدة في بناء المخلوق الحي. الخلايا المتشابهة تكوّن نسيجًا، والأنسجة تكوّن عضوًا، والأعضاء تكوّن جهازًا حيويًا. فكّروا معي: ما الذي تملكه الخلية النباتية ولا تملكه الحيوانية؟'}, snippets: ['الخلية', 'النسيج', 'العضو', 'الجهاز الحيوي', 'النواة', 'جدار الخلية']},
     {id: 'explain', type: 'interactive', title: 'نجرب: نكبّر حتى نرى الخلية', activity: 'cells', snippets: ['خلايا ← نسيج ← عضو ← جهاز', 'النباتية فقط: جدار وبلاستيدات خضراء'], narration: {mode: 'live'}},
-    {id: 'board-notes', type: 'board', title: 'النقاط الأساسية', narration: {mode: 'live'}, items: [
+    {id: 'board-notes', type: 'board', title: 'النقاط الأساسية', narration: {mode: 'speech', text: 'لنثبّت النقاط الأساسية: الخلية أصغر وحدة في بناء المخلوق الحي. خلايا متشابهة تكوّن نسيجًا، ثم عضوًا، ثم جهازًا حيويًا، ثم مخلوقًا حيًا. في الخليتين غشاء خلوي ونواة وسيتوبلازم وميتوكندريا، وتنفرد الخلية النباتية بجدار الخلية والبلاستيدات الخضراء وفجوة كبيرة.'}, items: [
       {id: 'n1', kind: 'text', text: 'الخلية أصغر وحدة في بناء المخلوق الحي.'},
       {id: 'n2', kind: 'text', text: 'خلايا متشابهة ← نسيج ← عضو ← جهاز حيوي ← مخلوق حي.'},
       {id: 'n3', kind: 'text', text: 'في الخليتين: غشاء خلوي ونواة وسيتوبلازم وميتوكندريا.'},
@@ -197,9 +197,9 @@ export function cellsPlan() {
 /** Math 4, term 1, chapter 1, lesson 1 (order from the 1447 AH Ministry book; content is original). */
 export function placeValuePlan() {
   return {version: 1, title: 'القيمة المنزلية ضمن مئات الألوف', subject: 'math', grade: 4, steps: [
-    {id: 'curriculum', type: 'page', title: 'نقرأ صفحة الدرس', source: 'original', page: 'math-4-placevalue', narration: {mode: 'live'}, snippets: ['المنزلة', 'القيمة', 'الصيغة القياسية', 'الصيغة التحليلية', 'الألوف', 'الآحاد']},
+    {id: 'curriculum', type: 'page', title: 'نقرأ صفحة الدرس', source: 'original', page: 'math-4-placevalue', narration: {mode: 'speech', text: 'درسنا اليوم: القيمة المنزلية ضمن مئات الألوف. منزلة الرقم في العدد هي التي تحدد قيمته، فالرقم أربعة في منزلة عشرات الألوف قيمته أربعون ألفًا. وكل منزلة قيمتها عشرة أمثال المنزلة التي على يمينها. نكتب العدد بالصيغة القياسية بالأرقام، وبالصيغة التحليلية مجموعًا لقيم أرقامه.'}, snippets: ['المنزلة', 'القيمة', 'الصيغة القياسية', 'الصيغة التحليلية', 'الألوف', 'الآحاد']},
     {id: 'explain', type: 'interactive', title: 'نجرب: لوحة المنازل', activity: 'placevalue', snippets: ['كل منزلة = ١٠ أمثال التي على يمينها', 'الصفر يحفظ المنزلة الفارغة'], narration: {mode: 'live'}},
-    {id: 'board-notes', type: 'board', title: 'النقاط الأساسية', narration: {mode: 'live'}, items: [
+    {id: 'board-notes', type: 'board', title: 'النقاط الأساسية', narration: {mode: 'speech', text: 'النقاط الأساسية: دورة الألوف فيها مئات الألوف وعشرات الألوف وآحاد الألوف، ودورة الآحاد فيها المئات والعشرات والآحاد. وإذا كانت منزلة فارغة نكتب فيها صفرًا ليحفظ مكانها.'}, items: [
       {id: 'n1', kind: 'text', text: 'منزلة الرقم تحدد قيمته: ٤ في عشرات الألوف = ٤٠٬٠٠٠'},
       {id: 'n2', kind: 'text', text: 'الألوف: مئات الألوف · عشرات الألوف · آحاد الألوف'},
       {id: 'n3', kind: 'text', text: 'الآحاد: المئات · العشرات · الآحاد'},
@@ -219,9 +219,9 @@ export function placeValuePlan() {
 
 export function matterPlan() {
   return {version: 1, title: 'حالات المادة', subject: 'science', grade: 4, steps: [
-    {id: 'curriculum', type: 'page', title: 'نقرأ صفحة الدرس', source: 'original', page: 'science-4-matter', narration: {mode: 'live'}, snippets: ['صلب', 'سائل', 'غاز', 'انصهار', 'تجمد', 'تبخر', 'تكاثف']},
+    {id: 'curriculum', type: 'page', title: 'نقرأ صفحة الدرس', source: 'original', page: 'science-4-matter', narration: {mode: 'speech', text: 'درسنا اليوم: حالات المادة. للمادة ثلاث حالات: صلبة وسائلة وغازية. والماء مثال رائع: يكون جليدًا صلبًا، أو ماءً سائلًا، أو بخارًا. التسخين والتبريد يغيّران حالة المادة.'}, snippets: ['صلب', 'سائل', 'غاز', 'انصهار', 'تجمد', 'تبخر', 'تكاثف']},
     {id: 'explain', type: 'interactive', title: 'نجرب: نسخّن الماء ونبرّده', activity: 'matter', snippets: ['التسخين ← انصهار ثم غليان', 'التبريد ← تكاثف ثم تجمد'], narration: {mode: 'live'}},
-    {id: 'board-notes', type: 'board', title: 'النقاط الأساسية', narration: {mode: 'live'}, items: [
+    {id: 'board-notes', type: 'board', title: 'النقاط الأساسية', narration: {mode: 'speech', text: 'النقاط الأساسية: الصلب له شكل ثابت وحجم ثابت. السائل له حجم ثابت ويأخذ شكل الإناء. الغاز ينتشر ويملأ المكان كله. التسخين ينقل المادة من صلب إلى سائل إلى غاز، والتبريد يعكس الطريق.'}, items: [
       {id: 'n1', kind: 'text', text: 'الصلب له شكل ثابت وحجم ثابت.'},
       {id: 'n2', kind: 'text', text: 'السائل له حجم ثابت ويأخذ شكل الإناء.'},
       {id: 'n3', kind: 'text', text: 'الغاز ينتشر ويملأ المكان كله.'},
@@ -239,9 +239,9 @@ export function matterPlan() {
 
 export function defaultPlan() {
   return {version: 1, title: 'الضوء والظل', subject: 'science', grade: 4, steps: [
-    {id: 'curriculum', type: 'page', title: 'نقرأ صفحة الدرس', source: 'original', page: 'science-4-light', narration: {mode: 'live'}, snippets: ['مصدر الضوء', 'جسم معتم', 'الظل', 'خط مستقيم']},
+    {id: 'curriculum', type: 'page', title: 'نقرأ صفحة الدرس', source: 'original', page: 'science-4-light', narration: {mode: 'speech', text: 'درسنا اليوم: الضوء والظل. ينتقل الضوء في خطوط مستقيمة، وعندما يحجبه جسم معتم يتكوّن خلفه ظل. ويتغير طول الظل واتجاهه كلما تغيّر موقع مصدر الضوء. سؤال للتفكير: لماذا يكون ظلك طويلًا في الصباح الباكر؟'}, snippets: ['مصدر الضوء', 'جسم معتم', 'الظل', 'خط مستقيم']},
     {id: 'explain', type: 'interactive', title: 'نجرب: كيف يتغير الظل؟', activity: 'shadows', snippets: ['صباحًا: ظل طويل', 'ظهرًا: ظل قصير', 'الظل عكس الشمس'], narration: {mode: 'speech', text: 'انظروا إلى الشمس. عندما تكون منخفضة في الصباح يكون الظل طويلًا، وعندما ترتفع قرب الظهر يقصر الظل.'}},
-    {id: 'board-notes', type: 'board', title: 'النقاط الأساسية', narration: {mode: 'live'}, items: [
+    {id: 'board-notes', type: 'board', title: 'النقاط الأساسية', narration: {mode: 'speech', text: 'النقاط الأساسية: الضوء ينتقل في خطوط مستقيمة. الظل منطقة لا يصلها الضوء لأن جسمًا معتمًا حجبه. عندما تكون الشمس منخفضة يكون الظل طويلًا، وعندما ترتفع يقصر.'}, items: [
       {id: 'n1', kind: 'text', text: 'الضوء ينتقل في خطوط مستقيمة.'},
       {id: 'n2', kind: 'text', text: 'الظل منطقة لا يصلها الضوء لأن جسمًا معتمًا حجبه.'},
       {id: 'n3', kind: 'text', text: 'الشمس منخفضة ← ظل طويل. الشمس مرتفعة ← ظل قصير.'}]},

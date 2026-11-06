@@ -30,7 +30,7 @@ files['/classroom-lab-model.js']='text/javascript; charset=utf-8';
 files['/classroom-lab.css']='text/css; charset=utf-8';
 files['/science-shadow.js']='text/javascript; charset=utf-8';
 files['/shadow-client.js']='text/javascript; charset=utf-8';
-for(const f of ['activities.js','matter-model.js','cells-model.js','placevalue-model.js','curriculum-g4.js','group-voice.js','class-guide.js','group-plan.js','group-view.js','group-ink.js','group-board-tools.js','group-plans.js','text-library.js','explain-texts.js','narrator-scripts.js','group-planner.js','group-teacher.js','group-student.js'])files['/'+f]='text/javascript; charset=utf-8';
+for(const f of ['activities.js','matter-model.js','cells-model.js','placevalue-model.js','curriculum-g4.js','group-voice.js','error-report.js','class-guide.js','group-plan.js','group-view.js','group-ink.js','group-board-tools.js','group-plans.js','text-library.js','explain-texts.js','narrator-scripts.js','group-planner.js','group-teacher.js','group-student.js'])files['/'+f]='text/javascript; charset=utf-8';
 files['/group-lesson.css']='text/css; charset=utf-8';
 files['/science-shadow-model.js']='text/javascript; charset=utf-8';
 files['/science-shadow.css']='text/css; charset=utf-8';
@@ -143,6 +143,13 @@ export function createApp(store,{origin=process.env.APP_ORIGIN}={}) {
         }
       }else if(req.method==='POST'){
         if(req.headers.origin!==base)throw new UserError('تعذّر التحقق من مصدر الطلب. افتح التطبيق مجددًا.',403);
+        if(route==='/client-error'){ // script errors from phones, written to the server log (no personal data)
+          limit(req,'client-error',30);
+          const chunks=[];let n=0;for await(const c of req){n+=c.length;if(n>4096)break;chunks.push(c);}
+          let e={};try{e=JSON.parse(Buffer.concat(chunks).toString('utf8'));}catch{}
+          console.warn('client-error',JSON.stringify({message:String(e.message||'').slice(0,300),where:String(e.where||'').slice(0,200),page:String(e.page||'').slice(0,100),ua:String(e.ua||'').slice(0,200)}));
+          res.writeHead(204);return res.end();
+        }
         data=await fields(req);
         if(route==='/demo/start'){
           if(!['parent','teacher','admin'].includes(data.role))throw new UserError('اختر تجربة متاحة.');

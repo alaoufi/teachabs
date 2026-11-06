@@ -546,3 +546,12 @@ body:has(.gl-solo){overflow:hidden}
 #planner .eyebrow{font-size:12px}
 body:has(#planner) main{padding-top:10px}
 body:has(#planner) .demo{margin-bottom:8px;padding:6px 10px}
+/* errors must be seen on a phone too; a vanished trial class gets a clear message */
+@media(max-width:760px){.gl-present .gl-status-dot.is-error{display:block;position:fixed;top:6px;inset-inline:8px;z-index:70;max-width:none;white-space:normal;background:#8a2a1a;color:#fff;border-radius:12px;padding:6px 10px;font-size:13px;box-shadow:0 6px 16px #0004}}
+.gl-gone{position:fixed;inset:0;z-index:2000;background:#0b1f2ad9;display:grid;place-items:center;padding:16px}
+.gl-gone .gl-start-card{background:#fffefb;border-radius:22px;padding:22px 26px;max-width:420px;width:100%;text-align:center}
+.gl-gone h2{margin:0 0 8px;font-size:22px}.gl-gone .btn{display:inline-flex;margin-top:10px}
+/* a photographed book page (usually portrait) shows whole inside the board, never clipped */
+.gl-content .gl-page{flex:1 1 auto;min-height:0;overflow:hidden}
+.gl-content .gl-page img{width:auto;height:auto;max-width:100%;max-height:100%;object-fit:contain;border-radius:6px;box-shadow:0 2px 10px #0002}
+.gl-content .gl-page{grid-template-rows:minmax(0,1fr);grid-template-columns:minmax(0,1fr);height:auto}

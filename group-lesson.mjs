@@ -1,5 +1,6 @@
 // Group lesson service: planner, live teacher console, display screen and student seats.
 import {validatePlan, defaultPlan, PlanError, LIMITS, LESSON_TEMPLATES} from './public/group-plan.js';
+import {validImage} from './public/group-plan.js';
 import {initialState, teacherCommand, teacherView, publicView, voiceOf, checkAnswer, checkEvaluation, contentFor, narrationFor, segmentAudio, MAX_STUDENTS} from './group-session.mjs';
 import {UserError} from './store.mjs';
 import * as v from './group-views.mjs';
@@ -86,10 +87,10 @@ export function groupService(store) {
   }
 
   return {
-    matches: path => path === '/join' || path.startsWith('/teach/') || path === '/teach' || path.startsWith('/class/'),
+    matches: path => path === '/join' || path === '/start/student' || path.startsWith('/teach/') || path === '/teach' || path.startsWith('/class/'),
     async handle(ctx) {
       const {req, res, url} = ctx, path = url.pathname;
-      const api = /\/(events|content|narration|answer|command|evaluate|remove|plan|display-events|texts|delete|import|rtc)$/.test(path) || /^\/teach\/texts\//.test(path) || path.endsWith('.json') || req.headers['content-type']?.startsWith('application/json');
+      const api = /\/(events|content|narration|answer|command|evaluate|remove|plan|display-events|texts|delete|import|rtc|page-image)$/.test(path) || /^\/teach\/texts\//.test(path) || path.endsWith('.json') || req.headers['content-type']?.startsWith('application/json');
       try { return await route(ctx); } catch (err) {
         if (api && err instanceof UserError && !res.headersSent) return send(res, {error: err.message}, err.status);
         throw err;
@@ -102,7 +103,7 @@ export function groupService(store) {
 
       // ---------- students ----------
       if (path === '/join') {
-        if (method === 'GET') return page(res, html, 'الانضمام إلى الحصة', v.joinPage(String(url.searchParams.get('code') || '').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 6)));
+        if (method === 'GET') return page(res, html, 'الانضمام إلى الحصة', v.joinPage(String(url.searchParams.get('code') || '').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 6), url.searchParams.has('none')));
         need(method === 'POST', 'إجراء غير متاح.', 405);
         joinLimit(req);
         const data = await fields(req), code = String(data.code || '').toUpperCase().trim(), name = String(data.name || '').trim().replace(/\s+/g, ' ');
@@ -110,6 +111,16 @@ export function groupService(store) {
         need(name.length >= 2 && name.length <= 30, 'اكتب اسمك الأول (من حرفين إلى ٣٠ حرفًا).');
         const s = g.session(code); need(s && (s.state.live || s.state.homework === 'open'), 'الحصة غير متاحة أو انتهت.', 404);
         const joined = g.join(code, name, MAX_STUDENTS); need(joined, 'اكتمل عدد الطلاب في هذه الحصة.', 409);
+        res.setHeader('Set-Cookie', `gl_${code}=${joined.token}; Path=/class/${code}; Max-Age=1209600; HttpOnly; SameSite=Lax${base.startsWith('https:') ? '; Secure' : ''}`);
+        broadcast(code); return redirect('/class/' + code);
+      }
+      // The app's «أنا الطالب» in the trial: straight into the class a trial teacher is running — no code, no name.
+      if (path === '/start/student' && method === 'GET') {
+        const code = g.latestTrialLive(Date.now() - 6 * 3600_000);
+        if (!code) return redirect('/join?none=1');
+        if (g.student(code, studentToken(req, code))) return redirect('/class/' + code);
+        joinLimit(req);
+        const joined = g.join(code, 'طالب ' + (g.students(code).length + 1), MAX_STUDENTS); need(joined, 'اكتمل عدد الطلاب في هذه الحصة.', 409);
         res.setHeader('Set-Cookie', `gl_${code}=${joined.token}; Path=/class/${code}; Max-Age=1209600; HttpOnly; SameSite=Lax${base.startsWith('https:') ? '; Secure' : ''}`);
         broadcast(code); return redirect('/class/' + code);
       }
@@ -182,7 +193,7 @@ export function groupService(store) {
         if (action === '/start' && method === 'POST') { await fields(req); const clean = validatePlan(plan.plan); return redirect('/teach/live/' + g.startSession(teacher.id, clean, initialState(clean))); }
         throw new UserError('إجراء غير متاح.', 405);
       }
-      const lm = path.match(/^\/teach\/live\/([A-Z0-9]{6})(?:\/(events|plan|command|evaluate|remove|display|display-events|rtc))?$/);
+      const lm = path.match(/^\/teach\/live\/([A-Z0-9]{6})(?:\/(events|plan|command|evaluate|remove|display|display-events|rtc|page-image))?$/);
       if (lm) {
         const [, code, action] = lm, s = ownSession(teacher, code);
         if (!action && method === 'GET') return page(res, html, 'إدارة الحصة', v.teacherPage(code, s.plan.title, base), true);
@@ -190,6 +201,16 @@ export function groupService(store) {
         if (action === 'plan' && method === 'GET') return send(res, s.plan);
         if (action === 'events' && method === 'GET') return subscribe(req, res, code, 'teacher', teacher.id);
         if (action === 'display-events' && method === 'GET') return subscribe(req, res, code, 'display', null);
+        if (action === 'page-image' && method === 'POST') { // the teacher photographs the book page during the class; it stays in this class only
+          const body = await json(req, base, 1_000_000);
+          const step = s.plan.steps.find(x => x.id === body.step && x.type === 'page');
+          need(step, 'خطوة المنهج غير موجودة.', 404);
+          need(validImage(body.image), 'الصورة يجب أن تكون PNG أو JPEG أو WebP صغيرة.');
+          Object.assign(step, {source: 'upload', image: body.image, rights: true});
+          g.saveSessionPlan(code, s.plan);
+          const next = {...s.state, pageVer: (s.state.pageVer || 0) + 1, seq: s.state.seq + 1}; g.saveState(code, next); broadcast(code);
+          return send(res, {ok: true});
+        }
         if (action === 'rtc' && method === 'POST') {
           const m = await rtcMessage(req, base);
           need(m.to && g.students(code).some(x => x.id === m.to), 'الطالب غير موجود في الحصة.', 404);
