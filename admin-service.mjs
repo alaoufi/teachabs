@@ -47,8 +47,11 @@ export function adminService(store) {
         admin.updateMember(u.id,account[1],{...data,active:data.active==='1',revision:Number(data.revision),permissions:selectedPermissions(data)});
         return redirect('/admin/accounts');
       }
-      if(path==='/admin/school/grades'){admin.addSchoolGrade(u.id,{grade:Number(data.grade)});return redirect('/admin/school');}
-      if(path==='/admin/school/classes'){admin.addSchoolClass(u.id,data);return redirect('/admin/school');}
+      if(path==='/admin/school/tracks/initialize'){admin.initializeSchoolLegacyTrack(u.id);return redirect('/admin/school');}
+      if(path==='/admin/school/tracks'){admin.addSchoolTrack(u.id,data);return redirect('/admin/school');}
+      if(path==='/admin/school/grades'){admin.addSchoolGrade(u.id,{...data,grade:Number(data.grade)});return redirect('/admin/school');}
+      if(path==='/admin/school/classes'){admin.addSchoolClass(u.id,{...data,capacity:Number(data.capacity)});return redirect('/admin/school');}
+      if(path==='/admin/school/classes/capacity'){admin.updateSchoolClassCapacity(u.id,{...data,capacity:Number(data.capacity),revision:Number(data.revision)});return redirect('/admin/school');}
       if(path==='/admin/school/classes/update'){admin.updateSchoolClass(u.id,{...data,revision:Number(data.revision)});return redirect('/admin/school');}
       if(path==='/admin/school/teachers'){admin.assignSchoolTeacher(u.id,data);return redirect('/admin/school');}
       if(path==='/admin/school/students'){admin.assignSchoolStudent(u.id,data);return redirect('/admin/school');}

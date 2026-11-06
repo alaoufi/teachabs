@@ -316,3 +316,16 @@ body:has(.adm) main{margin-top:0;padding-top:20px;padding-bottom:36px}
  .adm .adm-workspace .adm-stats strong{margin:0;font-size:18px;overflow-wrap:normal;white-space:nowrap}
  .adm .adm-workspace .adm-stats small{grid-column:2;font-size:12px}
 }
+
+/* Administration 015 is isolated from the 014 Android review branch. */
+.adm .school-fixed-levels{display:grid;gap:10px}
+.adm .school-fixed-levels>div{padding:10px 12px;border:1px solid #d6e2d9;border-radius:12px;background:#f5f8f2}
+.adm .school-fixed-levels h3{font-size:15px}.adm .school-fixed-levels p{margin:4px 0;font-size:13px;line-height:1.8}
+.adm .school-fixed-levels small{font-size:12px;color:#52685e}
+.adm .school-track{display:block!important;padding:10px 0!important}
+.adm .school-track h3{font-size:15px}.adm .school-track p{font-size:12px;line-height:1.7;margin:3px 0}
+.adm .school-track>.adm-badge{margin-top:6px;white-space:normal}
+.adm .school-step .adm-disclosure{margin:10px 0 0;padding:0 10px}
+.adm .school-step .adm-disclosure>summary{padding-inline:0;font-size:14px}
+.adm .school-capacity-summary{display:flex;flex-wrap:wrap;gap:5px 12px;margin-top:10px;padding-top:8px;border-top:1px solid #e1e8dd;font-size:12px;line-height:1.8}
+.adm .school-capacity-summary strong{font-size:13px}

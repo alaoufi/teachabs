@@ -10,7 +10,7 @@ import {createApp} from '../server.mjs';
 import {adminSchool,adminAudit} from '../admin-views.mjs';
 
 function fixture(t){const s=openStore(':memory:');t.after(()=>s.close());return {s,a:s.admin,ids:s.admin.demo()};}
-function create(a,id,name='أ',grade=4){const gradeId=a.school(id).grades.find(g=>g.grade===grade)?.id||a.addSchoolGrade(id,{grade});return a.addSchoolClass(id,{gradeId,name});}
+function create(a,id,name='أ',grade=4){const gradeId=a.school(id).grades.find(g=>g.grade===grade)?.id||a.addSchoolGrade(id,{grade});return a.addSchoolClass(id,{gradeId,name,capacity:10});}
 const current=(a,id,classId)=>a.school(id).classes.find(c=>c.id===classId);
 const update=(a,id,classId,changes={})=>{const c=current(a,id,classId);return a.updateSchoolClass(id,{classId,name:c.name,state:c.state,revision:c.revision,...changes});};
 const denied=(fn,status)=>assert.throws(fn,e=>e.status===status);
@@ -92,7 +92,7 @@ test('organizational UI omits archived choices and impossible empty forms',t=>{
  let html=adminSchool(a.profile(id),a.school(id));
  assert.doesNotMatch(html,/action="\/admin\/school\/classes"/);
  assert.doesNotMatch(html,/action="\/admin\/school\/teachers"/);
- assert.match(html,/افتح صفًا أولًا/);
+ assert.match(html,/أضف مسارًا تعليميًا أولًا/);
  const active=create(a,id,'أ'),archived=create(a,id,'ب');
  update(a,id,archived,{state:'archived'});
  html=adminSchool(a.profile(id),a.school(id));

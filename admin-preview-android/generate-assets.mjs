@@ -31,8 +31,8 @@ export function generateAssets(destination=join(here,'app/src/main/assets')){
  const store=openStore(':memory:');
  try{
   const a=store.admin,ids=a.demo(),id=ids.supervisor,p=a.profile(id),members=a.members(id);
-  const gradeId=a.addSchoolGrade(id,{grade:4}),classId=a.addSchoolClass(id,{gradeId,name:'الرابع · أ (مثال)'});
-  const archived=a.addSchoolClass(id,{gradeId,name:'الرابع · ب (مؤرشف)'});
+  const gradeId=a.addSchoolGrade(id,{grade:4}),classId=a.addSchoolClass(id,{gradeId,name:'الرابع · أ (مثال)',capacity:10});
+  const archived=a.addSchoolClass(id,{gradeId,name:'الرابع · ب (مؤرشف)',capacity:10});
   a.updateSchoolClass(id,{classId:archived,name:'الرابع · ب (مؤرشف)',state:'archived',revision:0});
   const school=a.school(id),teacher=school.teachers.find(t=>t.subjects?.includes('math')&&t.grades?.includes(4)),student=school.students.find(c=>c.grade===4);
   if(teacher)a.assignSchoolTeacher(id,{classId,teacherId:teacher.id,subject:'math'});
