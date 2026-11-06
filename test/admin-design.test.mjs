@@ -24,12 +24,13 @@ test('administration sections have a compact native guide and keyboard content t
  assert.match(views.adminEducation(p,{teachers:[],slots:[]}),/مواعيد فردية وليست جدولًا مدرسيًا جماعيًا/);
 });
 
-test('existing home and school guides are not duplicated or wrapped in a new section layout',t=>{
+test('home and school guides are not duplicated, and school shares the compact section workspace',t=>{
  const {a,ids,p}=fixture(t);
  for(const html of [views.adminHome(p,a.overview(ids.supervisor)),views.adminSchool(p,a.school(ids.supervisor))]){
   assert.doesNotMatch(html,/class="adm-section-guide"/);
-  assert.doesNotMatch(html,/class="adm-content adm-workspace"/);
  }
+ assert.doesNotMatch(views.adminHome(p,a.overview(ids.supervisor)),/class="adm-content adm-workspace"/);
+ assert.match(views.adminSchool(p,a.school(ids.supervisor)),/class="adm-content adm-workspace"/);
 });
 
 test('guide and design changes retain read-only controls and role-specific navigation',t=>{

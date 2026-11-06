@@ -172,3 +172,70 @@ body:has(.adm) main{margin-top:0;padding-top:20px;padding-bottom:36px}
 .adm .school-class-state .btn{background:#f4f0e6;color:#76562e;border-color:#d6c8ad;font-size:13px;min-height:44px;box-shadow:none}
 @media(max-width:960px){.adm .school-class-grid{grid-template-columns:1fr}}
 @media(max-width:390px){.adm .school-class-top{flex-wrap:wrap}.adm .school-class-top .adm-badge{margin-inline-start:47px}.adm .school-class-card{padding:14px}.adm .school-class-edit>.adm-form>.btn,.adm .school-class-state .btn{width:100%}}
+
+/* Administration 012: one compact raised hub, floating section marks, close fields. */
+.adm[data-admin-section=home] .adm-layout{display:block}
+.adm[data-admin-section=home] .adm-content{max-width:1000px;margin-inline:auto}
+.adm .adm-masthead{padding:12px 18px;margin-bottom:14px;border-radius:18px;gap:12px}
+.adm .adm-brand{font-size:18px;gap:10px}.adm .adm-brand-mark{width:40px;height:40px;border-radius:12px}
+.adm .adm-brand-mark svg{width:24px;height:24px}.adm .adm-brand small{font-size:11px;margin:0}
+.adm details.adm-simulation{display:block;padding:0 12px;margin-bottom:14px}
+.adm .adm-simulation>summary{display:flex;align-items:center;gap:8px;min-height:44px;cursor:pointer;list-style:none}
+.adm .adm-simulation>summary::-webkit-details-marker{display:none}
+.adm .adm-simulation>summary span{font-size:12px;overflow-wrap:anywhere}
+.adm .adm-simulation>summary small{font-size:11px;margin-inline-start:auto;white-space:nowrap}
+.adm .adm-simulation>.adm-form{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:end;gap:8px;padding-bottom:10px;margin-top:4px;max-width:520px}
+.adm .adm-simulation .btn{width:auto}
+.adm .adm-hub{padding:20px 22px 24px;border-radius:24px;background:linear-gradient(145deg,#e8f0e9,#fafbf7);border-color:#c0d3c5;box-shadow:0 7px 0 #c6d6cb,0 18px 32px #173e3417}
+.adm .adm-hub-head{align-items:start;gap:12px;margin-bottom:10px;flex-direction:row}
+.adm .adm-hub-head h1{font-size:25px;margin:0;line-height:1.5}
+.adm .adm-hub-head>div>p{font-size:13px;margin:2px 0 0}
+.adm .adm-hub-head .adm-help{max-width:270px;font-size:13px}
+.adm .adm-hub-head .adm-help summary{display:flex;align-items:center;justify-content:center;gap:5px;min-width:44px;padding:8px 10px;font-size:14px;list-style:none}
+.adm .adm-hub-head .adm-help[open]{flex-basis:50%}
+.adm .adm-hub .adm-section-grid{grid-template-columns:repeat(5,minmax(0,1fr));gap:34px 14px;padding-top:26px}
+.adm .adm-hub .adm-section-card{position:relative;min-height:105px;justify-content:center;gap:4px;padding:35px 8px 12px;border-radius:17px;background:linear-gradient(145deg,#ffffff,#f7faf5);box-shadow:0 5px 0 #d1dfd5,0 10px 18px #173e340d}
+.adm .adm-hub .adm-card-icon{position:absolute;top:-22px;left:50%;transform:translateX(-50%);width:48px;height:48px;border:1px solid #bdd5c9;box-shadow:0 5px 0 #bdcfc2,0 8px 13px #173e3417;clip-path:none}
+.adm .adm-hub .shape-0{border-radius:14px}.adm .adm-hub .shape-1{border-radius:50%}
+.adm .adm-hub .tone-0{background:linear-gradient(145deg,#e5f3ec,#cce4d8);color:#155847;border-color:#b1cdbd;box-shadow:0 5px 0 #afc8b8,0 8px 13px #173e3417}
+.adm .adm-hub .tone-1{background:linear-gradient(145deg,#edf3fd,#d3e1f3);color:#2a527e;border-color:#bacde2;box-shadow:0 5px 0 #b7cce0,0 8px 13px #173e3417}
+.adm .adm-hub .tone-2{background:linear-gradient(145deg,#fff4d9,#efdfb6);color:#76501b;border-color:#dbc794;box-shadow:0 5px 0 #d6c49b,0 8px 13px #173e3417}
+.adm .adm-hub .adm-card-icon svg{width:25px;height:25px}
+.adm .adm-hub .adm-section-card h2{font-size:16px;line-height:1.5}
+.adm .adm-hub .adm-card-open{font-size:11px;color:#526a5b}
+.adm .adm-form{gap:10px}.adm .adm-form-grid{gap:10px 12px}
+.adm .adm-field{gap:4px;font-size:13px}
+.adm :is(input:not([type=checkbox]):not([type=hidden]),select,textarea){min-height:44px;padding:8px 10px;font-size:16px}
+.adm .adm-form-actions{gap:10px;padding-top:12px;margin-top:2px}
+.adm .adm-panel-head{margin-bottom:12px;padding-bottom:10px}
+.adm .adm-workspace{padding:18px}.adm .adm-workspace .adm-heading h1{font-size:25px}
+.adm .adm-note{padding:9px 12px;margin-bottom:12px}
+.adm .school-guide{margin-bottom:12px;font-size:13px}
+.adm .school-setup-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));align-items:start;gap:14px}
+.adm .school-step{margin:0}.adm .school-step-head{padding:12px 14px;gap:9px}
+.adm .school-step-head h2{font-size:17px}.adm .school-step-head>span{width:28px;height:28px;font-size:14px}
+.adm .school-step-body{padding:12px 14px}.adm .school-step .adm-form{gap:9px 10px;margin:10px 0;grid-template-columns:repeat(2,minmax(0,1fr))}
+.adm .school-step .adm-form>.btn{grid-column:1/-1;width:auto;justify-self:start}
+.adm .school-step-body>.adm-form:last-child{margin-bottom:0}
+.adm .school-step-body>.adm-badge{margin:0 3px 6px}
+.adm .school-class-grid{grid-template-columns:1fr;gap:12px;margin-bottom:12px}
+.adm .school-class-edit>.adm-form{grid-template-columns:minmax(0,1fr) auto;align-items:end}
+.adm .school-class-edit>.adm-form>.btn{grid-column:auto}
+.adm .school-step .adm-empty{padding:16px 12px}.adm .school-step .adm-empty>span{font-size:25px;margin-bottom:6px}
+.adm .school-step .adm-empty h3{font-size:15px}.adm .school-step .adm-empty p{font-size:12px}
+@media(max-width:1100px){.adm .school-setup-grid{grid-template-columns:1fr}}
+@media(max-width:960px){.adm .adm-hub .adm-section-grid{grid-template-columns:repeat(4,minmax(0,1fr))}}
+@media(max-width:700px){
+ .adm .adm-masthead{padding:10px 12px;margin-bottom:12px}.adm .adm-brand{font-size:16px}.adm .adm-brand-mark{width:34px;height:34px}.adm .adm-session .btn{min-height:44px}
+ .adm .adm-hub{padding:16px 14px 20px;border-radius:20px}.adm .adm-hub-head h1{font-size:22px}.adm .adm-hub-head>div>p{font-size:12px}
+ .adm .adm-hub .adm-section-grid{grid-template-columns:repeat(3,minmax(0,1fr));gap:30px 10px;padding-top:26px}
+ .adm .adm-hub .adm-section-card{min-height:96px;padding:31px 5px 9px;border-radius:14px}.adm .adm-hub .adm-section-card h2{font-size:14px}
+ .adm .adm-hub .adm-card-icon{width:44px;height:44px;top:-21px}.adm .adm-hub .adm-card-icon svg{width:23px;height:23px}
+ .adm .adm-workspace{padding:13px}.adm .adm-workspace .adm-heading h1{font-size:22px}.adm .adm-workspace .adm-heading p{font-size:13px}
+ .adm .adm-panel{padding:14px}.adm .adm-form-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+ .adm .school-step .adm-form{grid-template-columns:repeat(2,minmax(0,1fr))}.adm .school-step-head,.adm .school-step-body{padding:12px}
+ .adm .adm-simulation>summary span{font-size:11px}.adm .adm-simulation>summary strong{font-size:12px}.adm .adm-simulation>summary small{font-size:10px}
+}
+@media(max-width:480px){.adm .adm-form-grid{grid-template-columns:1fr}.adm .school-class-edit>.adm-form{grid-template-columns:1fr}.adm .school-class-edit>.adm-form>.btn{justify-self:start;width:auto}}
+@media(max-width:360px){.adm .adm-hub{padding:14px 10px 18px}.adm .adm-hub .adm-section-grid{gap:29px 8px}.adm .adm-hub .adm-section-card h2{font-size:13px}.adm .adm-hub-head .adm-help summary span{display:none}.adm .adm-hub-head h1{font-size:20px}.adm .adm-simulation>summary{flex-wrap:wrap;gap:2px 7px;padding-block:5px}.adm .adm-simulation>summary small{display:none}.adm .school-step .adm-form{grid-template-columns:1fr}}
+@media print{.adm .adm-hub,.adm .adm-hub .adm-card-icon,.adm .adm-hub .adm-section-card{box-shadow:none}.adm .school-setup-grid{display:block}.adm details.adm-simulation{display:none}}
