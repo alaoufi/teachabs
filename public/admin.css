@@ -80,3 +80,38 @@ body:has(.adm) main{padding-top:12px}
 .adm .adm-panel{border-radius:20px;box-shadow:0 4px 0 #e0e8df}.adm .adm-heading-icon{border-radius:50%}.adm-sidebar nav a[aria-current=page]{box-shadow:0 3px 0 #c1d5c6}
 @media(max-width:700px){.adm-hub{padding:16px;border-radius:20px}.adm-hub-head{flex-direction:column;gap:10px}.adm-hub .adm-section-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.adm-hub .adm-section-card{padding:18px 8px}.adm-hub .adm-section-card h2{font-size:14px}.adm-hub-head h2{font-size:21px}}
 @media(prefers-reduced-motion:reduce){.adm-hub .adm-section-card:hover{transform:none}}
+
+/* Administration iteration 009: section workspaces, without global or classroom styles. */
+.adm .adm-skip-link{position:absolute;inset-inline-start:16px;top:8px;z-index:20;transform:translateY(-200%);padding:10px 16px;background:#155d50;color:#fff;border-radius:12px}
+.adm .adm-skip-link:focus{transform:none}
+.adm-workspace{padding:24px;border:1px solid var(--hub-border);border-radius:26px;background:linear-gradient(145deg,#eef4eb,#fafbf6);box-shadow:var(--hub-shadow)}
+.adm-workspace .adm-heading{margin:0 0 12px;align-items:flex-start}
+.adm-workspace .adm-heading h1{font-size:27px}
+.adm-workspace .adm-heading-icon{flex-shrink:0;transform:none;box-shadow:0 4px 0 #cddbd1}
+.adm .adm-section-guide{margin:0 0 20px;border:1px solid #d2e0d6;border-radius:13px;background:#fffefb;overflow:hidden}
+.adm .adm-section-guide summary{display:flex;align-items:center;gap:8px;min-height:44px;padding:9px 14px;font-size:14px;font-weight:650;cursor:pointer;list-style:none}
+.adm .adm-section-guide summary::-webkit-details-marker{display:none}
+.adm .adm-section-guide summary::after{content:'+';margin-inline-start:auto;font-size:22px;line-height:1;font-weight:400}
+.adm .adm-section-guide[open] summary::after{content:'−'}
+.adm .adm-section-guide[open] summary{border-bottom:1px solid #e0e8df}
+.adm .adm-section-guide ol{margin:12px 18px;padding-inline-start:20px;font-size:14px;color:#476253;line-height:1.9}
+.adm .adm-section-guide li+li{margin-top:6px}
+.adm-workspace>.adm-panel,.adm-workspace>.adm-records,.adm-workspace .adm-student,.adm-workspace .adm-library-card{background:#fffefb;box-shadow:0 5px 0 #dde7df,0 12px 24px #173e3407}
+.adm-workspace>.adm-panel:last-child,.adm-workspace>.adm-disclosure:last-child{margin-bottom:0}
+.adm-workspace .adm-panel-head{padding-bottom:12px;margin-bottom:16px}
+.adm-workspace .adm-panel-head h2{font-size:19px}
+.adm-workspace .adm-toolbar{padding:0 2px;margin-bottom:18px}
+.adm-workspace .adm-stats{gap:12px;margin-bottom:20px}
+.adm-workspace .adm-stats>div{box-shadow:0 4px 0 #dce6de;background:#fffefb;border-radius:16px}
+.adm-workspace .adm-stats>div:last-child{background:#e6efe4}
+.adm-workspace .adm-task-column{background:#e8efe7;border-color:#d0ddcf}
+.adm-workspace .adm-timeline{padding:0}
+.adm-workspace .adm-audit-event{margin:0 0 15px;padding:18px 20px;border:1px solid #d6e1d7;border-radius:16px;background:#fffefb;box-shadow:0 4px 0 #dfe8de}
+.adm-workspace .adm-audit-event:last-child{padding-bottom:18px;margin-bottom:0}
+.adm-workspace .adm-timeline-dot{display:none}
+.adm-workspace .adm-audit-event summary{min-height:44px;display:flex;align-items:center}
+.adm-workspace .adm-record-main,.adm-workspace .adm-record-actions{overflow-wrap:anywhere}
+@media(max-width:960px){.adm-workspace{padding:18px}.adm-workspace .adm-stats{gap:8px}.adm-workspace .adm-stats>div{padding:15px 10px}.adm-workspace .adm-stats strong{font-size:22px}}
+@media(max-width:700px){.adm-workspace{padding:16px;border-radius:20px}.adm-workspace .adm-heading h1{font-size:24px}.adm .adm-section-guide{margin-bottom:16px}.adm-workspace .adm-stats strong{font-size:20px}.adm-workspace .adm-audit-event{padding:15px}.adm-workspace .adm-record-actions{padding-inline-start:0}}
+@media(max-width:360px){.adm-workspace{padding:12px}.adm-workspace .adm-heading h1{font-size:21px}.adm-workspace .adm-heading-icon{display:none}.adm-workspace .adm-stats{grid-template-columns:1fr}.adm-workspace .adm-stats>div{display:grid;grid-template-columns:1fr auto;align-items:center;gap:2px 10px}.adm-workspace .adm-stats strong{margin:0}.adm-workspace .adm-stats small{grid-column:2}.adm-workspace .adm-form-actions{align-items:stretch;flex-direction:column}}
+@media print{.adm .adm-skip-link,.adm .adm-section-guide{display:none}.adm-workspace{padding:0;border:0;background:white;box-shadow:none}.adm-workspace .adm-audit-event{box-shadow:none;break-inside:avoid}}

@@ -1,0 +1,100 @@
+const {chromium}=require(process.env.PLAYWRIGHT_MODULE||'playwright');
+const assert=require('node:assert/strict');
+const fs=require('node:fs');
+const path=require('node:path');
+
+(async()=>{
+ const {openStore}=await import('../store.mjs');
+ const {createApp}=await import('../server.mjs');
+ const store=openStore(':memory:'),ids=store.admin.demo(),app=createApp(store);
+ await new Promise(resolve=>app.listen(0,'127.0.0.1',resolve));
+ const base='http://127.0.0.1:'+app.address().port;
+ const output=process.env.ADMIN_QA_OUTPUT||path.resolve('../admin-design-verification-009');
+ fs.mkdirSync(output,{recursive:true});
+ let browser;
+ try{
+  browser=await chromium.launch({headless:true,executablePath:process.env.CHROME_PATH||'/usr/bin/chromium',args:['--no-sandbox']});
+  const context=await browser.newContext();
+  await context.addCookies([{name:'ks',value:store.session(ids.supervisor),url:base}]);
+  const page=await context.newPage(),errors=[];
+  page.on('pageerror',error=>errors.push(error.message));
+  const routes=['accounts','accounts/new','finance','registration','education','education/teachers/new','operations','technical','libraries','audit'];
+  const widths=[320,390,768,1280];
+  for(const width of widths){
+   await page.setViewportSize({width,height:900});
+   for(const route of routes){
+    const response=await page.goto(base+'/admin/'+route);
+    assert.equal(response.status(),200,route);
+    assert.equal(await page.locator('.adm-section-guide').count(),1);
+    assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth+1),false,`${route} overflows at ${width}`);
+    const guide=page.locator('.adm-section-guide');
+    await guide.locator('summary').focus();
+    await page.keyboard.press('Enter');
+    assert.equal(await guide.getAttribute('open'),'');
+    assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth+1),false,`${route} guide overflows at ${width}`);
+    await page.keyboard.press('Enter');
+    assert.equal(await guide.getAttribute('open'),null);
+    if([390,1280].includes(width)&&['finance','accounts','operations','technical','audit'].includes(route))await page.screenshot({path:path.join(output,route+'-'+width+'.png'),fullPage:true});
+   }
+  }
+  await page.setViewportSize({width:390,height:900});
+  await page.goto(base+'/admin/accounts');
+  await page.locator('.adm-skip-link').focus();
+  await page.keyboard.press('Enter');
+  assert.equal(await page.evaluate(()=>document.activeElement.id),'adm-main');
+  await page.locator('.adm-mobile-nav summary').click();
+  await page.locator('.adm-mobile-nav a[href="/admin/finance"]').click();
+  assert.equal(new URL(page.url()).pathname,'/admin/finance');
+  assert.equal(await page.locator('.adm-mobile-nav').getAttribute('open'),null);
+  await page.goBack();
+  assert.equal(new URL(page.url()).pathname,'/admin/accounts');
+  await page.goForward();
+  assert.equal(new URL(page.url()).pathname,'/admin/finance');
+  const ledger=store.admin.ledger(ids.supervisor).length;
+  await page.locator('input[name="description"]').fill('قيد اختبار التصميم');
+  await page.locator('input[name="amount"]').fill('12.25');
+  await page.locator('form[action="/admin/finance"] button').click();
+  assert.equal(store.admin.ledger(ids.supervisor).length,ledger+1);
+  await page.reload();
+  assert.equal(store.admin.ledger(ids.supervisor).length,ledger+1);
+  await page.goto(base+'/admin/accounts/new');
+  const members=store.admin.members(ids.supervisor).length;
+  await page.locator('input[name="name"]').fill('مسودة غير محفوظة');
+  await page.getByRole('link',{name:'إلغاء والعودة'}).click();
+  assert.equal(new URL(page.url()).pathname,'/admin/accounts');
+  assert.equal(store.admin.members(ids.supervisor).length,members);
+  await page.goto(base+'/admin/operations');
+  await page.locator('form[action="/admin/operations"] input[name="title"]').fill('مهمة اختبار التصميم');
+  await page.locator('form[action="/admin/operations"] button').click();
+  const task=page.locator('.adm-task').filter({hasText:'مهمة اختبار التصميم'});
+  await task.locator('select[name="status"]').selectOption('done');
+  await task.locator('button').click();
+  assert.equal(store.admin.operations(ids.supervisor).find(row=>row.title==='مهمة اختبار التصميم').status,'done');
+  await page.reload();
+  assert.equal(await page.locator('.adm-task-column').last().locator('.adm-task').filter({hasText:'مهمة اختبار التصميم'}).count(),1);
+  await page.goto(base+'/admin/technical');
+  await page.locator('form[action="/admin/technical"] input[name="title"]').fill('طلب اختبار التصميم');
+  await page.locator('form[action="/admin/technical"] textarea').fill('وصف وهمي للاختبار دون بيانات شخصية.');
+  await page.locator('form[action="/admin/technical"] button').click();
+  const ticket=page.locator('.adm-support-ticket').filter({hasText:'طلب اختبار التصميم'});
+  await ticket.locator('select[name="status"]').selectOption('resolved');
+  await ticket.locator('button').click();
+  assert.equal(store.admin.technical(ids.supervisor).find(row=>row.title==='طلب اختبار التصميم').status,'resolved');
+  const reader=store.admin.members(ids.supervisor).find(row=>row.id===ids.finance);
+  store.admin.updateMember(ids.supervisor,ids.finance,{...reader,permissions:['finance.read']});
+  await context.clearCookies();
+  await context.addCookies([{name:'ks',value:store.session(ids.finance),url:base}]);
+  await page.goto(base+'/admin/finance');
+  assert.equal(await page.locator('form[action="/admin/finance"]').count(),0);
+  assert.equal((await page.goto(base+'/admin/accounts')).status(),403);
+  assert.deepEqual(errors,[]);
+  const result={widths,sectionPages:routes.length,responsiveChecks:widths.length*routes.length,guides:'keyboard open/close',skipLink:true,mobileNavigation:true,backForward:true,cancelDoesNotSave:true,financeSaveReload:true,taskUpdateReload:true,supportUpdate:true,readOnlyAndForbiddenAccess:true,errors};
+  fs.writeFileSync(path.join(output,'result.json'),JSON.stringify(result,null,2));
+  console.log(JSON.stringify(result));
+ }finally{
+  if(browser)await browser.close();
+  app.closeAllConnections();
+  await new Promise(resolve=>app.close(resolve));
+  store.close();
+ }
+})().catch(error=>{console.error(error);process.exitCode=1;});
