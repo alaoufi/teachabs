@@ -1,0 +1,13 @@
+# Administration mobile select readability 019
+
+This isolated follow-up starts from UI018 SHA382c3e3ecde73bdbcf4a19fc6b683b608674ae17. Browser QA of 016 reported clipped long path/grade option labels at widths 320/360 and a missing-font square for the circled information glyph. Separate 018 browser review passed 83/83 checks and confirmed these same two findings without additional flow issues.
+
+Native selects remain native and keyboard-operable. CSS cannot reliably wrap the platform option popup. The fallback keeps full labels in options, adds matching ordinal prefixes for variable-length path, class and person fields, or when another list contains long names, and supplies a collapsible, wrapped full-name list outside the control's label. This lets a person identify the intended option before choosing, even if the platform clips its native line. No tooltip-only, horizontal-scroll-only, JavaScript, or custom-combobox solution is used.
+
+A dedicated labeled-select helper covers school path/stage/grade/class/teacher/student selectors and individual assignment selectors. Short fixed stage, grade and subject lists remain compact. Variable-length fields keep the fallback even for short names, since glyph widths and text enlargement can still cause clipping. All values, selected-state behavior, scope, write permissions and submitted payloads remain unchanged. Full labels are escaped and are never shortened in the readable list.
+
+Information marks in administration guides are decorative inline SVG with explicit dimensions and aria-hidden/focusable attributes. Existing visible guide text and accessible names remain; no system font glyph is needed.
+
+Verification targets: duplicate-prefix long names, unique label/control and description associations, exact option-value preservation, escaped names, native disclosure semantics, no nested interactive label content, and the prior routing/security/assignment suites. Browser review must still check 320/360/393, expanded full-name lists, keyboard controls, long mixed-script names and increased text size. Source tests alone are not visual or Android approval. No shared Claude/classroom/server/store/registration code, deployment, APK or live data changes are authorized here.
+
+Source verification: 193/193 tests passed, including six focused readability/escaping/association/sanitization tests. An independent source review found no semantic, escaping or preview-compatibility blocker. Actual mobile/browser/Android review of this checkpoint is still required. The individual-teacher page is not one of the existing APK generator pages; its sanitized rendering is covered by a source test, not a claim that it was present in an APK.

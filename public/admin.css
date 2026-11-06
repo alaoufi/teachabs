@@ -350,3 +350,13 @@ body:has(.adm) main{margin-top:0;padding-top:20px;padding-bottom:36px}
 .adm .school-path-flow .school-selector{margin-block:0 10px}
 .adm .school-selected-context{font-weight:650;line-height:1.7;overflow-wrap:break-word;background:#eef6f5;border-radius:12px;padding:9px 12px;margin:0 0 10px}
 .adm .school-new-track{margin-block:8px}.adm .school-path-flow .school-class-grid{margin-top:12px}
+/* 019: font-independent guide marks and full native-select option references. */
+.adm .adm-info-icon{width:20px;height:20px;display:inline-block;vertical-align:middle;flex:none;margin-inline-end:5px}
+.adm .adm-readable-select>label{display:block;margin:0;font:inherit;color:inherit}
+.adm .adm-choice-hint{font-size:.8rem;font-weight:400;line-height:1.65;color:#435b50}
+.adm .adm-option-reference{min-width:0;padding:0;border:0;margin:0}
+.adm .adm-option-reference>summary{min-height:44px;display:list-item;padding:8px 0;cursor:pointer;font-size:.85rem;line-height:1.65;white-space:normal;overflow-wrap:break-word}
+.adm .adm-option-names{list-style:none;display:grid;gap:8px;margin:0;padding:8px 0;min-width:0;white-space:normal;overflow-wrap:break-word;word-break:normal;hyphens:none;font-weight:400;font-size:.9rem;line-height:1.75}
+.adm .adm-option-names>li{display:grid;grid-template-columns:26px minmax(0,1fr);gap:8px;align-items:start;min-width:0;padding:8px;border:1px solid #d8e2d5;border-radius:10px;background:#f3f7ee}
+.adm .adm-option-names bdi{min-width:0;white-space:normal;overflow-wrap:break-word;word-break:normal}
+.adm .adm-option-number{display:inline-grid;place-items:center;min-width:24px;min-height:26px;border-radius:7px;background:#dfebd9;font-weight:700;color:#254b39}
