@@ -18,8 +18,8 @@ export function shadowPanel(seat) {
   const lead = teacher ? `<div class="sa-teacher" role="group" aria-label="قيادة النشاط">
    <button type="button" id="sa-handover" disabled>سلّم التحكم للطالب</button>
    <button type="button" id="sa-reveal" disabled aria-pressed="false">إخفاء الظل للتوقع</button>
-   <label>تحدٍّ للطالب <select id="sa-challenge" disabled><option value="">بدون تحدٍّ</option>${CHALLENGES.map(c => `<option value="${c.id}">${c.title}</option>`).join('')}</select></label>
-   <button type="button" id="sa-reset" class="quiet" disabled>إعادة النشاط</button>
+   <label><span class="sa-vh">تحدٍّ للطالب</span> <select id="sa-challenge" disabled title="تحدٍّ للطالب"><option value="">بدون تحدٍّ</option>${CHALLENGES.map(c => `<option value="${c.id}">${c.title}</option>`).join('')}</select></label>
+   <button type="button" id="sa-reset" class="quiet" disabled aria-label="إعادة النشاط" title="إعادة النشاط">↺</button>
   </div>` : '';
   const notes = teacher ? `<details class="sa-notes"><summary>نقاط تشرحها بصوتك</summary><ol>${TALKING_POINTS.map(t => `<li>${t}</li>`).join('')}</ol><p>هذه النقاط تظهر لك وحدك. أنت تقود الشرح؛ النشاط لا يتقدم تلقائيًا.</p></details>` : '';
   return `<div id="shadow-activity" class="sa" data-seat="${seat}">

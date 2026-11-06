@@ -40,6 +40,7 @@ const assert = require('node:assert/strict'), fs = require('node:fs'), path = re
     await s.waitForFunction(() => document.querySelector('#gl-content .m-phase')?.textContent.startsWith('يغلي'));
     await t.locator('.gl-act-controls').getByRole('button', {name: 'سخّن ١٠°'}).click();
     await display.waitForFunction(() => document.querySelector('#gl-content .m-phase')?.textContent.startsWith('غاز'));
+    await s.waitForFunction(() => document.querySelector('#gl-content .m-phase')?.textContent.startsWith('غاز'));
     assert.ok(await s.locator('#gl-content .particle.p-fly').count() > 0, 'gas particles fly');
     results.push('teacher heated water: liquid → boiling → gas on student and display, particles change motion');
     // Predict, then reveal.

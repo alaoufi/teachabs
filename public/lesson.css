@@ -46,3 +46,71 @@
 @media(max-width:360px){.sa-materials{grid-template-columns:1fr}}
 .class-video>summary,.class-activity>details>summary{list-style:none}.class-video>summary::-webkit-details-marker,.class-activity>details>summary::-webkit-details-marker{display:none}
 .class-video:not([open])>summary::before,.class-activity>details:not([open])>summary::before{content:"◂";margin-inline-end:8px}.class-video[open]>summary::before,.class-activity>details[open]>summary::before{content:"▾";margin-inline-end:8px}
+
+/* ===== stage 042: compact class page — tighter lines, one-row controls, raised 3D scene and board ===== */
+#classroom p{line-height:1.5}
+.lesson-flow{gap:10px}
+.class-activity>details>summary{font-size:18px;min-height:38px}
+.sa{font-size:14px;line-height:1.4}
+.sa-role{font-size:14px;padding:4px 10px;margin:4px 0!important}
+/* teacher buttons: one row, small text; scrolls sideways instead of wrapping when the screen is narrow */
+.sa-teacher{flex-wrap:nowrap;align-items:center;gap:6px;padding:6px;margin:6px 0;overflow-x:auto;scrollbar-width:thin}
+.sa-teacher>*{flex:none}
+.sa .sa-teacher button,.sa .sa-steps button{min-height:36px;padding:4px 10px;font-size:13px;white-space:nowrap;border-radius:10px;border:1px solid #b7ceca;background:#fff;color:var(--ink)}
+.sa-teacher label{flex-direction:row;align-items:center;gap:4px;font-size:12px;white-space:nowrap}
+.sa-teacher select{min-height:36px;font-size:13px;padding:2px 6px;max-width:150px}
+.sa-teacher #sa-reset{border-color:transparent;background:none;color:var(--muted)}
+.sa-body{gap:10px;margin-top:6px}
+/* the scene sits in the same raised frame as the class board */
+.sa-figure{perspective:1200px;padding-bottom:8px}
+.sa-scene{border:9px solid transparent;border-radius:16px;
+ background:linear-gradient(#fffefa,#fffefa) padding-box,linear-gradient(150deg,#f3f5f7 0%,#aab3bc 18%,#6f7a85 48%,#d5dbe0 62%,#8a949e 100%) border-box;
+ box-shadow:0 1px 0 1px #fff inset,0 2px 3px #0000002e,0 12px 20px -8px #0b1f2a59,0 28px 46px -24px #0b1f2a6b}
+.sa-scene svg{border-radius:7px}
+.sa-figure figcaption{font-size:12px;margin-top:2px}
+.sa-controls{gap:6px}
+.sa-control{padding:6px 10px;border-radius:10px}
+.sa-control label,.sa-control legend{font-size:14px}
+.sa input[type=range]{height:30px}
+/* time: label and the earlier/later buttons on one row, slider under them */
+.sa-control:has(#sa-hour){display:grid;grid-template-columns:1fr auto;align-items:center;column-gap:8px}
+.sa-control:has(#sa-hour) input{grid-column:1/-1;grid-row:2}
+.sa-control:has(#sa-hour) .sa-steps{grid-row:1;grid-column:2;gap:4px;flex-wrap:nowrap}
+.sa-materials{grid-template-columns:repeat(3,minmax(0,1fr));gap:4px;padding:4px 8px 8px}
+.sa-choice span{min-height:40px;font-size:13px;line-height:1.2;padding:2px;border-width:2px}
+.sa-choice small{font-size:11px}
+.sa-readouts{grid-template-columns:repeat(3,minmax(0,1fr));gap:4px;margin:8px 0 0}
+.sa-readouts div{padding:4px 8px}.sa-readouts dt{font-size:12px}.sa-readouts dd{font-size:15px;margin:0}
+.sa-notes{margin-top:8px;padding:4px 12px}.sa-more{margin:6px 0 0!important}
+/* the shared board: raised frame */
+.class-board #board-pro{border:9px solid transparent;border-radius:16px;
+ background:linear-gradient(#fffefa,#fffefa) padding-box,linear-gradient(150deg,#f3f5f7 0%,#aab3bc 18%,#6f7a85 48%,#d5dbe0 62%,#8a949e 100%) border-box;
+ box-shadow:0 1px 0 1px #fff inset,0 2px 3px #0000002e,0 12px 20px -8px #0b1f2a59,0 28px 46px -24px #0b1f2a6b}
+@media(max-width:750px){
+ #classroom .panel{padding:10px 12px}
+ #classroom h1{font-size:26px;margin:4px 0}#classroom h2{font-size:18px}
+ .lesson-status{margin:8px 0;padding:6px 10px}
+ .class-voice .devices button{font-size:13px;min-height:38px;padding:4px 10px}
+ .sa-figure{padding-top:4px}
+ .sa-scene{border-width:6px;border-radius:12px}
+ .class-board #board-pro{border-width:6px;border-radius:12px}
+}
+@media(max-width:360px){.sa-materials{grid-template-columns:repeat(3,minmax(0,1fr))}.sa-choice small{display:none}}
+/* readings: name above value (the site-wide ".panel dl div" grid split them into two squeezed columns) */
+.sa-readouts div{display:block;border:0;padding:4px 8px;min-width:0}.sa-readouts dd{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sa-vh{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
+.sa .sa-teacher button,.sa .sa-steps button{font-size:12.5px;padding:4px 9px}
+.sa-teacher select{max-width:118px;font-size:12.5px}
+.sa .sa-teacher #sa-reset{font-size:18px;padding:2px 8px;min-width:36px}
+/* height: label and slider on one row */
+.sa-control:has(#sa-height){display:grid;grid-template-columns:auto 1fr;align-items:center;column-gap:10px}
+.sa.is-driving .sa-scene{outline-offset:2px}
+#classroom .sa .sa-readouts div{display:block;grid-template-columns:none;border-bottom:0;padding:4px 8px}
+@media(max-width:750px){.sa-teacher{gap:4px;padding:4px;border:0;background:none;margin:4px 0}.sa .sa-teacher button{padding:4px 7px}.sa-teacher select{max-width:104px;padding:2px 2px}}
+@media(max-width:750px){
+ .sa-teacher{overflow:visible}
+ .sa-teacher>*{flex:1 1 0;min-width:0}
+ .sa-teacher>#sa-reset{flex:none}
+ .sa .sa-teacher button{white-space:normal;line-height:1.15;min-height:38px}
+ .sa-teacher label{display:flex}.sa-teacher select{max-width:none;width:100%;min-width:0}
+}
