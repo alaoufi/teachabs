@@ -5,3 +5,5 @@ app/src/main/assets/
 *.jks
 *.keystore
 *.apk
+
+review-output/

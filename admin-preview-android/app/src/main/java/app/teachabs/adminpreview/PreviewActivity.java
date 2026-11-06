@@ -78,7 +78,11 @@ public final class PreviewActivity extends Activity {
         });
         setContentView(web);
         String previous = state == null ? null : state.getString("previewUrl");
-        web.loadUrl(previous != null && allowed(Uri.parse(previous)) ? previous : START);
+        // Test navigation uses the same packaged-page allowlist, never an external URL.
+        String route = getIntent().getStringExtra("preview_route");
+        String requested = route != null && route.startsWith("/admin") ? "https://" + HOST + route : START;
+        String initial = allowed(Uri.parse(requested)) ? requested : START;
+        web.loadUrl(previous != null && allowed(Uri.parse(previous)) ? previous : initial);
     }
     @Override protected void onSaveInstanceState(Bundle state) {
         super.onSaveInstanceState(state);
