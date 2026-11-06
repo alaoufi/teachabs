@@ -13,7 +13,7 @@ const assert = require('node:assert/strict'), fs = require('node:fs'), path = re
   const watch = p => { p.on('pageerror', e => errors.push(e.message)); p.on('console', m => { if (m.type() === 'error' && !/favicon/.test(m.text())) errors.push(m.text()); }); };
   const shot = (p, name) => p.screenshot({path: path.join(out, name + '.png')});
   try {
-    const tc = await browser.newContext({viewport: {width: 1400, height: 1000}, permissions: ['microphone']}); tc.setDefaultTimeout(15000);
+    const tc = await browser.newContext({viewport: {width: 1700, height: 1000}, permissions: ['microphone']}); tc.setDefaultTimeout(15000);
     const t = await tc.newPage(); watch(t); t.on('dialog', d => d.accept().catch(() => {}));
     await t.goto(base + '/demo'); await t.locator('#group form button').click(); await t.waitForURL(/\/app/);
     await t.goto(base + '/teach/plans'); await t.locator('.gl-templates button', {hasText: 'الضوء والظل'}).click(); await t.waitForURL(/\/teach\/plans\/[0-9a-f-]{36}$/);
@@ -57,7 +57,7 @@ const assert = require('node:assert/strict'), fs = require('node:fs'), path = re
     await t.mouse.move(board.x + 100, board.y + 100); await t.mouse.down(); await t.mouse.move(board.x + 400, board.y + 160, {steps: 10}); await t.mouse.up();
     await students[0].waitForFunction(() => document.querySelectorAll('#gl-ink path.gl-pen').length === 1);
     await display.waitForFunction(() => document.querySelectorAll('#gl-ink path.gl-pen').length === 1);
-    await t.getByRole('button', {name: 'تشغيل على أجهزة الطلاب'}).click();
+    await t.locator('#gl-quick').getByRole('button', {name: 'على أجهزة الطلاب'}).click();
     await students[1].waitForFunction(() => window.__played > 0);
     results.push('curriculum page shown, teacher ink synced, recorded narration played on a student device');
 
@@ -71,16 +71,16 @@ const assert = require('node:assert/strict'), fs = require('node:fs'), path = re
     // 2) Interactive explanation: predict, reveal, individual exploration.
     await t.locator('#gl-next').click();
     await students[0].waitForSelector('#gl-content .gl-scene svg');
-    await t.getByRole('button', {name: 'إخفاء الظل ليتوقع الطلاب'}).click();
+    await t.locator('#gl-panel').getByRole('button', {name: 'إخفاء الظل ليتوقع الطلاب'}).click();
     await students[0].waitForFunction(() => !document.querySelector('#gl-content polygon.shadow') && document.querySelector('.gl-facts').textContent.includes('توقّع'));
     await shot(students[0], 'group-student-predict');
-    await t.getByRole('button', {name: 'اكشف الظل'}).click();
+    await t.locator('#gl-panel').getByRole('button', {name: 'اكشف الظل'}).click();
     await students[0].waitForFunction(() => document.querySelector('#gl-content polygon.shadow'));
-    await t.getByRole('button', {name: 'ساعة لاحقة'}).click();
+    await t.locator('#gl-panel').getByRole('button', {name: 'ساعة لاحقة'}).click();
     await students[2].waitForFunction(() => document.querySelector('.gl-facts').textContent.includes('٣٠°') === false);
-    await t.getByRole('button', {name: 'اسمح للطلاب بالاستكشاف على أجهزتهم'}).click();
+    await t.locator('#gl-panel').getByRole('button', {name: 'اسمح للطلاب بالاستكشاف على أجهزتهم'}).click();
     await students[2].waitForSelector('.gl-explore input[type=range]');
-    await t.getByRole('button', {name: 'إيقاف الاستكشاف الفردي'}).click();
+    await t.locator('#gl-panel').getByRole('button', {name: 'إيقاف الاستكشاف الفردي'}).click();
     await students[2].waitForSelector('.gl-facts');
     results.push('interactive: predict/reveal, teacher moved the sun, individual exploration on/off');
 
@@ -90,14 +90,14 @@ const assert = require('node:assert/strict'), fs = require('node:fs'), path = re
     assert.equal(await students[0].locator('.gl-item').count(), 0);
     await t.locator('.gl-reveal li').nth(0).getByRole('button', {name: 'إظهار'}).click();
     await students[0].waitForFunction(() => document.querySelectorAll('.gl-item').length === 1);
-    await t.getByRole('button', {name: 'إظهار الكل'}).click();
+    await t.locator('#gl-panel').getByRole('button', {name: 'إظهار الكل'}).click();
     await students[0].waitForFunction(() => document.querySelectorAll('.gl-item').length === 4);
     await shot(display, 'group-display-board');
     results.push('prepared board items: hidden at first, revealed one, then all');
 
     // 4) Questions: answers private to teacher, then shown as chosen.
     await t.locator('#gl-next').click();
-    await t.getByRole('button', {name: 'افتح الإجابة للطلاب'}).click();
+    await t.locator('#gl-panel').getByRole('button', {name: 'افتح الإجابة للطلاب'}).click();
     const choices = [1, 1, 0];
     for (const [i, p] of students.entries()) {
       await p.waitForSelector('#gl-answer fieldset:not([disabled])');
@@ -131,7 +131,7 @@ const assert = require('node:assert/strict'), fs = require('node:fs'), path = re
     for (const i of [0, 1, 2]) await form.locator(`select[name=r${i}]`).selectOption('4');
     await form.locator('textarea').fill('مشاركة متميزة');
     await form.getByRole('button', {name: 'حفظ التقييم'}).click(); await t.waitForFunction(() => document.querySelector('#gl-status').textContent.includes('حُفظ تقييم'));
-    await t.getByRole('button', {name: 'نشر التقييم للطلاب'}).click();
+    await t.locator('#gl-evaluation').getByRole('button', {name: 'نشر التقييم للطلاب'}).click();
     await students[2].waitForFunction(() => document.querySelector('#gl-eval')?.textContent.includes('متميز'));
     await students[0].waitForFunction(() => document.querySelector('#gl-eval')?.textContent.includes('لم يقيّمك'));
     await shot(students[2], 'group-student-evaluation');

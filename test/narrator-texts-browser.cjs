@@ -12,7 +12,7 @@ const assert = require('node:assert/strict'), fs = require('node:fs'), path = re
   const results = [], errors = [];
   const watch = p => { p.on('pageerror', e => errors.push(e.message)); p.on('console', m => { if (m.type() === 'error') errors.push(m.text()); }); };
   try {
-    const tc = await browser.newContext({viewport: {width: 1400, height: 1000}, permissions: ['microphone'], acceptDownloads: true}); tc.setDefaultTimeout(15000);
+    const tc = await browser.newContext({viewport: {width: 1700, height: 1000}, permissions: ['microphone'], acceptDownloads: true}); tc.setDefaultTimeout(15000);
     const tour = store.tour();
     await tc.addCookies([{name: 'ks', value: store.session(tour.teacher), url: base}]);
     const t = await tc.newPage(); watch(t); t.on('dialog', d => d.accept().catch(() => {}));
@@ -93,9 +93,9 @@ const assert = require('node:assert/strict'), fs = require('node:fs'), path = re
     results.push(`sun glides smoothly (${Math.round(x1)} → ${Math.round(x2)} → ${Math.round(x3)})`);
     await t.screenshot({path: path.join(out, 'narrator-teacher.png')});
     await s.screenshot({path: path.join(out, 'narrator-student.png')});
-    await t.locator('#gl-narration [data-narr=mute]').click();
+    await t.locator('#gl-quick [data-narr=mute]').click();
     await s.waitForFunction(() => document.querySelector('.gl-narrator')?.classList.contains('is-muted'));
-    await t.locator('#gl-narration [data-narr=visible]').click();
+    await t.locator('#gl-quick [data-narr=visible]').click();
     await s.waitForFunction(() => !document.querySelector('.gl-narrator'));
     await t.getByRole('button', {name: 'إظهار المتحدث'}).click();
     await s.waitForSelector('.gl-narrator');

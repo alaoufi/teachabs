@@ -5,7 +5,7 @@ import {COLORS, SIZE_NAMES} from './public/group-ink.js';
 
 const TOOL_BUTTONS = [['select', '➤', 'تحريك', 'V'], ['hand', '✋', 'يد', 'H'], ['pen', '✎', 'قلم', 'P'], ['brush', '🖌', 'فرشاة', 'B'], ['marker', '▮', 'تظليل', 'M'], ['text', 'ت', 'كتابة', 'T'], ['eraser', '⌫', 'ممحاة', 'E']];
 
-const css = '<link rel="stylesheet" href="/group-lesson.css?v=2">';
+const css = '<link rel="stylesheet" href="/group-lesson.css?v=3">';
 const dateText = t => new Intl.DateTimeFormat('ar-SA', {dateStyle: 'medium', timeStyle: 'short', timeZone: 'Asia/Riyadh'}).format(t);
 
 export function plansPage(plans, sessions) {
@@ -44,35 +44,41 @@ const zoomBar = (follow = false) => `<div class="gl-zoom" role="group" aria-labe
 const boardShell = (extra = '', follow = false) => `<div class="gl-stage"><div class="gl-board" id="gl-board" aria-live="polite"><div class="gl-camera" id="gl-camera"><div class="gl-content" id="gl-content"></div><svg class="gl-ink" id="gl-ink" viewBox="0 0 1000 600" preserveAspectRatio="none" aria-hidden="true"></svg></div>${follow ? '' : zoomBar(false)}</div>${follow ? zoomBar(true) : ''}${extra}</div>`;
 
 export function teacherPage(code, title, base) {
+  // Presentation mode: one screen, no page scroll. The raised board fills the middle; lesson controls sit above it,
+  // drawing tools below it, and students, results, homework and evaluation open in a side drawer.
   const join = `${base}/join?code=${code}`;
-  return `${css}<section class="gl-wrap gl-teacher" dir="rtl" id="gl-app" data-code="${e(code)}" data-role="teacher">
-  <div class="gl-top gl-top-compact"><div><div class="eyebrow">إدارة الحصة الجماعية</div><h1>${e(title)}</h1>
-   <p class="gl-join">رمز الحصة: <b class="gl-code">${e(code)}</b> · يدخل الطلاب من <a class="textlink" href="/join?code=${e(code)}" target="_blank" rel="noopener">${e(join)}</a></p></div>
-   <div class="gl-actions"><a class="textlink" href="/guide" target="_blank" rel="noopener">دليل الاستخدام</a><a class="outline" href="/teach/live/${e(code)}/display" target="_blank" rel="noopener">فتح شاشة العرض للسبورة الذكية ↗</a><button type="button" class="outline" id="gl-live">إنهاء العرض</button></div></div>
-  <p id="gl-status" class="gl-status" role="status" aria-live="polite">جارٍ الاتصال…</p>
-  <div class="gl-layout">
-   <nav class="gl-seq" aria-label="تسلسل الدرس"><h2>تسلسل الدرس</h2><ol id="gl-steps"></ol>
-    <div class="gl-nav"><button type="button" id="gl-prev">السابق</button><button type="button" id="gl-next" class="btn">التالي</button></div></nav>
-   <div class="gl-main">
-    <div class="gl-tools" role="toolbar" aria-label="أدوات السبورة">
-     <div class="gl-toolgroup gl-showgroup" role="group" aria-label="العرض للطلاب"><button type="button" id="gl-show" aria-pressed="true">إخفاء عن الطلاب</button><span class="gl-vis" id="gl-vis"></span></div>
+  const tools = `<div class="gl-tools" role="toolbar" aria-label="أدوات السبورة">
      <div class="gl-toolgroup" role="group" aria-label="الأداة">${TOOL_BUTTONS.map(([tool, icon, label, key]) => `<button type="button" class="gl-tool" data-tool="${tool}" aria-pressed="${tool === 'select' ? 'true' : 'false'}" title="${label} (${key})"><span aria-hidden="true">${icon}</span><span>${label}</span></button>`).join('')}</div>
      <div class="gl-toolgroup gl-colors" role="group" aria-label="اللون">${COLORS.map((c, i) => `<button type="button" class="gl-color" data-color="${c.value}" aria-label="${c.name}" title="${c.name}" aria-pressed="${i ? 'false' : 'true'}"><i data-swatch="${i}"></i></button>`).join('')}</div>
      <div class="gl-toolgroup" role="group" aria-label="الحجم">${Object.entries(SIZE_NAMES).map(([k, n]) => `<button type="button" class="gl-size" data-size="${k}" aria-pressed="${k === 'm' ? 'true' : 'false'}" title="حجم ${n}"><i data-dot="${k}"></i><span>${n}</span></button>`).join('')}</div>
-     <div class="gl-toolgroup" role="group" aria-label="إجراءات"><button type="button" id="gl-library" title="اختر نصًا توضيحيًا وعدّله ثم ضعه على السبورة">📚 نصوص توضيحية</button><button type="button" id="gl-undo" title="تراجع (Ctrl+Z)">↶ تراجع</button><button type="button" id="gl-clear">مسح كتابة الخطوة</button></div>
-    </div>
-    <div class="gl-snippets" id="gl-snippets" hidden></div>
-    ${boardShell('<div class="gl-textbox" id="gl-textbox" hidden><input id="gl-textinput" maxlength="200" aria-label="اكتب على السبورة" placeholder="اكتب ثم Enter" dir="auto"><button type="button" id="gl-textok" class="btn">ضع</button><button type="button" id="gl-textcancel" class="quiet">إلغاء</button></div>')}
-    <div class="gl-narration" id="gl-narration" hidden></div>
-    <details class="gl-keys"><summary>اختصارات لوحة المفاتيح</summary><p>V تحريك · H يد · P قلم · B فرشاة · M تظليل · T كتابة · E ممحاة · + و − تكبير وتصغير · 0 ملاءمة · Ctrl+Z تراجع · PageDown أو ← للخطوة التالية، و PageUp أو → للسابقة (تناسب أجهزة التحكم بالعرض) · Esc إلغاء.</p></details>
-    <section class="gl-panel" id="gl-panel" aria-label="أدوات الخطوة الحالية"></section>
-   </div>
-   <aside class="gl-side"><section><h2>الطلاب <small id="gl-count"></small></h2><ul id="gl-students" class="gl-students"></ul></section>
-    <section><h2>الواجب</h2><div id="gl-homework"></div></section>
-    <section><h2>التقييم</h2><div id="gl-evaluation"></div></section></aside>
-  </div>
-  <p class="gl-note">الصوت المباشر: في الفصل الحضوري يُسمع صوت المعلم مباشرة. البث الصوتي المباشر عن بُعد لعدة طلاب غير متوفر في هذه المرحلة.</p>
- </section><script type="module" src="/group-teacher.js?v=2"></script>`;
+     <div class="gl-toolgroup" role="group" aria-label="إجراءات"><button type="button" id="gl-library" title="اختر نصًا توضيحيًا وعدّله ثم ضعه على السبورة">📚 نصوص</button><button type="button" id="gl-undo" title="تراجع (Ctrl+Z)">↶ تراجع</button><button type="button" id="gl-clear" title="مسح كتابة الخطوة">🗑 مسح</button></div>
+    </div>`;
+  return `${css}<section class="gl-wrap gl-teacher gl-present" dir="rtl" id="gl-app" data-code="${e(code)}" data-role="teacher">
+  <header class="gl-bar gl-bar-top">
+   <div class="gl-bar-title"><h1>${e(title)}</h1><button type="button" class="gl-code-chip" id="gl-code" data-join="${e(join)}" title="انسخ رابط الطلاب: ${e(join)}">الرمز <b class="gl-code">${e(code)}</b></button><span id="gl-status" class="gl-status-dot" role="status" aria-live="polite">جارٍ الاتصال…</span></div>
+   <div class="gl-bar-actions"><a class="outline gl-mini" href="/teach/live/${e(code)}/display" target="_blank" rel="noopener" title="افتح على السبورة الذكية أو جهاز العرض">🖥 شاشة العرض</a><button type="button" class="outline gl-mini" id="gl-drawer-btn" aria-expanded="false" aria-controls="gl-drawer">👥 الطلاب والنتائج <span id="gl-count"></span></button><a class="quiet gl-mini" href="/guide" target="_blank" rel="noopener">الدليل</a><button type="button" class="quiet gl-mini" id="gl-live">إنهاء العرض</button></div>
+  </header>
+  <nav class="gl-bar gl-bar-steps" aria-label="تسلسل الدرس">
+   <button type="button" id="gl-prev" class="gl-mini" title="السابق (PageUp)">→</button>
+   <ol id="gl-steps" class="gl-steps-strip"></ol>
+   <button type="button" id="gl-next" class="btn gl-mini" title="التالي (PageDown)">←</button>
+   <span class="gl-sep"></span>
+   <button type="button" id="gl-show" class="gl-mini" aria-pressed="true">إخفاء عن الطلاب</button><span class="gl-vis" id="gl-vis"></span>
+   <div class="gl-quick" id="gl-quick" role="group" aria-label="أزرار الخطوة الحالية"></div>
+  </nav>
+  ${boardShell('<div class="gl-textbox" id="gl-textbox" hidden><input id="gl-textinput" maxlength="200" aria-label="اكتب على السبورة" placeholder="اكتب ثم Enter" dir="auto"><button type="button" id="gl-textok" class="btn">ضع</button><button type="button" id="gl-textcancel" class="quiet">إلغاء</button></div>')}
+  <footer class="gl-bar gl-bar-bottom">${tools}<div class="gl-snippets" id="gl-snippets" hidden></div></footer>
+  <aside class="gl-drawer" id="gl-drawer" aria-label="الخطوة والطلاب والنتائج" hidden>
+   <div class="gl-drawer-head"><h2>الخطوة والطلاب</h2><button type="button" class="quiet" id="gl-drawer-close" aria-label="إغلاق">✕</button></div>
+   <section class="gl-panel" id="gl-panel" aria-label="أدوات الخطوة الحالية"></section>
+   <div class="gl-narration" id="gl-narration" hidden></div>
+   <section><h2>الطلاب</h2><ul id="gl-students" class="gl-students"></ul></section>
+   <section><h2>الواجب</h2><div id="gl-homework"></div></section>
+   <section><h2>التقييم</h2><div id="gl-evaluation"></div></section>
+   <details class="gl-keys"><summary>اختصارات لوحة المفاتيح</summary><p>V تحريك · H يد · P قلم · B فرشاة · M تظليل · T كتابة · E ممحاة · + و − تكبير وتصغير · 0 ملاءمة · Ctrl+Z تراجع · PageDown أو ← للخطوة التالية، و PageUp أو → للسابقة (تناسب أجهزة التحكم بالعرض) · Esc إلغاء.</p></details>
+   <p class="gl-note">في الفصل الحضوري يُسمع صوت المعلم مباشرة. البث الصوتي المباشر عن بُعد لعدة طلاب غير متوفر بعد.</p>
+  </aside>
+ </section><script type="module" src="/group-teacher.js?v=3"></script>`;
 }
 
 export function displayPage(code, title) {

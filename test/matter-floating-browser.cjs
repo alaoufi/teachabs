@@ -12,7 +12,7 @@ const assert = require('node:assert/strict'), fs = require('node:fs'), path = re
   const results = [], errors = [];
   const watch = p => { p.on('pageerror', e => errors.push(e.message)); p.on('console', m => { if (m.type() === 'error') errors.push(m.text()); }); };
   try {
-    const tc = await browser.newContext({viewport: {width: 1400, height: 1000}}); tc.setDefaultTimeout(15000);
+    const tc = await browser.newContext({viewport: {width: 1700, height: 1000}}); tc.setDefaultTimeout(15000);
     await tc.addCookies([{name: 'ks', value: store.session(store.tour().teacher), url: base}]);
     const t = await tc.newPage(); watch(t); t.on('dialog', d => d.accept().catch(() => {}));
     await t.goto(base + '/teach/plans');
@@ -43,21 +43,21 @@ const assert = require('node:assert/strict'), fs = require('node:fs'), path = re
     assert.ok(await s.locator('#gl-content .particle.p-fly').count() > 0, 'gas particles fly');
     results.push('teacher heated water: liquid → boiling → gas on student and display, particles change motion');
     // Predict, then reveal.
-    await t.getByRole('button', {name: 'إخفاء الحالة ليتوقع الطلاب'}).click();
+    await t.locator('#gl-panel').getByRole('button', {name: 'إخفاء الحالة ليتوقع الطلاب'}).click();
     await s.waitForFunction(() => document.querySelector('#gl-content .m-phase')?.textContent.startsWith('توقّع'));
     assert.equal(await s.locator('#gl-content .particle').count(), 0);
-    await t.getByRole('button', {name: 'اكشف الحالة'}).click();
+    await t.locator('#gl-panel').getByRole('button', {name: 'اكشف الحالة'}).click();
     await s.waitForFunction(() => document.querySelector('#gl-content .particle'));
     results.push('state hidden for prediction, then revealed');
     // Narrator tour: ice first, strip under the board.
-    await t.locator('#gl-narration [data-narr=start]').click();
+    await t.locator('#gl-quick [data-narr=start]').click();
     await s.waitForFunction(() => document.querySelector('.gl-narrator .gl-caption')?.textContent.startsWith('هذا جليد'));
     await s.waitForFunction(() => document.querySelector('#gl-content .m-phase')?.textContent.startsWith('صلب'), null, {timeout: 5000});
     for (const p of [s, display]) {
       const geo = await p.evaluate(() => { const b = document.querySelector('#gl-board').getBoundingClientRect(), n = document.querySelector('.gl-narrator').getBoundingClientRect(); return {inside: Boolean(document.querySelector('#gl-board .gl-narrator')), boardBottom: b.bottom, narratorTop: n.top}; });
       assert.equal(geo.inside, false); assert.ok(geo.narratorTop >= geo.boardBottom - 1, JSON.stringify(geo));
     }
-    for (let i = 0; i < 3; i++) await t.locator('#gl-narration [data-narr=next]').click();
+    for (let i = 0; i < 3; i++) await t.locator('#gl-quick [data-narr=next]').click();
     await s.waitForFunction(() => document.querySelector('.gl-narrator .gl-seg').textContent.startsWith('٤'));
     await s.waitForFunction(() => document.querySelector('#gl-content .m-phase')?.textContent.startsWith('يغلي'), null, {timeout: 5000});
     await s.waitForTimeout(400);
@@ -65,15 +65,15 @@ const assert = require('node:assert/strict'), fs = require('node:fs'), path = re
     await s.screenshot({path: path.join(out, 'matter-student-phone.png')});
     results.push('narrator tour moves the water from ice to boiling; the narrator strip sits under the board on phone and display');
     // Individual exploration with the activity's own slider.
-    await t.getByRole('button', {name: 'اسمح للطلاب بالاستكشاف على أجهزتهم'}).click();
+    await t.locator('#gl-panel').getByRole('button', {name: 'اسمح للطلاب بالاستكشاف على أجهزتهم'}).click();
     await s.waitForSelector('.gl-explore input[type=range]');
     await s.locator('.gl-explore input[type=range]').evaluate(el => { el.value = '-15'; el.dispatchEvent(new Event('input', {bubbles: true})); });
     await s.waitForFunction(() => document.querySelector('.gl-explore .m-phase')?.textContent.startsWith('صلب'));
-    await t.getByRole('button', {name: 'إيقاف الاستكشاف الفردي'}).click();
+    await t.locator('#gl-panel').getByRole('button', {name: 'إيقاف الاستكشاف الفردي'}).click();
     results.push('student explored alone: cooled the water to ice on their own phone');
     // Floating board while answering: stays on top after scrolling; full screen on demand.
     await t.locator('#gl-steps li').nth(3).locator('button').click();
-    await t.getByRole('button', {name: 'افتح الإجابة للطلاب'}).click();
+    await t.locator('#gl-panel').getByRole('button', {name: 'افتح الإجابة للطلاب'}).click();
     await s.waitForSelector('#gl-answer fieldset:not([disabled])');
     await s.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
     await s.waitForTimeout(300);

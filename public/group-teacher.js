@@ -32,10 +32,61 @@ const step = () => plan.steps[view.state.index];
 const nameOf = id => view.students.find(s => s.id === id)?.name || 'طالب';
 
 function renderSequence() {
-  $('gl-steps').replaceChildren(...plan.steps.map((s, i) => el('li', {class: i === view.state.index ? 'is-current' : ''},
-    el('button', {type: 'button', 'aria-current': i === view.state.index ? 'step' : null, onclick: () => command({op: 'go', index: i})},
-      el('span', {class: 'gl-num', text: String(i + 1)}), el('span', {}, el('b', {text: s.title}), el('small', {text: STEP_TYPES[s.type].short + (i === view.state.index ? (view.state.shown ? ' · ظاهرة للطلاب' : ' · مخفية عن الطلاب') : '')}))))));
+  // A compact strip above the board: number and short name of each step; the current one is marked.
+  $('gl-steps').replaceChildren(...plan.steps.map((s, i) => el('li', {class: (i === view.state.index ? 'is-current' : '') + (i === view.state.index && !view.state.shown ? ' is-hidden-step' : '')},
+    el('button', {type: 'button', title: `${i + 1}. ${s.title} (${STEP_TYPES[s.type].label})`, 'aria-current': i === view.state.index ? 'step' : null, onclick: () => command({op: 'go', index: i})},
+      el('span', {class: 'gl-num', text: String(i + 1)}), el('span', {class: 'gl-step-name', text: STEP_TYPES[s.type].short})))));
   $('gl-prev').disabled = view.state.index === 0; $('gl-next').disabled = view.state.index === plan.steps.length - 1;
+  $('gl-steps').querySelector('.is-current')?.scrollIntoView({block: 'nearest', inline: 'nearest'});
+}
+
+/** The most-used buttons of the current step sit in the bar above the board, so the teacher never scrolls. */
+function renderQuick(s) {
+  const q = $('gl-quick'), parts = [];
+  if (s.type === 'interactive') {
+    const a = activityOf(s.activity), act = view.act, v = act.values, p = a.params.find(x => x.kind === 'range' && x.big);
+    const set = values => command({op: 'activity', action: 'set', values});
+    if (p) parts.push(el('button', {type: 'button', class: 'gl-mini', onclick: () => set({[p.key]: Math.max(p.min, v[p.key] - p.big)})}, p.earlier),
+      el('output', {class: 'gl-quick-out', text: p.format(v[p.key])}),
+      el('button', {type: 'button', class: 'gl-mini', onclick: () => set({[p.key]: Math.min(p.max, v[p.key] + p.big)})}, p.later));
+    parts.push(el('button', {type: 'button', class: 'gl-mini' + (act.reveal ? '' : ' is-warn'), 'aria-pressed': String(!act.reveal), onclick: () => command({op: 'activity', action: 'reveal', show: !act.reveal})}, act.reveal ? '🙈 ' + a.hideLabel.replace(' ليتوقع الطلاب', '') : '👁 ' + a.revealLabel));
+    if (s.narrator) parts.push(narratorQuick(s));
+  } else if (s.type === 'board') {
+    const revealed = view.state.revealed[s.id] || [], next = s.items.find(i => !revealed.includes(i.id));
+    parts.push(el('button', {type: 'button', class: 'btn gl-mini', disabled: !next, onclick: () => command({op: 'reveal', item: next.id, show: true})}, next ? `إظهار التالي (${formatNumber(revealed.length + 1)}/${formatNumber(s.items.length)})` : 'ظهرت كل العناصر'),
+      el('button', {type: 'button', class: 'gl-mini', onclick: () => command({op: 'reveal', all: true})}, 'الكل'),
+      el('button', {type: 'button', class: 'quiet gl-mini', onclick: () => command({op: 'reveal', all: false})}, 'إخفاء الكل'));
+  } else if (s.type === 'questions') {
+    const open = Boolean(view.state.open[s.id]), answered = Object.keys(view.results[s.id].answers).length, d = view.state.display[s.id];
+    const firstChoice = s.questions.find(x => x.kind === 'choice');
+    parts.push(el('button', {type: 'button', class: (open ? 'is-warn' : 'btn') + ' gl-mini', onclick: () => command({op: 'open', open: !open})}, open ? '⏹ إيقاف الإجابة' : '▶ افتح الإجابة'),
+      el('span', {class: 'gl-quick-out', text: `أجاب ${formatNumber(answered)} من ${formatNumber(view.students.length)}`}),
+      firstChoice ? el('button', {type: 'button', class: 'gl-mini', 'aria-pressed': String(d?.mode === 'summary'), onclick: () => command({op: 'display', mode: 'summary', question: (d?.question && s.questions.find(x => x.id === d.question && x.kind === 'choice') ? d.question : firstChoice.id)})}, '📊 اعرض النتائج') : null,
+      d ? el('button', {type: 'button', class: 'quiet gl-mini', onclick: () => command({op: 'display', mode: 'none'})}, 'إخفاء العرض') : null,
+      el('button', {type: 'button', class: 'gl-mini', onclick: () => openDrawer(true)}, 'كل الإجابات'));
+  } else if (s.type === 'homework') {
+    parts.push(homeworkButtons());
+  } else if (s.type === 'evaluation') {
+    parts.push(el('button', {type: 'button', class: 'gl-mini', onclick: () => openDrawer(true)}, 'قيّم الطلاب'),
+      el('button', {type: 'button', class: (view.state.evaluationPublished ? 'is-warn' : 'btn') + ' gl-mini', onclick: () => command({op: 'publish-evaluation', on: !view.state.evaluationPublished})}, view.state.evaluationPublished ? 'إخفاء التقييم' : 'نشر التقييم'));
+  }
+  if (s.type !== 'interactive' || !s.narrator) {
+    if (s.narration.mode === 'live') parts.push(el('span', {class: 'gl-live-voice', text: '🎙 اشرح بصوتك'}));
+    else parts.push(el('span', {class: 'gl-quick-out', text: s.narration.mode === 'recorded' ? '🔈 تسجيلك:' : '🔈 قراءة الجهاز:'}),
+      el('button', {type: 'button', class: 'gl-mini', onclick: () => command({op: 'narrate', target: 'screen'})}, 'على شاشة العرض'),
+      el('button', {type: 'button', class: 'gl-mini', onclick: () => command({op: 'narrate', target: 'students'})}, 'على أجهزة الطلاب'),
+      el('button', {type: 'button', class: 'gl-mini', onclick: async () => { if (!await playNarration(s.narration)) status('تعذّر تشغيل الشرح هنا.', true); }}, 'هنا'),
+      el('button', {type: 'button', class: 'quiet gl-mini', onclick: stopNarration}, '■'));
+  }
+  // Keep the focused button focused across live updates.
+  const active = q.contains(document.activeElement) ? document.activeElement.textContent : null;
+  q.replaceChildren(...parts.filter(Boolean));
+  if (active) [...q.querySelectorAll('button')].find(b => b.textContent === active)?.focus();
+}
+
+function openDrawer(open) {
+  const d = $('gl-drawer'); d.hidden = !open; $('gl-drawer-btn').setAttribute('aria-expanded', String(open));
+  app.classList.toggle('drawer-open', open);
 }
 
 function renderBoard() {
@@ -120,17 +171,6 @@ function narratorQuick(s) {
     on ? el('button', {type: 'button', class: 'quiet', 'data-narr': 'stop', onclick: () => { clearTimeout(advanceTimer); stopNarration(); act('stop'); }}, '■ إنهاء') : null);
 }
 
-function renderNarration() {
-  const s = step(), box = $('gl-narration');
-  box.hidden = false;
-  if (s.type === 'interactive' && s.narrator) { box.replaceChildren(narratorQuick(s)); return; }
-  if (s.narration.mode === 'live') { box.replaceChildren(el('span', {class: 'gl-live-voice', text: '🎙 ' + NARRATION.live + ': اشرح هذه الخطوة بصوتك.'})); return; }
-  box.replaceChildren(el('span', {text: NARRATION[s.narration.mode] + ':'}),
-    el('button', {type: 'button', class: 'outline', onclick: async () => { if (!await playNarration(s.narration)) status('تعذّر تشغيل الشرح على هذا الجهاز (قد لا يتوفر صوت عربي).', true); }}, 'تشغيل هنا'),
-    el('button', {type: 'button', class: 'outline', onclick: () => command({op: 'narrate', target: 'screen'})}, 'تشغيل على شاشة العرض'),
-    el('button', {type: 'button', class: 'outline', onclick: () => command({op: 'narrate', target: 'students'})}, 'تشغيل على أجهزة الطلاب'),
-    el('button', {type: 'button', class: 'quiet', onclick: stopNarration}, 'إيقاف'));
-}
 
 /** Controls built from the activity's params, so every lesson's activity gets the same teacher tools. */
 function activityControls(s) {
@@ -213,6 +253,7 @@ function homeworkButtons() {
 
 function renderSide() {
   $('gl-count').textContent = `(${formatNumber(view.students.length)})`;
+  $('gl-count').classList.toggle('has-students', view.students.length > 0);
   $('gl-students').replaceChildren(...(view.students.length ? view.students.map(st => el('li', {}, el('span', {text: st.name}),
     el('button', {type: 'button', class: 'quiet', 'aria-label': 'إخراج ' + st.name, onclick: async () => { if (!confirm(`إخراج ${st.name} من الحصة؟`)) return; try { await post('/remove', {student: st.id}); } catch (e) { status(e.message, true); } }}, 'إخراج'))) : [el('li', {class: 'gl-empty', text: 'بانتظار انضمام الطلاب برمز الحصة.'})]));
   const hw = plan.steps.find(s => s.type === 'homework');
@@ -241,7 +282,7 @@ function renderSide() {
 
 function render() {
   if (!plan || !view) return;
-  renderSequence(); renderBoard(); renderNarration();
+  renderSequence(); renderBoard(); renderQuick(step());
   // Re-render the step tools but keep keyboard focus on the same control.
   const active = $('gl-panel').contains(document.activeElement) ? document.activeElement : null;
   const key = active && (active.getAttribute('aria-label') || active.textContent);
@@ -252,6 +293,11 @@ function render() {
 
 // ---- controls ----
 $('gl-prev').addEventListener('click', () => command({op: 'go', index: view.state.index - 1}));
+$('gl-drawer-btn').addEventListener('click', () => openDrawer($('gl-drawer').hidden));
+$('gl-drawer-close').addEventListener('click', () => openDrawer(false));
+document.addEventListener('keydown', e => { if (e.key === 'Escape' && !$('gl-drawer').hidden && !document.querySelector('dialog[open]')) openDrawer(false); });
+$('gl-code').addEventListener('click', async () => { try { await navigator.clipboard.writeText($('gl-code').dataset.join); status('نُسخ رابط الطلاب: ' + $('gl-code').dataset.join); } catch { status('رابط الطلاب: ' + $('gl-code').dataset.join); } });
+if (matchMedia('(min-width: 1600px)').matches) openDrawer(true); // wide screens keep the drawer docked beside the board
 $('gl-next').addEventListener('click', () => command({op: 'go', index: view.state.index + 1}));
 $('gl-show').addEventListener('click', () => command({op: 'show', shown: !view.state.shown}));
 $('gl-live').addEventListener('click', () => { if (!view.state.live || confirm('إنهاء العرض للطلاب؟ يبقى الواجب متاحًا إن كان مفتوحًا.')) command({op: 'live', on: !view.state.live}); });

@@ -285,3 +285,94 @@ html.gl-noscroll,html.gl-noscroll body{overflow:hidden}
 .gl-stage>.gl-zoom{position:static;display:flex;justify-content:center;margin:6px auto 0;width:max-content;background:#fff;box-shadow:0 2px 8px #0002;opacity:1}
 .gl-stage>.gl-narrator+.gl-zoom,.gl-stage>.gl-zoom{order:2}
 .gl-stage.is-max>.gl-zoom{background:#ffffffe6}
+
+/* ===== stage 041: teacher presentation mode — one screen, board in the middle, tools above and below ===== */
+body:has(.gl-present)>header,body:has(.gl-present)>footer,body:has(.gl-present) .demo{display:none}
+body:has(.gl-present) main{padding:0;max-width:none;margin:0}
+.gl-present{height:100vh;height:100dvh;max-width:none;margin:0;padding:6px 12px 8px;box-sizing:border-box;display:grid;grid-template-columns:minmax(0,1fr);grid-template-rows:auto auto minmax(0,1fr) auto;gap:6px;overflow:hidden;background:linear-gradient(180deg,#eef3f1,#f7f5ef)}
+.gl-bar{display:flex;flex-wrap:wrap;align-items:center;gap:6px 10px;background:#fffefb;border:1px solid var(--line);border-radius:14px;padding:5px 10px;box-shadow:0 2px 8px #0b1f2a12;min-width:0}
+.gl-bar-top{justify-content:space-between}
+.gl-bar-title{display:flex;align-items:center;gap:10px;min-width:0;flex-wrap:wrap}
+.gl-present .gl-bar-title h1{font-size:18px!important;margin:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:40vw}
+.gl-wrap .gl-code-chip{min-height:34px;padding:2px 10px;border-radius:20px;background:#fff3d6;border-color:#eddaa1;font-size:13px}
+.gl-code-chip .gl-code{font-size:16px;background:none;padding:0}
+.gl-status-dot{font-size:12px;color:var(--muted);max-width:34ch;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.gl-status-dot.is-error{color:#8a2a1a;font-weight:700}
+.gl-bar-actions{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.gl-wrap .gl-mini{min-height:36px;padding:3px 10px;font-size:14px}
+#gl-count.has-students{background:var(--forest);color:#fff;border-radius:10px;padding:0 6px;font-size:12px}
+.gl-bar-steps{flex-wrap:nowrap}
+.gl-steps-strip{display:flex;gap:4px;list-style:none;margin:0;padding:0;overflow-x:auto;min-width:0;flex:0 1 auto;scrollbar-width:thin}
+.gl-steps-strip button{display:flex;align-items:center;gap:6px;min-height:36px;padding:2px 10px 2px 6px;border-radius:20px;white-space:nowrap;font-size:13px}
+.gl-steps-strip .gl-num{width:24px;height:24px;font-size:12px}
+.gl-steps-strip li.is-current button{background:var(--forest);color:#fff;border-color:var(--forest);font-weight:700}
+.gl-steps-strip li.is-current .gl-num{background:#fff;color:var(--forest)}
+.gl-steps-strip li.is-hidden-step button{background:#9a4d00;border-color:#9a4d00}
+.gl-sep{width:1px;align-self:stretch;background:var(--line);flex:none}
+.gl-bar-steps .gl-vis{font-size:12px;max-width:110px;line-height:1.25;flex:none}
+.gl-quick{display:flex;align-items:center;gap:6px;flex-wrap:nowrap;overflow-x:auto;min-width:0;flex:1 1 auto;scrollbar-width:thin}
+.gl-quick .gl-narr-quick{flex-wrap:nowrap;width:auto}.gl-quick .gl-narr-label{white-space:nowrap}
+.gl-quick-out{font-weight:700;color:var(--forest);white-space:nowrap;font-size:14px}
+.gl-quick>*,.gl-quick .gl-narr-quick>*{flex:none}
+.gl-present .gl-live-voice{white-space:nowrap;font-size:14px;color:#8a5a00}
+.gl-present .gl-quick .gl-row{flex-wrap:nowrap}
+
+/* the board: as large as the space between the bars allows */
+.gl-present .gl-stage{min-height:0;container-type:size;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:0 0 18px;perspective:1600px}
+.gl-present .gl-board{width:min(100cqw - 6px,(100cqh - 30px) * 1.6667);margin:0;flex:none}
+.gl-present .gl-stage:has(> .gl-narrator) .gl-board{width:min(100cqw - 6px,(100cqh - 112px) * 1.6667)}
+.gl-present .gl-narrator{width:min(100cqw - 6px,(100cqh - 112px) * 1.6667);margin-top:6px;flex:none}
+.gl-present .gl-stage::after{width:min(70cqw,(100cqh - 30px) * 1.4);position:absolute;bottom:2px;margin:0}
+.gl-present .gl-stage:has(> .gl-narrator)::after{display:none}
+.gl-present .gl-stage::before{bottom:6px;inset-inline-start:calc(50% - 160px)}
+
+/* drawing tools under the board */
+.gl-bar-bottom{flex-wrap:nowrap;overflow-x:auto;padding:4px 8px}
+.gl-present .gl-tools{position:static;flex-wrap:nowrap;margin:0;padding:0;border:0;box-shadow:none;background:none;gap:4px 10px}
+.gl-present .gl-tool{min-width:46px;min-height:44px}.gl-present .gl-tool span:first-child{font-size:17px}
+.gl-present .gl-color{min-width:34px;min-height:36px}.gl-present .gl-color i{width:20px;height:20px}
+.gl-present .gl-size{min-height:36px;padding:3px 8px;font-size:12px}
+.gl-present .gl-snippets{margin:0;flex-wrap:nowrap;padding-inline-start:10px;border-inline-start:1px solid var(--line)}
+.gl-present .gl-snippets .gl-snip{white-space:nowrap;min-height:34px;font-size:13px}
+
+/* side drawer: students, answers, homework, evaluation and the full step controls */
+.gl-drawer{position:fixed;inset-block:0;inset-inline-end:0;width:min(420px,94vw);z-index:60;background:#fffefb;border-inline-start:1px solid var(--line);box-shadow:-12px 0 30px #0b1f2a33;overflow:auto;padding:10px 14px 24px;display:grid;gap:12px;align-content:start}
+.gl-drawer-head{display:flex;justify-content:space-between;align-items:center;position:sticky;top:-10px;background:#fffefb;z-index:1;padding:6px 0}
+.gl-drawer-head h2{margin:0;font-size:18px}
+.gl-drawer>section{border-top:1px solid var(--line);padding-top:8px}
+.gl-drawer .gl-panel{margin:0;border:0;padding:0;background:none}
+@media(min-width:1600px){
+ .gl-present.drawer-open{grid-template-columns:minmax(0,1fr) 400px}
+ .gl-present.drawer-open>.gl-bar,.gl-present.drawer-open>.gl-stage{grid-column:1}
+ .gl-present.drawer-open .gl-drawer{position:static;grid-column:2;grid-row:1/-1;width:auto;box-shadow:none;border-radius:14px;border:1px solid var(--line);inset:auto}
+}
+/* phones: the page scrolls normally; the board takes the full width */
+@media(max-width:760px){
+ .gl-present{height:auto;overflow:visible;grid-template-rows:auto}
+ .gl-present .gl-stage{container-type:normal}
+ .gl-present .gl-board,.gl-present .gl-stage:has(> .gl-narrator) .gl-board,.gl-present .gl-narrator{width:100%}
+ .gl-present .gl-stage::after{width:80%}
+ .gl-bar-steps{flex-wrap:wrap}.gl-present .gl-bar-title h1{max-width:60vw}
+}
+/* full width (the site's main is capped at 1130px) and one-row tool bar */
+body:has(.gl-present) main{width:100%}
+.gl-present .gl-toolgroup{flex-wrap:nowrap;flex:none}
+.gl-present .gl-tools button{white-space:nowrap}
+.gl-present .gl-toolgroup+.gl-toolgroup{padding-inline-start:8px}
+.gl-present .gl-tool{min-width:42px;min-height:42px;padding:2px 4px!important;font-size:11px}
+.gl-present .gl-color{min-width:30px}
+.gl-present .gl-tools [role=group][aria-label="إجراءات"] button{min-height:38px;padding:3px 9px;font-size:13px}
+@media(max-width:760px){.gl-bar-bottom{flex-wrap:wrap}.gl-present .gl-tools{flex-wrap:wrap}}
+/* the step bar is a <nav> and the tool bar a <footer>: drop the site-wide width, height and padding of those tags */
+.gl-present nav.gl-bar,.gl-present footer.gl-bar{width:auto;margin:0;min-height:0;padding:4px 8px;justify-content:flex-start;color:inherit;font-size:inherit}
+.gl-present footer.gl-bar{border-top:1px solid var(--line)}
+.gl-present #gl-show,.gl-present .gl-snip-label,.gl-present .gl-quick button{white-space:nowrap}
+.gl-present .gl-tools{flex:none}
+/* below 1600px only the current step shows its name; the others keep it for screen readers and in the tooltip */
+@media(max-width:1599px) and (min-width:761px){
+ .gl-steps-strip li:not(.is-current) .gl-step-name{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
+ .gl-steps-strip li:not(.is-current) button{padding:2px 6px}
+}
+/* when the step's quick controls do not fit beside the steps they move to a second row instead of being clipped */
+.gl-present nav.gl-bar-steps{flex-wrap:wrap}
+.gl-present .gl-quick{flex:1 1 auto;flex-wrap:wrap;overflow:visible}
+.gl-present .gl-quick .gl-narr-quick,.gl-present .gl-quick .gl-row{flex-wrap:wrap}
