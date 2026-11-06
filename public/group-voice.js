@@ -1,5 +1,6 @@
-// Live voice in the class: each student's device opens one audio connection to the teacher (WebRTC).
-// The teacher's microphone is heard by every student; a student's microphone is heard by the teacher.
+// Live voice and picture in the class: each student's device opens one connection to the teacher (WebRTC).
+// The teacher's microphone is heard and the teacher's camera is seen by every student; a student's microphone is
+// heard by the teacher.
 // The teacher decides: their own microphone on or off, and whether students may open theirs.
 // Signalling goes through the class server (/rtc) and is never stored. Without a TURN server some networks
 // may block the audio; the board and everything else keep working.
@@ -18,6 +19,12 @@ async function microphone() {
   return stream.getAudioTracks()[0];
 }
 
+async function camera() {
+  if (!navigator.mediaDevices?.getUserMedia) throw new Error('هذا الجهاز لا يتيح الكاميرا في المتصفح.');
+  const stream = await navigator.mediaDevices.getUserMedia({video: {facingMode: 'user', width: {ideal: 640}, height: {ideal: 480}, frameRate: {ideal: 15, max: 24}}});
+  return stream.getVideoTracks()[0];
+}
+
 function player(stream) {
   const a = document.createElement('audio');
   a.autoplay = true; a.setAttribute('playsinline', ''); a.hidden = true; a.srcObject = stream;
@@ -29,16 +36,17 @@ function player(stream) {
 /** Teacher side: one connection per student, created when the student says hello. */
 export function teacherVoice({base, onChange = () => {}}) {
   const peers = new Map(), speaking = new Set();
-  let track = null;
+  let track = null, cam = null;
   const send = (to, type, data) => post(base + '/rtc', {to, type, data}).catch(() => {});
   function close(id) { const p = peers.get(id); if (!p) return; p.pc.close(); p.audio?.remove(); peers.delete(id); speaking.delete(id); onChange(); }
   async function connect(id) {
     close(id);
-    const pc = new RTCPeerConnection({iceServers: ICE}), tr = pc.addTransceiver('audio', {direction: 'sendrecv'}), p = {pc, tr, audio: null};
+    const pc = new RTCPeerConnection({iceServers: ICE}), tr = pc.addTransceiver('audio', {direction: 'sendrecv'}), vt = pc.addTransceiver('video', {direction: 'sendonly'}), p = {pc, tr, vt, audio: null};
     peers.set(id, p);
     if (track) await tr.sender.replaceTrack(track);
+    if (cam) await vt.sender.replaceTrack(cam);
     pc.onicecandidate = e => { if (e.candidate) send(id, 'ice', e.candidate.toJSON()); };
-    pc.ontrack = e => { p.audio?.remove(); p.audio = player(e.streams[0] || new MediaStream([e.track])); };
+    pc.ontrack = e => { if (e.track.kind !== 'audio') return; p.audio?.remove(); p.audio = player(new MediaStream([e.track])); };
     pc.onconnectionstatechange = () => onChange();
     await pc.setLocalDescription(await pc.createOffer());
     send(id, 'offer', pc.localDescription.toJSON());
@@ -58,9 +66,18 @@ export function teacherVoice({base, onChange = () => {}}) {
     for (const p of peers.values()) await p.tr.sender.replaceTrack(track);
     onChange();
   }
+  async function setCamera(on) {
+    if (on && !cam) cam = await camera();
+    if (!on && cam) { cam.stop(); cam = null; }
+    for (const p of peers.values()) await p.vt.sender.replaceTrack(cam);
+    onChange();
+  }
+  /** Emergency: the teacher's microphone and camera off at once. */
+  async function stopAll() { await setMic(false); await setCamera(false); }
   return {
-    message, setMic,
+    message, setMic, setCamera, stopAll,
     get on() { return Boolean(track); },
+    get camera() { return cam; },
     speaking: () => [...speaking],
     connected: () => [...peers.entries()].filter(([, p]) => p.pc.connectionState === 'connected').map(([id]) => id),
     stats: async id => { const p = peers.get(id); if (!p) return null; let bytes = 0; (await p.pc.getStats()).forEach(r => { if (r.type === 'inbound-rtp' && r.kind === 'audio') bytes += r.bytesReceived || 0; }); return {state: p.pc.connectionState, bytesIn: bytes}; }
@@ -68,18 +85,23 @@ export function teacherVoice({base, onChange = () => {}}) {
 }
 
 /** Student side: answers the teacher's offer; the microphone is off until the student opens it. */
-export function studentVoice({base, onChange = () => {}}) {
-  let pc = null, tr = null, track = null, audio = null;
+export function studentVoice({base, onChange = () => {}, onVideo = () => {}}) {
+  let pc = null, tr = null, track = null, audio = null, video = null;
   const send = (type, data) => post(base + '/rtc', {type, data});
   async function message(m) {
     if (m.type === 'offer') {
       pc?.close(); audio?.remove(); audio = null;
       pc = new RTCPeerConnection({iceServers: ICE});
       pc.onicecandidate = e => { if (e.candidate) send('ice', e.candidate.toJSON()).catch(() => {}); };
-      pc.ontrack = e => { audio?.remove(); audio = player(e.streams[0] || new MediaStream([e.track])); };
+      pc.ontrack = e => {
+        if (e.track.kind === 'video') { video = new MediaStream([e.track]); onVideo(video); return; }
+        audio?.remove(); audio = player(new MediaStream([e.track]));
+      };
       pc.onconnectionstatechange = () => onChange();
       await pc.setRemoteDescription(m.data);
-      tr = pc.getTransceivers()[0]; tr.direction = 'sendrecv';
+      const all = pc.getTransceivers();
+      tr = all.find(t => t.receiver.track.kind === 'audio') || all[0]; tr.direction = 'sendrecv';
+      for (const t of all) if (t !== tr && t.receiver.track.kind === 'video') t.direction = 'recvonly';
       if (track) await tr.sender.replaceTrack(track);
       await pc.setLocalDescription(await pc.createAnswer());
       await send('answer', pc.localDescription.toJSON());
@@ -98,6 +120,7 @@ export function studentVoice({base, onChange = () => {}}) {
     resume: () => audio?.play?.().catch(() => {}),
     get on() { return Boolean(track); },
     get state() { return pc?.connectionState || 'new'; },
-    stats: async () => { if (!pc) return null; let bytes = 0; (await pc.getStats()).forEach(r => { if (r.type === 'inbound-rtp' && r.kind === 'audio') bytes += r.bytesReceived || 0; }); return {state: pc.connectionState, bytesIn: bytes}; }
+    get video() { return video; },
+    stats: async () => { if (!pc) return null; let bytes = 0, videoBytes = 0; (await pc.getStats()).forEach(r => { if (r.type === 'inbound-rtp' && r.kind === 'audio') bytes += r.bytesReceived || 0; if (r.type === 'inbound-rtp' && r.kind === 'video') videoBytes += r.bytesReceived || 0; }); return {state: pc.connectionState, bytesIn: bytes, videoIn: videoBytes}; }
   };
 }

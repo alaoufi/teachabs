@@ -15,7 +15,7 @@ export function initialState(plan) {
 const current = (state, plan) => plan.steps[state.index];
 
 /** Live voice settings; older sessions without them start with the teacher silent and student mics allowed. */
-export const voiceOf = state => ({teacher: false, mics: true, ...(state.voice || {})});
+export const voiceOf = state => ({teacher: false, mics: true, camera: false, ...(state.voice || {})});
 
 export const initialNarrator = () => ({visible: true, muted: false, segment: -1, target: 'screen', seq: 0});
 
@@ -150,10 +150,11 @@ export function teacherCommand(state, plan, cmd) {
     case 'homework': need(['none', 'open', 'closed'].includes(cmd.status) && plan.steps.some(x => x.type === 'homework'), 'لا يوجد واجب في الدرس.'); s.homework = cmd.status; return s;
     case 'publish-evaluation': need(typeof cmd.on === 'boolean', 'قيمة غير صالحة.'); s.evaluationPublished = cmd.on; return s;
     case 'live': need(typeof cmd.on === 'boolean', 'قيمة غير صالحة.'); s.live = cmd.on; return s;
-    case 'voice': { // live voice: the teacher's own microphone and whether students may use theirs
+    case 'voice': { // live voice: the teacher's own microphone and camera, and whether students may use their microphones
       s.voice ||= voiceOf(state);
       if (Object.hasOwn(cmd, 'teacher')) { need(typeof cmd.teacher === 'boolean', 'قيمة غير صالحة.'); s.voice.teacher = cmd.teacher; }
       if (Object.hasOwn(cmd, 'mics')) { need(typeof cmd.mics === 'boolean', 'قيمة غير صالحة.'); s.voice.mics = cmd.mics; }
+      if (Object.hasOwn(cmd, 'camera')) { need(typeof cmd.camera === 'boolean', 'قيمة غير صالحة.'); s.voice.camera = cmd.camera; }
       return s;
     }
     default: throw new UserError('أمر غير معروف.');

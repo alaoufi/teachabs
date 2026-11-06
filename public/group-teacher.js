@@ -357,16 +357,37 @@ document.body.append(pageFile);
 const voice = teacherVoice({base, onChange: () => { renderVoice(); if (view) renderSide(); }});
 function renderVoice() {
   const v = view?.voice || {teacher: false, mics: true}, talking = v.mics ? voice.speaking().length : 0;
-  $('gl-voice').textContent = voice.on ? '🎙 صوتي: يُسمع الآن' : '🎙 صوتي: مغلق';
+  const label = (id, main, state) => { $(id).querySelector('.gl-avl').textContent = main; $(id).querySelector('.gl-avs').textContent = state; };
+  label('gl-voice', '🎙 صوتي', voice.on ? ': يُسمع الآن' : ': مغلق');
   $('gl-voice').setAttribute('aria-pressed', String(voice.on)); $('gl-voice').classList.toggle('is-on', voice.on);
-  $('gl-mics').textContent = (v.mics ? '🎤 مايك الطلاب: مسموح' : '🔇 مايك الطلاب: مغلق') + (talking ? ` (${formatNumber(talking)} يتحدث)` : '');
-  $('gl-mics').setAttribute('aria-pressed', String(v.mics));
+  const cam = Boolean(voice.camera);
+  label('gl-cam', '📷 الكاميرا', cam ? ': تُعرض' : ': مغلقة');
+  $('gl-cam').setAttribute('aria-pressed', String(cam)); $('gl-cam').classList.toggle('is-on', cam);
+  const self = $('gl-selfcam'); if (cam && self.srcObject?.getVideoTracks()[0] !== voice.camera) { self.srcObject = new MediaStream([voice.camera]); self.play?.().catch(() => {}); }
+  self.hidden = !cam; if (!cam) self.srcObject = null;
+  label('gl-mics', v.mics ? '🎤 مايك الطلاب' : '🔇 مايك الطلاب', (v.mics ? ': مسموح' : ': مغلق') + (talking ? ` (${formatNumber(talking)} يتحدث)` : ''));
+  $('gl-mics').setAttribute('aria-pressed', String(v.mics)); $('gl-mics').classList.toggle('is-off', !v.mics);
 }
 $('gl-voice').addEventListener('click', async () => {
   try { await voice.setMic(!voice.on); await command({op: 'voice', teacher: voice.on}); } catch (e) { status(e.message || 'تعذّر فتح المايك.', true); }
   renderVoice();
 });
+$('gl-cam').addEventListener('click', async () => {
+  try { await voice.setCamera(!voice.camera); await command({op: 'voice', camera: Boolean(voice.camera)}); status(voice.camera ? 'الكاميرا تُعرض للطلاب.' : 'أُغلقت الكاميرا.'); }
+  catch (e) { status(e.message || 'تعذّر فتح الكاميرا. اسمح للمتصفح باستخدامها.', true); }
+  renderVoice();
+});
+// The control panel is always in reach: in the top bar on a computer or tablet, above the tools on an upright phone.
+const avPhone = matchMedia('(max-width:1100px) and (orientation:portrait)');
+function placeAv() { const av = $('gl-av'); if (avPhone.matches) document.querySelector('.gl-bar-bottom').prepend(av); else document.querySelector('.gl-bar-top .gl-bar-actions').prepend(av); }
+avPhone.addEventListener?.('change', placeAv); placeAv();
 $('gl-mics').addEventListener('click', () => command({op: 'voice', mics: !(view?.voice?.mics ?? true)}));
+$('gl-stop').addEventListener('click', async () => { // emergency: everything silent and dark at once, no question asked
+  await voice.stopAll().catch(() => {});
+  await command({op: 'voice', teacher: false, camera: false, mics: false});
+  renderVoice(); status('أُوقف كل شيء: صوتك وكاميرتك ومايك الطلاب.');
+});
+window.addEventListener('pagehide', () => { voice.stopAll().catch(() => {}); });
 
 // ---- connection ----
 const plansReady = fetch(base + '/plan').then(r => r.json()).then(p => { plan = p; });

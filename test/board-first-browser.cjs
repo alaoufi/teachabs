@@ -42,7 +42,7 @@ const assert = require('node:assert/strict'), fs = require('node:fs'), path = re
 
     // ---- live voice ----
     await t.locator('#gl-voice').click();
-    await until(t, () => document.querySelector('#gl-voice').textContent.includes('يُسمع'));
+    await until(t, () => document.querySelector('#gl-voice').getAttribute('aria-pressed') === 'true');
     await until(s, () => window.__voice.state === 'connected');
     await until(s, async () => ((await window.__voice.stats())?.bytesIn || 0) > 2000);
     results.push('voice: the teacher opened the microphone; the student device receives the teacher’s audio');

@@ -117,7 +117,7 @@ const assert = require('node:assert/strict'), fs = require('node:fs'), path = re
     await t.locator('body').press('PageDown');
     await s.waitForFunction(() => document.querySelector('#gl-content').dataset.type === 'board'); // the prepared texts come right after the page
     await t.locator('body').press('ArrowRight');
-    await s.waitForSelector('#gl-content .gl-page svg');
+    await s.waitForFunction(() => document.querySelector('#gl-content').dataset.type === 'page' && document.querySelector('#gl-content .gl-page svg'));
     assert.ok(await s.locator('#gl-ink text').count() >= 1, 'ink stays with its step');
     results.push('PageDown/ArrowRight move between steps; ink and prepared texts belong to their step');
 

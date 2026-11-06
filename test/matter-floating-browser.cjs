@@ -55,7 +55,7 @@ const assert = require('node:assert/strict'), fs = require('node:fs'), path = re
     await s.waitForFunction(() => document.querySelector('.gl-narrator .gl-caption')?.textContent.startsWith('هذا جليد'));
     await s.waitForFunction(() => document.querySelector('#gl-content .m-phase')?.textContent.startsWith('صلب'), null, {timeout: 5000});
     for (const p of [s, display]) {
-      const geo = await p.evaluate(() => { const b = document.querySelector('#gl-board').getBoundingClientRect(), n = document.querySelector('.gl-narrator').getBoundingClientRect(); return {inside: Boolean(document.querySelector('#gl-board .gl-narrator')), boardBottom: b.bottom, narratorTop: n.top}; });
+      const geo = await p.evaluate(() => { const b = document.querySelector('#gl-board'), n = document.querySelector('.gl-narrator'); return {inside: Boolean(document.querySelector('#gl-board .gl-narrator')), boardBottom: b.offsetTop + b.offsetHeight, narratorTop: n.offsetTop}; /* in the stage's own layout: on an upright phone the stage is turned sideways */ });
       assert.equal(geo.inside, false); assert.ok(geo.narratorTop >= geo.boardBottom - 1, JSON.stringify(geo));
     }
     for (let i = 0; i < 3; i++) await t.locator('#gl-quick [data-narr=next]').click();

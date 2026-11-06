@@ -153,7 +153,9 @@ async function render() {
 
 // ---- the student's own screen: board over everything, microphone, writing sheet, leave with confirmation ----
 let entered = !student, sheetKey = '';
-const voice = student ? studentVoice({base: classBase, onChange: () => studentChrome()}) : null;
+const voice = student ? studentVoice({base: classBase, onChange: () => studentChrome(), onVideo: stream => { const v = $('gl-teachercam'), track = stream.getVideoTracks()[0]; v.srcObject = stream; v.play?.().catch(() => {}); if (track) track.onmute = track.onunmute = track.onended = () => studentChrome(); studentChrome(); }}) : null;
+// The teacher's picture: a small window in the corner of the board; a tap makes it bigger or smaller.
+$('gl-teachercam')?.addEventListener('click', e => e.currentTarget.classList.toggle('is-big'));
 function openSheet(open) {
   $('gl-sheet').hidden = !open; $('gl-write').setAttribute('aria-expanded', String(open)); app.classList.toggle('sheet-open', open);
 }
@@ -171,6 +173,7 @@ function studentChrome() {
   $('gl-mic').disabled = !v.mics || !view.live;
   $('gl-mic').setAttribute('aria-pressed', String(voice.on)); $('gl-mic').classList.toggle('is-on', voice.on);
   $('gl-mic').querySelector('span').textContent = !v.mics ? 'المايك مغلق' : voice.on ? 'أغلق المايك' : 'المايك';
+  const tv = $('gl-teachercam'); if (tv) { const vt = tv.srcObject?.getVideoTracks()[0]; tv.hidden = !(v.camera && vt && vt.readyState === 'live' && !vt.muted && view.live); if (!tv.hidden) tv.play?.().catch(() => {}); }
   $('gl-ended').hidden = view.live || !entered;
   if (!view.live) $('gl-ended-text').textContent = view.homework?.status === 'open' ? 'شكرًا لك! الواجب متاح في «كتابة».' : 'شكرًا لك!';
 }

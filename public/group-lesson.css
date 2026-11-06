@@ -493,7 +493,7 @@ body:has(.gl-solo){overflow:hidden}
 }
 
 /* ===== stage 045: portrait phone — board and tools packed together, small tools in rows, no long strip ===== */
-@media(max-width:760px) and (orientation:portrait){
+@media(max-width:1100px) and (orientation:portrait){
  .gl-present{grid-template-rows:auto auto auto auto;align-content:start;gap:6px}
  .gl-present .gl-stage{container-type:inline-size;height:auto;padding-bottom:6px}
  .gl-present .gl-board,.gl-present .gl-stage:has(> .gl-narrator) .gl-board,.gl-present .gl-narrator{width:calc(100cqw - 2px)!important}
@@ -514,7 +514,7 @@ body:has(.gl-solo){overflow:hidden}
  .gl-present .gl-steps-strip .gl-num{width:22px;height:22px;font-size:11px}
  .gl-present::after{content:"↻ أدر الجوال أفقيًا لسبورة أكبر";font-size:12px;color:var(--muted);text-align:center}
 }
-@media(max-width:760px) and (orientation:portrait){
+@media(max-width:1100px) and (orientation:portrait){
  .gl-present footer.gl-bar.gl-bar-bottom{flex-wrap:wrap;justify-content:center;align-items:flex-start}
  .gl-present footer.gl-bar .gl-snippets{flex:1 1 100%;width:100%;flex-wrap:wrap;justify-content:center;gap:4px}
  .gl-present footer.gl-bar .gl-snippets .gl-snip{min-height:30px;font-size:12px;padding:2px 8px}
@@ -591,4 +591,45 @@ body:has(#planner) .demo{margin-bottom:8px;padding:6px 10px}
   .gl-show .gl-stage::before,.gl-show .gl-stage::after{display:none}
   .gl-show .gl-board{width:min(100cqw - 4px,(100cqh - 4px) * 1.6667)}
   .gl-show .gl-stage:has(> .gl-narrator) .gl-board,.gl-show .gl-narrator{width:min(100cqw - 6px,(100cqh - 120px) * 1.6667)}
+}
+
+/* ===== stage 049: live voice and picture — a clear control panel always in reach, the teacher's camera ===== */
+.gl-av{display:flex;flex-wrap:wrap;justify-content:center;gap:6px;padding:4px 6px;border-radius:14px;background:#17312a;flex:1 1 100%;order:-1}
+#gl-av .gl-avbtn{min-height:40px;padding:4px 12px;border-radius:999px;border:2px solid #3f6b5e;background:#22443a;color:#fff;font-weight:800;font-size:14px;white-space:nowrap;cursor:pointer}
+#gl-av .gl-avbtn:hover{border-color:#8fd3b8}
+#gl-av .gl-avbtn.is-on{background:#c62828;border-color:#ff8a80;box-shadow:0 0 0 3px rgba(198,40,40,.25)}
+#gl-av .gl-avbtn.is-off{background:#5b3a12;border-color:#d59a3a}
+#gl-av .gl-avbtn.gl-danger{background:#fff;color:#b71c1c;border-color:#e57373}
+.gl-avbtn:focus-visible{outline:3px solid #ffd54f;outline-offset:2px}
+.gl-stage{position:relative}
+.gl-cam{position:absolute;top:8px;inset-inline-end:8px;width:clamp(96px,22%,240px);aspect-ratio:4/3;object-fit:cover;border-radius:12px;border:3px solid #fff;box-shadow:0 6px 18px rgba(0,0,0,.35);background:#000;z-index:6;cursor:pointer}
+.gl-cam.is-big{width:clamp(180px,48%,520px)}
+.gl-selfcam{transform:scaleX(-1)}
+.gl-solo .gl-cam{top:calc(8px + env(safe-area-inset-top))}
+@media(max-width:1100px) and (orientation:portrait){
+ .gl-present .gl-av{gap:6px;padding:6px}
+ .gl-present #gl-av .gl-avbtn{min-height:44px;font-size:13px;padding:4px 10px;flex:1 1 40%}
+ .gl-present .gl-tool{min-width:46px;min-height:50px;font-size:11px}
+ .gl-present .gl-tool span:first-child{font-size:18px}
+ .gl-present .gl-color{min-width:34px;min-height:36px}.gl-present .gl-color i{width:22px;height:22px}
+ .gl-present .gl-size,.gl-present .gl-tools [role=group][aria-label="إجراءات"] button{min-height:40px;font-size:13px}
+ .gl-present footer.gl-bar .gl-snippets .gl-snip{min-height:38px;font-size:14px}
+}
+/* computer, laptop, tablet: the panel sits compact in the top bar; colour shows the state (red = on air) */
+@media not ((max-width:1100px) and (orientation:portrait)){
+ .gl-bar-top .gl-av{flex:none;flex-wrap:nowrap;order:0;gap:4px;padding:3px 4px;border-radius:999px}
+ .gl-bar-top #gl-av .gl-avbtn{min-height:32px;font-size:13px;padding:2px 10px}
+ .gl-bar-top .gl-avs{display:none}
+ .gl-bar-top #gl-av .gl-avbtn.is-on .gl-avl::after{content:" ●";color:#ffcdd2}
+}
+/* the student bar stays at the bottom even when the board is taken out of the flow */
+.gl-solo>.gl-sbar{grid-row:2}
+/* student on an upright phone: the board turns sideways and fills the screen above the bar (turn the phone) */
+@media (orientation:portrait) and (max-width:760px){
+ .gl-solo .gl-stage{position:absolute!important;top:0;left:100vw;width:calc(100vh - 84px);width:calc(100dvh - 84px);height:100vw;transform-origin:0 0;transform:rotate(90deg)}
+ .gl-solo .gl-stage::after{display:none}
+ .gl-solo .gl-stage>.gl-zoom{margin-top:4px}.gl-solo .gl-stage>.gl-zoom button{min-height:30px}
+ .gl-solo .gl-board,.gl-solo .gl-stage.is-max .gl-board{width:min(100cqw - 8px,(100cqh - 52px) * 1.6667)!important}
+ .gl-solo .gl-stage:has(> .gl-narrator) .gl-board{width:min(100cqw - 8px,(100cqh - 130px) * 1.6667)!important}
+ .gl-solo .gl-narrator{width:min(100cqw - 8px,(100cqh - 130px) * 1.6667)!important}
 }

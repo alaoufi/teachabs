@@ -27,7 +27,7 @@ export function groupService(store) {
     try { return JSON.parse(Buffer.concat(chunks).toString()); } catch { throw new UserError('طلب غير صالح.'); }
   }
   const send = (res, data, status = 200) => { res.writeHead(status, {'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store'}); res.end(JSON.stringify(data)); };
-  const page = (res, html, title, body, mic = false) => { res.setHeader('Content-Security-Policy', PAGE_CSP); res.setHeader('Permissions-Policy', `camera=(), microphone=(${mic ? 'self' : ''}), display-capture=(), geolocation=()`); return html(title, body); };
+  const page = (res, html, title, body, mic = false, cam = false) => { res.setHeader('Content-Security-Policy', PAGE_CSP); res.setHeader('Permissions-Policy', `camera=(${cam ? 'self' : ''}), microphone=(${mic ? 'self' : ''}), display-capture=(), geolocation=()`); return html(title, body); };
 
   function teacherOnly(u) { need(u, 'سجّل الدخول بحساب معلم.', 401); need(u.role === 'teacher', 'هذه الصفحة للمعلم.', 403); return u; }
   function ownSession(u, code) {
@@ -196,7 +196,7 @@ export function groupService(store) {
       const lm = path.match(/^\/teach\/live\/([A-Z0-9]{6})(?:\/(events|plan|command|evaluate|remove|display|display-events|rtc|page-image))?$/);
       if (lm) {
         const [, code, action] = lm, s = ownSession(teacher, code);
-        if (!action && method === 'GET') return page(res, html, 'إدارة الحصة', v.teacherPage(code, s.plan.title, base), true);
+        if (!action && method === 'GET') return page(res, html, 'إدارة الحصة', v.teacherPage(code, s.plan.title, base), true, true); // the teacher's microphone and camera
         if (action === 'display' && method === 'GET') return page(res, html, 'شاشة العرض', v.displayPage(code, s.plan.title, base));
         if (action === 'plan' && method === 'GET') return send(res, s.plan);
         if (action === 'events' && method === 'GET') return subscribe(req, res, code, 'teacher', teacher.id);
