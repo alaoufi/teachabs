@@ -46,6 +46,8 @@ export function teacherCommand(state, plan, cmd) {
   s.seq++; s.camera ||= {}; s.strokes ||= {}; s.narrator ||= initialNarrator(); s.acts ||= {};
   switch (cmd.op) {
     case 'go': {
+      // «next/previous» come as a step forward or back from where the class is now, so quick presses never get lost
+      if (Number.isInteger(cmd.by) && cmd.index === undefined) { need(Math.abs(cmd.by) === 1, 'خطوة غير موجودة.'); const to = s.index + cmd.by; if (to < 0 || to >= plan.steps.length) return state; cmd = {...cmd, index: to}; }
       need(Number.isInteger(cmd.index) && cmd.index >= 0 && cmd.index < plan.steps.length, 'خطوة غير موجودة.');
       s.index = cmd.index; s.shown = !plan.steps[cmd.index].startHidden; return s;
     }

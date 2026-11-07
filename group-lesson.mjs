@@ -77,6 +77,10 @@ export function groupService(store) {
     need(body && RTC_TYPES.includes(body.type), 'رسالة صوت غير صالحة.');
     return {type: body.type, data: body.data ?? null, to: typeof body.to === 'string' ? body.to : null, cid: typeof body.cid === 'string' && body.cid.length <= 40 ? body.cid : null}; // cid: which connection attempt
   }
+  /** The laser pointer: a passing trail for students and the display screen, never stored. */
+  function laser(code, payload) {
+    for (const l of listeners.get(code) || []) if (l.kind !== 'teacher') l.res.write('event: laser\ndata: ' + JSON.stringify(payload) + '\n\n');
+  }
   function relay(code, target, payload) {
     let sent = 0;
     for (const l of listeners.get(code) || []) {
@@ -98,7 +102,7 @@ export function groupService(store) {
     matches: path => path === '/join' || path === '/start/student' || path.startsWith('/teach/') || path === '/teach' || path.startsWith('/class/'),
     async handle(ctx) {
       const {req, res, url} = ctx, path = url.pathname;
-      const api = /\/(events|content|narration|answer|hand|speech|command|evaluate|remove|plan|display-events|texts|delete|import|rtc|page-image)$/.test(path) || /^\/teach\/texts\//.test(path) || path.endsWith('.json') || req.headers['content-type']?.startsWith('application/json');
+      const api = /\/(events|content|narration|answer|hand|speech|laser|command|evaluate|remove|plan|display-events|texts|delete|import|rtc|page-image)$/.test(path) || /^\/teach\/texts\//.test(path) || path.endsWith('.json') || req.headers['content-type']?.startsWith('application/json');
       try { return await route(ctx); } catch (err) {
         if (api && err instanceof UserError && !res.headersSent) return send(res, {error: err.message}, err.status);
         throw err;
@@ -212,12 +216,17 @@ export function groupService(store) {
         if (action === '/start' && method === 'POST') { await fields(req); const clean = validatePlan(plan.plan); return redirect('/teach/live/' + g.startSession(teacher.id, clean, initialState(clean))); }
         throw new UserError('إجراء غير متاح.', 405);
       }
-      const lm = path.match(/^\/teach\/live\/([A-Z0-9]{6})(?:\/(events|plan|command|evaluate|remove|display|display-events|rtc|page-image|speech))?$/);
+      const lm = path.match(/^\/teach\/live\/([A-Z0-9]{6})(?:\/(events|plan|command|evaluate|remove|display|display-events|rtc|page-image|speech|laser))?$/);
       if (lm) {
         const [, code, action] = lm, s = ownSession(teacher, code);
         if (!action && method === 'GET') return page(res, html, 'إدارة الحصة', v.teacherPage(code, s.plan.title, base), true, true); // the teacher's microphone and camera
         if (action === 'display' && method === 'GET') return page(res, html, 'شاشة العرض', v.displayPage(code, s.plan.title, base));
         if (action === 'plan' && method === 'GET') return send(res, s.plan);
+        if (action === 'laser' && method === 'POST') {
+          const b = await json(req, base, 4096), pts = Array.isArray(b.p) ? b.p : [];
+          need(pts.length <= 60 && pts.every(p => Array.isArray(p) && p.length === 2 && p.every(Number.isFinite) && p[0] >= 0 && p[0] <= 1000 && p[1] >= 0 && p[1] <= 600), 'مسار غير صالح.');
+          laser(code, {p: pts.map(([x, y]) => [Math.round(x), Math.round(y)]), start: b.start === true}); return send(res, {ok: true});
+        }
         if (action === 'speech' && method === 'GET') { // the teacher (and the display screen) may hear any step of their lesson
           const seg = url.searchParams.get('segment'), sample = url.searchParams.get('sample');
           const speaker = ['male', 'female'].includes(url.searchParams.get('v')) && sample ? url.searchParams.get('v') : speakerOf(s.state);

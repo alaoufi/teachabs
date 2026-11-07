@@ -58,7 +58,7 @@ export function renderInk(svg, items = []) {
   markers.setAttribute('class', 'gl-markers');
   for (const item of items) (item.tool === 'marker' ? markers : ink).append(inkNode(item));
   // Keep a stroke that is being drawn right now when a live update redraws the board.
-  svg.replaceChildren(markers, ink, ...svg.querySelectorAll(':scope > .is-live'));
+  svg.replaceChildren(markers, ink, ...svg.querySelectorAll(':scope > .is-live, :scope > .gl-laser'));
 }
 export function inkNode(item) {
   if (item.kind === 'text') {
@@ -73,7 +73,7 @@ export function inkNode(item) {
     return t;
   }
   const tool = TOOLS[item.tool] || TOOLS.pen, path = document.createElementNS(SVG, 'path');
-  path.setAttribute('d', item.tool === 'rect' ? straightPath(item.points) : smoothPath(item.points)); path.setAttribute('stroke', item.color);
+  path.setAttribute('d', ['rect', 'line', 'arrow'].includes(item.tool) ? straightPath(item.points) : smoothPath(item.points)); path.setAttribute('stroke', item.color);
   path.setAttribute('stroke-width', tool.widths[item.size] || tool.widths.m); path.setAttribute('stroke-opacity', tool.opacity);
   path.setAttribute('class', 'gl-stroke gl-' + (item.tool || 'pen'));
   if (item.id) path.dataset.id = item.id;
@@ -212,4 +212,19 @@ if (boardEl && 'ResizeObserver' in window) {
 /** Where the natural voice of a step's explanation (or of one narrator segment) is fetched from. */
 export function speechUrl(base, stepId, segment, speaker) {
   return `${base}/speech?step=${encodeURIComponent(stepId)}${segment === undefined || segment === null ? '' : '&segment=' + segment}&v=${speaker || 'male'}`;
+}
+
+/** The laser pointer: a red trail that fades within a second; it is never stored. */
+export function laserTrail(svg, points, start = false) {
+  if (!svg || !points.length) return;
+  let g = svg.querySelector(':scope > .gl-laser'); if (!g) { g = document.createElementNS(SVG, 'g'); g.setAttribute('class', 'gl-laser'); svg.append(g); }
+  const last = start ? null : g.__last, all = last ? [last, ...points] : points;
+  g.__last = points[points.length - 1];
+  const path = document.createElementNS(SVG, 'path');
+  path.setAttribute('d', all.map((p, i) => `${i ? 'L' : 'M'}${p[0]} ${p[1]}`).join(' ') + (all.length === 1 ? ' l0.1 0' : ''));
+  path.setAttribute('class', 'gl-laser-line'); g.append(path);
+  const dot = g.querySelector('.gl-laser-dot') || g.appendChild(Object.assign(document.createElementNS(SVG, 'circle'), {}));
+  dot.setAttribute('class', 'gl-laser-dot'); dot.setAttribute('r', 9); dot.setAttribute('cx', g.__last[0]); dot.setAttribute('cy', g.__last[1]); g.append(dot);
+  clearTimeout(g.__hide); g.__hide = setTimeout(() => dot.remove(), 1200);
+  setTimeout(() => path.remove(), 1100);
 }

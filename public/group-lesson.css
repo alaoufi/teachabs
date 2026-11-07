@@ -674,3 +674,39 @@ body:has(#planner) .demo{margin-bottom:8px;padding:6px 10px}
  .gl-present #gl-av .gl-avs{display:none}
  .gl-present #gl-av .gl-avbtn.is-on .gl-avl::after{content:" ●";color:#ffcdd2}
 }
+
+/* ===== stage 054 (ideas from ClassIn and Excalidraw): on computers the drawing tools sit in a rail beside the board,
+   so the board gets the full height; the board grows ===== */
+@media (min-width:1000px) and (orientation:landscape){
+ .gl-present{grid-template-columns:auto minmax(0,1fr);grid-template-rows:auto auto minmax(0,1fr)}
+ .gl-present>.gl-bar-top,.gl-present>.gl-bar-steps{grid-column:1/-1}
+ .gl-present>.gl-stage{grid-column:2;grid-row:3}
+ .gl-present>footer.gl-bar-bottom{grid-column:1;grid-row:3;flex-direction:column;flex-wrap:nowrap;align-items:stretch;justify-content:flex-start;inline-size:132px;overflow-y:auto;overflow-x:hidden;padding:6px;gap:6px;scrollbar-width:thin}
+ .gl-present footer .gl-tools{flex-direction:column;flex-wrap:nowrap;align-items:stretch;gap:6px;width:100%}
+ .gl-present footer .gl-toolgroup{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr));gap:4px;flex:none;border:0!important;padding:0!important;margin:0}
+ .gl-present footer .gl-toolgroup+.gl-toolgroup{border-top:1px solid var(--line)!important;padding-top:6px!important}
+ .gl-present footer .gl-colors{grid-template-columns:repeat(4,minmax(0,1fr))}
+ .gl-present footer .gl-tool{min-width:0;min-height:46px;padding:2px!important;font-size:11px;flex-direction:column}
+ .gl-present footer .gl-color{min-width:0;min-height:28px;padding:0}
+ .gl-present footer .gl-size,.gl-present footer [aria-label="إجراءات"] button{min-width:0;min-height:32px;font-size:12px;padding:2px 4px}
+ .gl-present footer [aria-label="الحجم"]{grid-template-columns:1fr}
+ .gl-present footer .gl-snippets{flex-direction:column;align-items:stretch;border:0;padding:6px 0 0;border-top:1px solid var(--line);gap:4px}
+ .gl-present footer .gl-snippets .gl-snip{white-space:normal;min-height:30px;font-size:12px;padding:3px 6px;text-align:start}
+ .gl-present footer .gl-snip-label{font-size:12px}
+}
+/* laser pointer: a glowing red trail that fades by itself */
+.gl-laser{pointer-events:none}
+.gl-laser-line{fill:none;stroke:#ff1744;stroke-width:7;stroke-linecap:round;stroke-linejoin:round;opacity:.9;filter:drop-shadow(0 0 6px #ff1744);animation:gl-laser-fade 1.1s ease-out forwards}
+.gl-laser-dot{fill:#ff1744;filter:drop-shadow(0 0 8px #ff1744)}
+@keyframes gl-laser-fade{to{opacity:0;stroke-width:2}}
+.gl-board[data-tool=laser]{cursor:crosshair}
+@media (min-width:1000px) and (orientation:landscape){.gl-present footer [aria-label="إجراءات"]{grid-template-columns:1fr}}
+@media (min-width:1000px) and (orientation:landscape){.gl-present>footer.gl-bar-bottom{position:relative;z-index:6}.gl-present>.gl-stage{min-width:0}}
+/* very wide screens with the side panel docked: tool rail | board | panel */
+@media (min-width:1600px) and (orientation:landscape){
+ .gl-present.drawer-open{grid-template-columns:auto minmax(0,1fr) 400px}
+ .gl-present.drawer-open>.gl-bar-top,.gl-present.drawer-open>.gl-bar-steps{grid-column:1/3}
+ .gl-present.drawer-open>.gl-stage{grid-column:2;grid-row:3}
+ .gl-present.drawer-open>footer.gl-bar-bottom{grid-column:1;grid-row:3}
+ .gl-present.drawer-open .gl-drawer{grid-column:3;grid-row:1/-1}
+}

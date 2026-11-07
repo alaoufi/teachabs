@@ -64,3 +64,14 @@ test('✋ hands: raised in order, seen by the teacher, lowered by the teacher; �
   s = studentHand(studentHand(s, 'a', true), 'c', true); s = teacherCommand(s, plan, {op: 'hand-down', all: true});
   assert.deepEqual(teacherView(s, plan, [], []).hands, []);
 });
+
+test('«next / previous» are steps from where the class is, so two quick presses both count', () => {
+  const plan = validatePlan(LESSON_TEMPLATES.cells.plan());
+  let s = initialState(plan);
+  s = teacherCommand(s, plan, {op: 'go', by: 1}); s = teacherCommand(s, plan, {op: 'go', by: 1});
+  assert.equal(s.index, 2);
+  s = teacherCommand(s, plan, {op: 'go', by: -1}); assert.equal(s.index, 1);
+  const first = teacherCommand(teacherCommand(s, plan, {op: 'go', by: -1}), plan, {op: 'go', by: -1});
+  assert.equal(first.index, 0, 'stays on the first step');
+  assert.throws(() => teacherCommand(s, plan, {op: 'go', by: 3}), /خطوة غير موجودة/);
+});

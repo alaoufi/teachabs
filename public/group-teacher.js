@@ -332,14 +332,14 @@ function render() {
 }
 
 // ---- controls ----
-$('gl-prev').addEventListener('click', () => command({op: 'go', index: view.state.index - 1}));
+$('gl-prev').addEventListener('click', () => command({op: 'go', by: -1}));
 $('gl-drawer-btn').addEventListener('click', () => openDrawer($('gl-drawer').hidden));
 $('gl-hands').addEventListener('click', () => openDrawer(true));
 $('gl-drawer-close').addEventListener('click', () => openDrawer(false));
 document.addEventListener('keydown', e => { if (e.key === 'Escape' && !$('gl-drawer').hidden && !document.querySelector('dialog[open]')) openDrawer(false); });
 $('gl-code').addEventListener('click', async () => { try { await navigator.clipboard.writeText($('gl-code').dataset.join); status('نُسخ رابط الطلاب: ' + $('gl-code').dataset.join); } catch { status('رابط الطلاب: ' + $('gl-code').dataset.join); } });
 if (matchMedia('(min-width: 1600px)').matches) openDrawer(true); // wide screens keep the drawer docked beside the board
-$('gl-next').addEventListener('click', () => command({op: 'go', index: view.state.index + 1}));
+$('gl-next').addEventListener('click', () => command({op: 'go', by: 1}));
 $('gl-show').addEventListener('click', () => command({op: 'show', shown: !view.state.shown}));
 $('gl-live').addEventListener('click', () => { if (!view.state.live || confirm('إنهاء العرض للطلاب؟ يبقى الواجب متاحًا إن كان مفتوحًا.')) command({op: 'live', on: !view.state.live}); });
 $('gl-undo').addEventListener('click', () => command({op: 'undo-stroke'}));
@@ -349,8 +349,9 @@ $('gl-clear').addEventListener('click', () => { if (confirm('مسح كل الك�
 const tools = attachBoardTools({
   mode: 'teacher', send: command, items: () => view?.state.strokes[step().id] || [], canInk: () => view && INKABLE.includes(step().type),
   onStatus: text => status(text), onUndo: () => command({op: 'undo-stroke'}),
-  onNext: () => view.state.index < plan.steps.length - 1 && command({op: 'go', index: view.state.index + 1}),
-  onPrev: () => view.state.index > 0 && command({op: 'go', index: view.state.index - 1})
+  onLaser: (p, start) => fetch(base + '/laser', {method: 'POST', headers: {'content-type': 'application/json'}, body: JSON.stringify({p, start})}).catch(() => {}),
+  onNext: () => command({op: 'go', by: 1}),
+  onPrev: () => command({op: 'go', by: -1})
 });
 function renderSnippets(s) {
   const box = $('gl-snippets'), list = s.snippets || [];

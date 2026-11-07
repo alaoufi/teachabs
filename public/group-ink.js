@@ -11,12 +11,20 @@ export const TOOLS = {
   brush: {name: 'فرشاة', key: 'b', widths: {s: 7, m: 11, l: 16}, opacity: 0.92},
   marker: {name: 'قلم تظليل', key: 'm', widths: {s: 14, m: 22, l: 32}, opacity: 0.35},
   rect: {name: 'مستطيل', key: 'r', widths: {s: 3, m: 5, l: 8}, opacity: 1, shape: true},
-  ellipse: {name: 'دائرة', key: 'o', widths: {s: 3, m: 5, l: 8}, opacity: 1, shape: true}
+  ellipse: {name: 'دائرة', key: 'o', widths: {s: 3, m: 5, l: 8}, opacity: 1, shape: true},
+  line: {name: 'خط مستقيم', key: 'l', widths: {s: 3, m: 5, l: 8}, opacity: 1, shape: true},
+  arrow: {name: 'سهم', key: 'a', widths: {s: 3, m: 5, l: 8}, opacity: 1, shape: true}
 };
 /** A rectangle or an ellipse dragged from one corner to the other, as the points of its outline. */
 export function shapePoints(tool, [x0, y0], [x1, y1]) {
   const r = v => Math.round(v * 10) / 10;
   if (tool === 'rect') return [[x0, y0], [x1, y0], [x1, y1], [x0, y1], [x0, y0]].map(([x, y]) => [r(x), r(y)]);
+  if (tool === 'line') return [[r(x0), r(y0)], [r(x1), r(y1)]];
+  if (tool === 'arrow') { // the shaft, then the two sides of the head drawn from the tip
+    const a = Math.atan2(y1 - y0, x1 - x0), h = Math.min(28, Math.max(12, Math.hypot(x1 - x0, y1 - y0) / 4)), side = s => [x1 - h * Math.cos(a + s * 0.45), y1 - h * Math.sin(a + s * 0.45)];
+    const clamp = ([x, y]) => [r(Math.min(1000, Math.max(0, x))), r(Math.min(600, Math.max(0, y)))];
+    return [[x0, y0], [x1, y1], side(1), [x1, y1], side(-1)].map(clamp);
+  }
   const cx = (x0 + x1) / 2, cy = (y0 + y1) / 2, rx = Math.abs(x1 - x0) / 2, ry = Math.abs(y1 - y0) / 2, n = 48;
   return Array.from({length: n + 1}, (_, i) => [r(cx + rx * Math.cos(2 * Math.PI * i / n)), r(cy + ry * Math.sin(2 * Math.PI * i / n))]);
 }

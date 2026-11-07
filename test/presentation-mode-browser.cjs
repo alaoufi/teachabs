@@ -25,7 +25,7 @@ const assert = require('node:assert/strict'), fs = require('node:fs'), path = re
     const layout = () => t.evaluate(() => {
       const r = s => document.querySelector(s).getBoundingClientRect();
       const b = r('#gl-board'), top = r('.gl-bar-steps'), tools = r('.gl-bar-bottom');
-      return {board: [b.top, b.bottom, b.left, b.right, b.width], stepsBottom: top.bottom, toolsTop: tools.top, toolsBottom: tools.bottom,
+      return {board: [b.top, b.bottom, b.left, b.right, b.width], stepsBottom: top.bottom, toolsTop: tools.top, toolsBottom: tools.bottom, toolsLeft: tools.left,
         vh: innerHeight, vw: innerWidth, vscroll: document.documentElement.scrollHeight > innerHeight + 1, hscroll: document.documentElement.scrollWidth > innerWidth + 1,
         siteHeader: getComputedStyle(document.querySelector('body > header')).display};
     });
@@ -33,7 +33,7 @@ const assert = require('node:assert/strict'), fs = require('node:fs'), path = re
       assert.equal(m.vscroll, false, JSON.stringify(m)); assert.equal(m.hscroll, false, JSON.stringify(m));
       assert.equal(m.siteHeader, 'none');
       const [top, bottom, left, right, width] = m.board;
-      assert.ok(top >= m.stepsBottom - 1 && bottom <= m.toolsTop + 1 && left >= 0 && right <= m.vw && m.toolsBottom <= m.vh, JSON.stringify(m));
+      assert.ok(top >= m.stepsBottom - 1 && (bottom <= m.toolsTop + 1 || right <= m.toolsLeft + 1) /* tools under the board, or in a rail beside it */ && left >= 0 && right <= m.vw && m.toolsBottom <= m.vh, JSON.stringify(m));
       assert.ok(width >= minWidth, `board ${width}px < ${minWidth}px`);
     };
     await t.waitForTimeout(400);
