@@ -2,6 +2,8 @@
 // Shared by the server (validation) and the browser (planner and live views). Pure functions only.
 import {ACTIVITIES, cleanValues} from './activities.js';
 import {LIBRARY} from './tool-library.js';
+import {LESSON_PREPS, arDigits} from './lesson-preps-g4.js';
+import {curriculumLessons} from './curriculum-g4.js';
 
 export const STEP_TYPES = {
   page: {label: 'صفحة المنهج على السبورة', short: 'المنهج'},
@@ -208,6 +210,25 @@ export const LESSON_TEMPLATES = {
   light: {title: 'الضوء والظل', subject: 'science', plan: () => inLessonOrder(defaultPlan())},
   matter: {title: 'حالات المادة', subject: 'science', plan: () => inLessonOrder(matterPlan())}
 };
+
+// ---- ready preps for every grade 4, term 1 lesson (stage 061): content in lesson-preps-g4.js, original wording
+const G4 = Object.fromEntries(curriculumLessons().map(l => [l.id, l]));
+for (const [id, p] of Object.entries(LESSON_PREPS)) {
+  const l = G4[id]; if (!l) continue;
+  ORIGINAL_PAGES['g4-' + id] = {title: `${l.subject === 'math' ? 'رياضيات' : 'علوم'} ٤ — ${l.title} (صفحة أصلية للتجربة)`, lines: [l.title, ...p.pts.slice(0, 3), 'سؤال: ' + p.ask].map(arDigits)};
+  LESSON_TEMPLATES['g4-' + id] = {title: l.title, subject: l.subject, plan: () => inLessonOrder(prepPlan(id))};
+}
+/** The ready prep of a curriculum lesson: page, interactive explanation (when one fits), key points, questions, homework, evaluation. */
+export function prepPlan(id) {
+  const p = LESSON_PREPS[id], l = G4[id], A = arDigits, choice = (qid, [prompt, options, answer]) => ({id: qid, kind: 'choice', prompt: A(prompt), options: options.map(A), answer});
+  const steps = [{id: 'curriculum', type: 'page', title: 'نقرأ صفحة الدرس', source: 'original', page: 'g4-' + id, narration: {mode: 'speech', text: A(p.say)}, snippets: p.sn.map(A)}];
+  if (p.act) steps.push({id: 'explain', type: 'interactive', title: ('نجرب: ' + ACTIVITIES[p.act].title).slice(0, 80), activity: p.act, snippets: p.pts.slice(1, 3).map(A), narration: {mode: 'live'}});
+  steps.push({id: 'board-notes', type: 'board', title: 'النقاط الأساسية', narration: {mode: 'speech', text: A('لنثبّت النقاط الأساسية. ' + p.pts.join(' ')).slice(0, 600)}, items: p.pts.map((t, i) => ({id: 'n' + (i + 1), kind: 'text', text: A(t)}))},
+    {id: 'check', type: 'questions', title: 'أسئلة سريعة', narration: {mode: 'live'}, questions: [...p.q.slice(0, 3).map((x, i) => choice('q' + (i + 1), x)), {id: 'q4', kind: 'text', prompt: A(p.q[3])}]},
+    {id: 'homework', type: 'homework', title: 'واجب الدرس', instructions: A(p.hw[0]), narration: {mode: 'live'}, questions: [choice('h1', p.hw[1]), choice('h2', p.hw[2]), {id: 'h3', kind: 'text', prompt: A(p.hw[3])}]},
+    {id: 'evaluate', type: 'evaluation', title: 'تقييم الطلاب', narration: {mode: 'live'}, criteria: ['المشاركة', 'فهم الدرس', 'الواجب']});
+  return {version: 1, title: l.title, subject: l.subject, grade: 4, lesson: id, tools: p.aids, steps};
+}
 
 /** Science 4, term 1, unit 1, chapter 1, lesson 1 (order from the 1447 AH Ministry book; content is original). */
 export function cellsPlan() {

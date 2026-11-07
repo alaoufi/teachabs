@@ -30,7 +30,7 @@ function png(w, h) { // a plain test picture standing in for a photo of a book p
     const tc = await browser.newContext({viewport: {width: 412, height: 860}, isMobile: true, hasTouch: true}); await openStepMenus(tc); tc.setDefaultTimeout(15000);
     const t = await tc.newPage(); watch(t); t.on('dialog', d => d.accept().catch(() => {}));
     await t.goto(base + '/start/teacher'); assert.match(t.url(), /\/teach\/plans$/);
-    await t.locator('.gl-cur-subject[data-subject=science] li.is-ready button').click(); await t.waitForSelector('#pl-steps li');
+    await t.locator('.gl-cur-subject[data-subject=science] li.is-ready button').first().click(); await t.waitForSelector('#pl-steps li');
     await t.getByRole('button', {name: 'بدء الحصة بهذا الترتيب'}).click(); await t.waitForURL(/\/teach\/live\/[A-Z0-9]{6}$/);
     await t.waitForSelector('#gl-steps li.is-current');
 

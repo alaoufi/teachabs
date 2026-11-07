@@ -24,7 +24,7 @@ test('every tool is complete: unique id, known subjects and grades, real lessons
 
 test('filters: subject and grade narrow the list; the lesson\'s own tools come first; search', () => {
   const r = toolsFor({subject: 'math', grade: 4, lesson: 'm1-1'});
-  assert.deepEqual(r.forLesson.map(t => t.id).sort(), ['placechart', 'placevalue']);
+  assert.deepEqual(r.forLesson.map(t => t.id).sort(), ['numberline100', 'placechart', 'placevalue']);
   assert.ok(r.others.every(t => !r.forLesson.includes(t)) && r.others.some(t => t.id === 'multtable'));
   assert.ok(!toolsFor({subject: 'math', grade: 1}).others.some(t => t.id === 'protractor'), 'protractor is for grades 4–6');
   assert.ok(toolsFor({subject: 'science', grade: 4}).others.every(t => t.subjects.includes('science') || t.subjects.includes('*')));

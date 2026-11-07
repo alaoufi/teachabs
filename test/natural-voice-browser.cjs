@@ -20,7 +20,7 @@ const assert = require('node:assert/strict');
   try {
     const tc = await browser.newContext({viewport: {width: 1366, height: 768}}); await openStepMenus(tc); tc.setDefaultTimeout(15000); await tc.addInitScript(spy); await tc.route(/\/speech\?/, fakeVoice);
     const t = await tc.newPage(); t.on('pageerror', e => errors.push(e.message)); t.on('dialog', d => d.accept().catch(() => {}));
-    await t.goto(base + '/start/teacher'); await t.locator('.gl-cur-subject[data-subject=science] li.is-ready button').click(); await t.waitForSelector('#pl-steps li');
+    await t.goto(base + '/start/teacher'); await t.locator('.gl-cur-subject[data-subject=science] li.is-ready button').first().click(); await t.waitForSelector('#pl-steps li');
     await t.locator('select[aria-label="صوت المتحدث"]').selectOption('female');
     await t.getByRole('button', {name: 'حفظ الدرس'}).click(); await t.waitForFunction(() => document.querySelector('#pl-status').textContent.includes('حُفظ'));
     await t.getByRole('button', {name: 'بدء الحصة بهذا الترتيب'}).click(); await t.waitForURL(/\/teach\/live\/[A-Z0-9]{6}$/);

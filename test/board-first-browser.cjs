@@ -20,7 +20,7 @@ const assert = require('node:assert/strict'), fs = require('node:fs'), path = re
     await tc.addCookies([{name: 'ks', value: store.session(store.tour().teacher), url: base}]);
     const t = await tc.newPage(); watch(t); t.on('dialog', d => d.accept().catch(() => {}));
     await t.goto(base + '/teach/plans');
-    await t.locator('.gl-cur-subject[data-subject=science] li.is-ready button').click(); await t.waitForSelector('#pl-steps li');
+    await t.locator('.gl-cur-subject[data-subject=science] li.is-ready button').first().click(); await t.waitForSelector('#pl-steps li');
     await t.getByRole('button', {name: 'بدء الحصة بهذا الترتيب'}).click(); await t.waitForURL(/\/teach\/live\/[A-Z0-9]{6}$/);
     const code = t.url().split('/').pop();
 

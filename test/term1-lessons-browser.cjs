@@ -18,15 +18,15 @@ const assert = require('node:assert/strict'), fs = require('node:fs'), path = re
     const t = await tc.newPage(); watch(t); t.on('dialog', d => d.accept().catch(() => {}));
     await t.goto(base + '/teach/plans');
     const sci = t.locator('.gl-cur-subject[data-subject=science]'), math = t.locator('.gl-cur-subject[data-subject=math]');
-    assert.match(await sci.locator('summary').textContent(), /1 جاهز من 12/);
-    assert.match(await math.locator('summary').textContent(), /1 جاهز من 39/);
+    assert.match(await sci.locator('summary').textContent(), /12 جاهز من 12/);
+    assert.match(await math.locator('summary').textContent(), /39 جاهز من 39/);
     assert.equal(await sci.locator('li').first().locator('span').textContent(), 'الخلايا');
     assert.deepEqual(await t.locator('.gl-templates form button').allTextContents(), ['الضوء والظل', 'حالات المادة']);
     await t.screenshot({path: path.join(out, 'term1-curriculum.png'), fullPage: true});
     results.push('«دروسي» lists term-1 science (12) and math (39) lessons in book order; cells and place value are ready');
 
     // ---- cells ----
-    await sci.locator('li.is-ready button').click(); await t.waitForURL(/\/teach\/plans\/[0-9a-f-]{36}$/); await t.waitForSelector('#pl-steps li');
+    await sci.locator('li.is-ready button').first().click(); await t.waitForURL(/\/teach\/plans\/[0-9a-f-]{36}$/); await t.waitForSelector('#pl-steps li');
     await t.getByRole('button', {name: 'بدء الحصة بهذا الترتيب'}).click(); await t.waitForURL(/\/teach\/live\/[A-Z0-9]{6}$/);
     const code = t.url().split('/').pop();
     const display = await tc.newPage(); watch(display); await display.goto(base + `/teach/live/${code}/display`);
@@ -66,7 +66,7 @@ const assert = require('node:assert/strict'), fs = require('node:fs'), path = re
 
     // ---- place value ----
     await t.goto(base + '/teach/plans');
-    await math.locator('li.is-ready button').click(); await t.waitForURL(/\/teach\/plans\/[0-9a-f-]{36}$/); await t.waitForSelector('#pl-steps li');
+    await math.locator('li.is-ready button').first().click(); await t.waitForURL(/\/teach\/plans\/[0-9a-f-]{36}$/); await t.waitForSelector('#pl-steps li');
     const inter = t.locator('#pl-steps li').nth(2); await inter.locator('summary').click();
     assert.equal(await inter.locator('.pl-seg').count(), 7);
     assert.equal(await inter.locator('.pl-seg').first().locator('input[type=number]').inputValue(), '7', 'large ranges use a number box, not a giant menu');

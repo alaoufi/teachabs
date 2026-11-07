@@ -175,6 +175,15 @@ export function groupService(store) {
         throw new UserError('إجراء غير متاح.', 405);
       }
 
+      // ---------- «مكتبة الوسائل الدراسية»: teachers, academic affairs and the libraries section
+      if (path === '/teach/aids') {
+        if (!u) return redirect('/login');
+        need(method === 'GET', 'إجراء غير متاح.', 405);
+        if (u.role !== 'teacher') { need(u.role === 'admin', 'هذه الصفحة للمعلمين والإدارة.', 403); const p = store.admin.profile(u.id); need(p.permissions.includes('education.read') || p.permissions.includes('libraries.read'), 'تحتاج صلاحية الشؤون التعليمية أو المكتبات.', 403); }
+        const q = url.searchParams, subject = ['science', 'math', 'arabic', 'english', 'islamic'].includes(q.get('subject')) ? q.get('subject') : '', grade = /^[1-9]$/.test(q.get('grade') || '') ? q.get('grade') : '';
+        return page(res, html, 'مكتبة الوسائل الدراسية', v.aidsPage({subject, grade, teacher: u.role === 'teacher'}));
+      }
+
       // ---------- academic affairs: every teacher's lesson prep in the school; read it, assign a copy to a teacher ----------
       if (path === '/teach/review' || path.startsWith('/teach/review/')) {
         if (!u && method === 'GET') return redirect('/login');

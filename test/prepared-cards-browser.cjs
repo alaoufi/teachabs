@@ -20,7 +20,7 @@ const assert = require('node:assert/strict'), fs = require('node:fs'), path = re
     await tc.addInitScript(() => localStorage.setItem('gl-autostart', '0'));
     const t = await tc.newPage(); watch(t); t.on('dialog', d => d.accept().catch(() => {}));
     await t.goto(base + '/start/teacher');
-    await t.locator('.gl-cur-subject[data-subject=science] li.is-ready button').click(); await t.waitForSelector('#pl-steps li');
+    await t.locator('.gl-cur-subject[data-subject=science] li.is-ready button').first().click(); await t.waitForSelector('#pl-steps li');
     await t.locator('#pl-steps li').nth(1).locator('summary').click();
     const lay = t.locator('.pl-layout').first(); await lay.scrollIntoViewIfNeeded();
     assert.equal(await t.locator('.pl-layout-warn').first().isHidden(), true, 'the automatic places do not overlap');

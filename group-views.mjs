@@ -1,9 +1,12 @@
 // HTML scaffolds for the group lesson. Dynamic parts are filled by same-origin modules.
 import {e} from './views.mjs';
 import {STEP_TYPES, STEP_ORDER, LESSON_TEMPLATES, WORK_MODES, SUBJECTS} from './public/group-plan.js';
-import {toolOf} from './public/tool-library.js';
+import {toolOf, toolsFor, STAMPS, LIBRARY} from './public/tool-library.js';
+import {ACTIVITIES} from './public/activities.js';
+import {GRADE_NAMES} from './public/group-plan.js';
 import {COLORS, SIZE_NAMES} from './public/group-ink.js';
 import {CURRICULUM_G4_T1, CURRICULUM_SOURCE, curriculumLessons} from './public/curriculum-g4.js';
+import {LESSON_AIDS} from './public/lesson-preps-g4.js';
 
 const TOOL_BUTTONS = [['select', '➤', 'تحريك', 'V'], ['hand', '✋', 'يد', 'H'], ['pen', '✎', 'قلم', 'P'], ['brush', '🖌', 'فرشاة', 'B'], ['marker', '▮', 'تظليل', 'M'], ['rect', '▭', 'مستطيل', 'R'], ['ellipse', '◯', 'دائرة', 'O'], ['line', '／', 'خط', 'L'], ['arrow', '↗', 'سهم', 'A'], ['laser', '🔴', 'مؤشر', 'K'], ['text', 'ت', 'كتابة', 'T'], ['eraser', '⌫', 'ممحاة', 'E']];
 
@@ -21,7 +24,7 @@ export function plansPage(plans, sessions, colleagues = [], sent = false) {
    <form method="post" action="/teach/plans/${p.id}/start"><button class="btn">بدء الحصة</button></form>${sendForm(`/teach/plans/${p.id}/send`, colleagues, 'أرسل لمعلم')}</div></li>`).join('') : '<li class="gl-empty">لا توجد دروس بعد. ابدأ بالنموذج الجاهز ثم عدّله.</li>';
   const live = sessions.length ? `<h2>حصص سابقة وجارية</h2><ul class="gl-list">${sessions.map(s => `<li class="gl-row"><div><b>${e(s.title)}</b><small>الرمز ${e(s.code)} · ${dateText(s.created)} · ${s.live ? 'جارية' : 'انتهى العرض'}</small></div><a class="outline" href="/teach/live/${e(s.code)}">فتح إدارة الحصة</a></li>`).join('')}</ul>` : '';
   return `${css}<section class="gl-wrap" dir="rtl"><div class="section-head welcome-panel"><div class="eyebrow">الحصة الجماعية</div><h1>دروسي</h1>
-  <p>رتّب درسك قبل الحصة بالتسلسل: ${STEP_ORDER.map(t => STEP_TYPES[t].short).join(' ← ')}. أثناء الحصة تتحكم بما يظهر للطلاب وما يختفي. <a class="textlink" href="/guide">دليل الاستخدام</a></p></div>
+  <p>رتّب درسك قبل الحصة بالتسلسل: ${STEP_ORDER.map(t => STEP_TYPES[t].short).join(' ← ')}. أثناء الحصة تتحكم بما يظهر للطلاب وما يختفي. <a class="textlink" href="/guide">دليل الاستخدام</a> · <a class="textlink" href="/teach/aids">📚 مكتبة الوسائل الدراسية</a></p></div>
   ${curriculumSection()}
   <div class="gl-actions gl-templates"><span class="gl-tpl-label">نماذج إضافية للتجربة (ليست ضمن الفصل الأول):</span>${Object.entries(LESSON_TEMPLATES).filter(([id]) => !TEMPLATE_IN_CURRICULUM.has(id)).map(([id, t]) => `<form method="post" action="/teach/plans/new"><input type="hidden" name="template" value="${id}"><button class="btn">${e(t.title)}</button></form>`).join('')}
   <button type="button" class="outline" id="plans-import-btn">استيراد درس من ملف</button><input type="file" id="plans-import" accept=".json,application/json" hidden></div>
@@ -30,6 +33,38 @@ export function plansPage(plans, sessions, colleagues = [], sent = false) {
   <p class="gl-note">كل درس تحضّره يُحفظ هنا مع ترتيب السبورة وأدواته، فتستعمله في الحصص القادمة. يمكنك إرسال نسخة لمعلم من مدرستك، وتطّلع الشؤون التعليمية على التحضيرات وتحوّلها.</p>
   <ul class="gl-list">${list}</ul>${live}
   <p class="gl-note">خادم التجربة مؤقت وقد يتوقف في أي وقت: نزّل دروسك كملفات واحتفظ بها، ويمكنك استيرادها لاحقًا. استخدم أسماء أولى فقط وبيانات وهمية.</p></section><script type="module" src="/group-plans.js?v=1"></script>`;
+}
+
+/** A board tool or an interactive explanation drawn as a small picture (same drawings as on the board). */
+function aidPicture(t) {
+  if (STAMPS[t.id]) { const st = STAMPS[t.id], parts = []; st.draw((tag, attrs, text) => { parts.push(`<${tag} ${Object.entries(attrs).map(([k, v]) => `${k}="${e(v)}"`).join(' ')}>${text === undefined ? '' : e(text)}</${tag}>`); });
+    return `<svg viewBox="-6 -6 ${st.w + 12} ${st.h + 12}" class="tl-preview" aria-hidden="true"><g class="gl-stamp gl-stamp-${e(t.id)}">${parts.join('')}</g></svg>`; }
+  if (ACTIVITIES[t.id]) { const a = ACTIVITIES[t.id], v = {...a.initial(), ...(a.narrator()[1]?.values || {})}; return a.render(v, {hidden: false}).replace('<svg ', '<svg aria-hidden="true" '); }
+  return `<span class="aid-icon" aria-hidden="true">${t.icon}</span>`;
+}
+const AID_KIND = {activity: 'شرح تفاعلي', stamp: 'وسيلة على السبورة', class: 'أداة فصل'};
+const gradesText = gs => gs.length === 9 ? 'كل الصفوف' : gs.map(g => GRADE_NAMES[g]).join('، ');
+
+/**
+ * «مكتبة الوسائل الدراسية»: every aid with its picture, kind, grades and the lessons that use it; and every lesson of the
+ * term with its aids and its ready prep. Filters by subject and grade. Teachers can start a lesson from its ready prep.
+ */
+export function aidsPage({subject = '', grade = '', teacher = false} = {}) {
+  const subjects = {'': 'كل المواد', science: 'العلوم', math: 'الرياضيات', arabic: 'لغتي', english: 'الإنجليزية', islamic: 'الدراسات الإسلامية'};
+  const {forLesson, others} = toolsFor({subject, grade: Number(grade) || 0}), aids = [...forLesson, ...others];
+  const usedBy = id => curriculumLessons().filter(l => (LESSON_AIDS[l.id] || []).includes(id));
+  const cards = aids.map(t => { const ls = usedBy(t.id); return `<article class="aid-card" data-aid="${e(t.id)}"><div class="aid-pic">${aidPicture(t)}</div><div class="aid-body"><h3>${t.icon} ${e(t.title)}</h3><p>${e(t.desc)}</p>
+<small><b>${AID_KIND[t.kind]}</b> · ${e(gradesText(t.grades))}</small>${ls.length ? `<small class="aid-lessons">في دروس الصف الرابع: ${ls.map(l => e(l.title)).join('، ')}</small>` : ''}</div></article>`; }).join('') || '<p class="gl-empty">لا توجد وسائل بهذا الاختيار.</p>';
+  const lessonsBlock = (!grade || grade === '4') ? Object.entries(CURRICULUM_G4_T1).filter(([k]) => !subject || k === subject).map(([k, sub]) => `<details class="aid-term" open><summary>${e(sub.name)} — الصف الرابع، الفصل الدراسي الأول</summary><ol class="aid-lesson-list">${sub.units.flatMap(u => u.chapters.flatMap(c => c.lessons)).map(l => `<li data-lesson="${e(l.id)}"><b>${e(l.title)}</b><span class="aid-chips">${(LESSON_AIDS[l.id] || []).map(id => toolOf(id)).filter(Boolean).map(t => `<span class="gl-origin">${t.icon} ${e(t.title)}</span>`).join(' ')}</span>${teacher && l.template ? `<form method="post" action="/teach/plans/new"><input type="hidden" name="template" value="${e(l.template)}"><button class="btn gl-mini">ابدأ من الدرس الجاهز</button></form>` : ''}</li>`).join('')}</ol></details>`).join('') : '';
+  const sel = (name, opts, cur) => `<select name="${name}" aria-label="${name === 'subject' ? 'المادة' : 'الصف'}">${Object.entries(opts).map(([k, v]) => `<option value="${e(k)}"${String(k) === String(cur) ? ' selected' : ''}>${e(v)}</option>`).join('')}</select>`;
+  const grades = {'': 'كل الصفوف', ...Object.fromEntries([1, 2, 3, 4, 5, 6, 7, 8, 9].map(g => [g, 'الصف ' + GRADE_NAMES[g]]))};
+  return `${css}<section class="gl-wrap aids-page" dir="rtl"><div class="section-head welcome-panel"><div class="eyebrow">مكتبة المدرسة</div><h1>مكتبة الوسائل الدراسية</h1>
+  <p>${new Intl.NumberFormat('ar-SA').format(LIBRARY.length)} وسيلة: شروح تفاعلية، ووسائل توضع على السبورة، وأدوات للفصل. لكل درس من دروس الصف الرابع (الفصل الأول) وسائله وتحضيره الجاهز، ويثبّت المعلم ما يريد منها في تحضير درسه.</p>
+  <form method="get" action="/teach/aids" class="gl-actions aid-filters">${sel('subject', subjects, subject)}${sel('grade', grades, grade)}<noscript><button class="btn">عرض</button></noscript></form></div>
+  ${lessonsBlock ? `<h2>وسائل كل درس وتحضيره الجاهز</h2>${lessonsBlock}` : ''}
+  <h2>الوسائل (${new Intl.NumberFormat('ar-SA').format(aids.length)})</h2><div class="aid-grid">${cards}</div>
+  <p class="gl-note">الرسوم والشروح من إعداد المشروع، وليست منسوخة من الكتب. ترتيب الدروس من فهرس كتب وزارة التعليم ١٤٤٧هـ.</p>
+  <p>${teacher ? '<a class="textlink" href="/teach/plans">دروسي</a>' : '<a class="textlink" href="/admin">العودة إلى الإدارة</a>'}</p></section><script type="module" src="/aids-page.js"></script>`;
 }
 
 /** Academic affairs: the school's lesson preps. */

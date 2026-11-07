@@ -30,7 +30,7 @@ files['/classroom-lab-model.js']='text/javascript; charset=utf-8';
 files['/classroom-lab.css']='text/css; charset=utf-8';
 files['/science-shadow.js']='text/javascript; charset=utf-8';
 files['/shadow-client.js']='text/javascript; charset=utf-8';
-for(const f of ['activities.js','matter-model.js','cells-model.js','placevalue-model.js','curriculum-g4.js','tool-library.js','tool-library-ui.js','model-kit.js','body-models.js','solids-model.js','math-models.js','science-models.js','explain-registry.js','group-voice.js','error-report.js','class-guide.js','group-plan.js','group-view.js','group-ink.js','group-board-tools.js','group-plans.js','text-library.js','explain-texts.js','narrator-scripts.js','group-planner.js','group-teacher.js','group-student.js'])files['/'+f]='text/javascript; charset=utf-8';
+for(const f of ['activities.js','matter-model.js','cells-model.js','placevalue-model.js','curriculum-g4.js','tool-library.js','tool-library-ui.js','model-kit.js','body-models.js','solids-model.js','math-models.js','science-models.js','explain-registry.js','lesson-preps-g4.js','aids-page.js','group-voice.js','error-report.js','class-guide.js','group-plan.js','group-view.js','group-ink.js','group-board-tools.js','group-plans.js','text-library.js','explain-texts.js','narrator-scripts.js','group-planner.js','group-teacher.js','group-student.js'])files['/'+f]='text/javascript; charset=utf-8';
 files['/group-lesson.css']='text/css; charset=utf-8';
 files['/science-shadow-model.js']='text/javascript; charset=utf-8';
 files['/science-shadow.css']='text/css; charset=utf-8';

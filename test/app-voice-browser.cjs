@@ -17,7 +17,7 @@ const assert = require('node:assert/strict');
   try {
     const tc = await browser.newContext({viewport: {width: 1366, height: 768}}); await openStepMenus(tc); tc.setDefaultTimeout(15000); await tc.addInitScript(appBridge);
     const t = await tc.newPage(); t.on('pageerror', e => errors.push(e.message)); t.on('dialog', d => d.accept().catch(() => {}));
-    await t.goto(base + '/start/teacher'); await t.locator('.gl-cur-subject[data-subject=science] li.is-ready button').click(); await t.waitForSelector('#pl-steps li');
+    await t.goto(base + '/start/teacher'); await t.locator('.gl-cur-subject[data-subject=science] li.is-ready button').first().click(); await t.waitForSelector('#pl-steps li');
     await t.getByRole('button', {name: 'بدء الحصة بهذا الترتيب'}).click(); await t.waitForURL(/\/teach\/live\/[A-Z0-9]{6}$/);
     const sc = await browser.newContext({viewport: {width: 390, height: 844}, isMobile: true, hasTouch: true}); sc.setDefaultTimeout(15000); await sc.addInitScript(appBridge);
     const s = await sc.newPage(); s.on('pageerror', e => errors.push(e.message));

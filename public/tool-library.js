@@ -5,6 +5,8 @@
 // Ideas: Microsoft Whiteboard (ruler, protractor), Classroomscreen (timer, random name, work symbols), virtual
 // manipulatives of maths classrooms (number line, fraction bars, hundred chart, clock), and graphic organisers.
 
+import {LESSON_AIDS} from './lesson-preps-g4.js';
+
 const ALL = [1, 2, 3, 4, 5, 6, 7, 8, 9];
 const ar = n => String(n).replace(/\d/g, d => '٠١٢٣٤٥٦٧٨٩'[d]);
 
@@ -213,6 +215,7 @@ export const toolOf = id => LIBRARY.find(t => t.id === id);
 export function toolsFor({subject = '', grade = 0, lesson = '', query = ''} = {}) {
   const q = query.trim();
   const fits = t => (!subject || t.subjects.includes('*') || t.subjects.includes(subject)) && (!grade || t.grades.includes(Number(grade))) && (!q || (t.title + ' ' + t.desc).includes(q));
-  const list = LIBRARY.filter(fits), forLesson = lesson ? list.filter(t => t.lessons.includes(lesson)) : [];
+  const own = LESSON_AIDS[lesson] || [], list = LIBRARY.filter(fits);
+  const forLesson = lesson ? list.filter(t => t.lessons.includes(lesson) || own.includes(t.id)).sort((a, b) => (own.indexOf(a.id) + 1 || 99) - (own.indexOf(b.id) + 1 || 99)) : [];
   return {forLesson, others: list.filter(t => !forLesson.includes(t))};
 }

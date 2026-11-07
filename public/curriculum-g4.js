@@ -3,6 +3,8 @@
 // sequence the students follow. No textbook text, exercises or images are copied; lesson content in the app is original.
 // `template` names a ready lesson in LESSON_TEMPLATES (group-plan.js) when one exists.
 
+import {LESSON_PREPS} from './lesson-preps-g4.js';
+
 export const CURRICULUM_SOURCE = 'ترتيب الدروس من فهرس كتابي وزارة التعليم للصف الرابع، الفصل الدراسي الأول، طبعة ١٤٤٧هـ. العناوين والترتيب فقط؛ محتوى الدروس في التطبيق أصلي.';
 
 export const CURRICULUM_G4_T1 = {
@@ -76,6 +78,9 @@ export const CURRICULUM_G4_T1 = {
       {id: 'm6-5', title: 'ضرب عدد من ثلاثة أرقام في عدد من رقمين'}]}]}
   ]}
 };
+
+// Every lesson with a ready prep in lesson-preps-g4.js starts from it in one click.
+for (const sub of Object.values(CURRICULUM_G4_T1)) for (const u of sub.units) for (const c of u.chapters) for (const l of c.lessons) if (!l.template && LESSON_PREPS[l.id]) l.template = 'g4-' + l.id;
 
 /** Every lesson in order with its subject, for counting and lookups. */
 export function curriculumLessons() {

@@ -16,7 +16,7 @@ const assert = require('node:assert/strict'), fs = require('node:fs'), path = re
   try {
     const tc = await browser.newContext({viewport: {width: 1366, height: 900}}); tc.setDefaultTimeout(15000); await openStepMenus(tc); await tc.addInitScript(() => localStorage.setItem('gl-autostart', '0'));
     const t = await tc.newPage(); watch(t); t.on('dialog', d => d.accept().catch(() => {}));
-    await t.goto(base + '/start/teacher'); await t.locator('.gl-cur-subject[data-subject=science] li.is-ready button').click(); await t.waitForSelector('#pl-steps li');
+    await t.goto(base + '/start/teacher'); await t.locator('.gl-cur-subject[data-subject=science] li.is-ready button').first().click(); await t.waitForSelector('#pl-steps li');
     await t.locator('#pl-library').click(); await t.waitForSelector('.tl-dialog .tl-card');
     for (const id of ['digestive', 'nervous']) assert.ok(await t.locator(`.tl-card[data-tool=${id}]`).count(), id + ' is in the grade 4 science library');
     assert.equal(await t.locator('.tl-card[data-tool=urinary]').count(), 0, 'the urinary system is for grades 5–6');

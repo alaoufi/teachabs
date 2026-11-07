@@ -23,7 +23,7 @@ const assert = require('node:assert/strict'), fs = require('node:fs'), path = re
     await jitter(tc); const t = await tc.newPage(); watch(t);
     await t.addInitScript(() => { window.__spoken = []; window.speechSynthesis && (speechSynthesis.speak = u => { window.__spoken.push(u.text); setTimeout(() => u.onend?.(), 10); }); }); t.on('dialog', d => d.accept().catch(() => {}));
     await t.goto(base + '/start/teacher');
-    await t.locator('.gl-cur-subject[data-subject=science] li.is-ready button').click(); await t.waitForSelector('#pl-steps li');
+    await t.locator('.gl-cur-subject[data-subject=science] li.is-ready button').first().click(); await t.waitForSelector('#pl-steps li');
     await t.getByRole('button', {name: 'بدء الحصة بهذا الترتيب'}).click(); await t.waitForURL(/\/teach\/live\/[A-Z0-9]{6}$/);
     await t.waitForSelector('#gl-steps li.is-current');
 
