@@ -31,6 +31,13 @@ const assert = require('node:assert/strict');
     await s.waitForFunction(x => window.__said.includes(x), first); await t.waitForFunction(x => window.__said.includes(x), first);
     await t.waitForFunction(() => document.querySelector('#gl-quick .gl-narr-label')?.textContent.includes('٢'), null, {timeout: 20000});
     results.push('interactive step: the narrator spoke through the app on both phones and moved on to the next segment by itself');
+    // a phone without an Arabic voice: «اختبار الصوت» explains why it is silent and what to do
+    const nc = await browser.newContext({viewport: {width: 412, height: 860}, isMobile: true, hasTouch: true}); await nc.addCookies(await tc.cookies());
+    await nc.addInitScript(() => { delete window.speechSynthesis; window.App = {voice: () => 'none', stopSpeaking() {}, speak: () => false}; });
+    const n = await nc.newPage(); n.on('pageerror', e => errors.push(e.message)); await n.goto(t.url()); await n.waitForSelector('#gl-steps li.is-current');
+    await n.locator('#gl-test-voice').click(); await n.waitForSelector('#gl-voice-help:not([hidden])');
+    assert.match(await n.locator('#gl-voice-help-text').textContent(), /لا يحوي صوتًا عربيًا[\s\S]*سجّل بصوتك/);
+    results.push('«🔈 اختبار الصوت» on a phone without an Arabic voice explains why and offers recording or installing a voice');
     assert.deepEqual(errors, []);
     console.log(JSON.stringify({ok: true, results}, null, 1));
   } finally { await browser.close(); app.closeAllConnections(); await new Promise(r => app.close(r)); store.close(); }

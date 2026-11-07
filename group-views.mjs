@@ -86,8 +86,10 @@ export function teacherPage(code, title, base) {
    <button type="button" id="gl-voice" class="gl-avbtn" aria-pressed="false" title="صوتك يصل إلى أجهزة الطلاب"><span class="gl-avl">🎙 صوتي</span><span class="gl-avs">: مغلق</span></button>
    <button type="button" id="gl-cam" class="gl-avbtn" aria-pressed="false" title="صورتك تظهر للطلاب"><span class="gl-avl">📷 الكاميرا</span><span class="gl-avs">: مغلقة</span></button>
    <button type="button" id="gl-mics" class="gl-avbtn" aria-pressed="true" title="هل يستطيع الطلاب فتح المايك؟"><span class="gl-avl">🎤 مايك الطلاب</span><span class="gl-avs">: مسموح</span></button>
+   <button type="button" id="gl-test-voice" class="gl-avbtn" title="يقرأ جملة تجريبية بصوت المتحدث، ويخبرك إن لم يُسمع ولماذا"><span class="gl-avl">🔈 اختبار</span><span class="gl-avs"> الصوت</span></button>
    <button type="button" id="gl-stop" class="gl-avbtn gl-danger" title="يغلق صوتك وكاميرتك ومايك كل الطلاب فورًا">⛔ إيقاف الكل</button>
   </div>${tools}<div class="gl-snippets" id="gl-snippets" hidden></div></footer>
+  <div class="gl-ended gl-voice-help" id="gl-voice-help" hidden role="alertdialog" aria-modal="true" aria-labelledby="gl-voice-help-title"><div class="gl-start-card"><h2 id="gl-voice-help-title">صوت المتحدث</h2><div id="gl-voice-help-text"></div><button type="button" class="btn" id="gl-voice-help-close">حسنًا</button></div></div>
   <aside class="gl-drawer" id="gl-drawer" aria-label="الخطوة والطلاب والنتائج" hidden>
    <div class="gl-drawer-head"><h2>الخطوة والطلاب</h2><button type="button" class="quiet" id="gl-drawer-close" aria-label="إغلاق">✕</button></div>
    <section class="gl-panel" id="gl-panel" aria-label="أدوات الخطوة الحالية"></section>

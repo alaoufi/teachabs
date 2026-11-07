@@ -37,7 +37,7 @@ const assert = require('node:assert/strict'), fs = require('node:fs'), path = re
 
     // ---- the control panel is always on screen ----
     const panel = await t.evaluate(() => [...document.querySelectorAll('#gl-av button')].map(b => { const r = b.getBoundingClientRect(); return {id: b.id, on: r.top >= 0 && r.bottom <= innerHeight && r.left >= 0 && r.right <= innerWidth}; }));
-    assert.deepEqual(panel.map(p => p.id), ['gl-voice', 'gl-cam', 'gl-mics', 'gl-stop']); assert.ok(panel.every(p => p.on), JSON.stringify(panel));
+    assert.deepEqual(panel.map(p => p.id), ['gl-voice', 'gl-cam', 'gl-mics', 'gl-test-voice', 'gl-stop']); assert.ok(panel.every(p => p.on), JSON.stringify(panel));
 
     // ---- teacher voice and camera reach the student ----
     await t.locator('#gl-voice').click(); await until(t, () => document.querySelector('#gl-voice').getAttribute('aria-pressed') === 'true');

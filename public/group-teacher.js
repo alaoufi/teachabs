@@ -424,3 +424,32 @@ function classGone() {
 
 // Inside the Android app: say once if the phone has no Arabic voice, so the teacher knows why the explanation is silent.
 setTimeout(() => { if (window.App?.voice?.() === 'none') status('جوالك لا يحوي صوتًا عربيًا لقراءة الشرح؛ يبقى مكتوبًا. للتثبيت: الإعدادات ← تحويل النص إلى كلام ← اللغة العربية.', true); }, 4000);
+
+// ---- «اختبار الصوت»: plays a test sentence with the narrator's voice; if nothing can speak, says why and what to do ----
+const SAMPLE = 'مرحبًا، هذا صوت المتحدث في الحصة.';
+async function voiceProblem() {
+  if (window.App?.voice) { // inside the Android app: the phone's own text-to-speech engine
+    let v = window.App.voice(); for (let i = 0; v === 'loading' && i < 10; i++) { await new Promise(r => setTimeout(r, 300)); v = window.App.voice(); }
+    return v === 'ar' ? null : 'app-none';
+  }
+  if (!('speechSynthesis' in window)) return 'browser-none';
+  let voices = speechSynthesis.getVoices();
+  if (!voices.length) { await new Promise(r => { speechSynthesis.onvoiceschanged = r; setTimeout(r, 1500); }); voices = speechSynthesis.getVoices(); }
+  return voices.some(x => x.lang?.toLowerCase().startsWith('ar')) ? null : 'browser-none';
+}
+function voiceHelp(problem) {
+  const steps = problem ? [
+    'جهازك لا يحوي صوتًا عربيًا يقرأ النص، لذلك يظهر كلام المتحدث مكتوبًا بلا صوت. أجهزة هواوي الحديثة غالبًا بلا صوت عربي.',
+    'الحل المضمون: سجّل الشرح بصوتك قبل الحصة. افتح «ترتيب الدرس» ← خطوة الشرح التفاعلي ← «🎤 سجّل بصوتك» لكل مقطع. التسجيل يُسمع على كل الأجهزة.',
+    'أو ثبّت صوتًا عربيًا في الجوال: الإعدادات ← تحويل النص إلى كلام (أو: الوصول السهل ← تحويل النص إلى كلام) ← اختر محركًا يدعم العربية وثبّت بيانات اللغة العربية، ثم أعد فتح التطبيق.',
+    'وتستطيع دائمًا أن تكتم المتحدث وتشرح بصوتك مباشرة عبر «🎙 صوتي».'
+  ] : ['سمعت الجملة التجريبية؟ إذا لم تسمعها فارفع صوت الوسائط في الجوال وتأكد أنه ليس على الصامت، ثم اضغط «اختبار الصوت» مرة أخرى.'];
+  $('gl-voice-help-text').replaceChildren(...steps.map(t => el('p', {text: t})));
+  $('gl-voice-help').hidden = false;
+}
+$('gl-test-voice').addEventListener('click', async () => {
+  const problem = await voiceProblem();
+  if (!problem) await playNarration({mode: 'speech', text: SAMPLE});
+  voiceHelp(problem);
+});
+$('gl-voice-help-close').addEventListener('click', () => { $('gl-voice-help').hidden = true; });
