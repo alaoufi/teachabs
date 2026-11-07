@@ -100,7 +100,7 @@ function renderQuick(s) {
   }
   if (s.type === 'page') {
     // the ministry book of this subject and grade, opening at the lesson's page; shown on the board for this class only
-    const at = lessonBookPage(plan.lesson), book = at ? bookOf(at.book) : bookFor(plan.subject, plan.grade);
+    const at = s.source === 'book' || s.book ? {book: s.book?.id || s.book, page: s.book?.page || s.page} : lessonBookPage(plan.lesson), book = at ? bookOf(at.book) : bookFor(plan.subject, plan.grade);
     if (book) parts.push(el('button', {type: 'button', class: 'btn gl-mini', id: 'gl-ministry-book', title: `افتح ${book.title} على صفحة الدرس واعرضها على السبورة`, onclick: () => openMinistryBook(book, at?.page || 1)}, '📖 كتاب الوزارة'));
     parts.push(el('button', {type: 'button', class: 'outline gl-mini', title: 'صوّر صفحة الكتاب أو اختر صورتها فتظهر على السبورة للجميع', onclick: () => $('gl-page-file').click()}, '📷 تصوير صفحة'));
   }

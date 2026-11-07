@@ -858,3 +858,6 @@ body:has(#planner) .demo{margin-bottom:8px;padding:6px 10px}
 .bk-bar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:8px 0}.bk-bar input{width:76px;padding:6px;border-radius:8px;border:1px solid #c9d3df;font:inherit}.bk-bar select{padding:6px;border-radius:8px;border:1px solid #c9d3df;font:inherit;max-width:100%}
 .bk-stage{overflow:auto;background:#eef2f1;border-radius:12px;padding:10px;text-align:center;max-height:78vh}.bk-stage canvas{max-width:none;box-shadow:0 4px 18px rgba(0,0,0,.15);background:#fff}
 .bk-dialog{width:min(980px,96vw);max-height:94vh;border:0;border-radius:16px;padding:12px}.bk-dialog .bk-stage canvas{width:100%;height:auto}.bk-dialog .bk-title{flex:1;font-size:14px}
+.gl-book-wait{display:grid;place-items:center;align-content:center;gap:8px;min-height:260px;text-align:center;color:#50645a}.gl-book-wait b{font-size:22px;color:#163d34}
+.gl-grade-tabs{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0}.gl-grade-tabs a{padding:6px 12px;border-radius:999px;border:1px solid #c9d3df;background:#fff;text-decoration:none;color:#163d34;font-weight:700;font-size:14px}.gl-grade-tabs a.is-on{background:#155c4d;color:#fff;border-color:#155c4d}
+.gl-cur-subject li[data-lesson]{display:flex;flex-wrap:wrap;gap:8px;align-items:center}.gl-cur-subject li[data-lesson] span{flex:1}

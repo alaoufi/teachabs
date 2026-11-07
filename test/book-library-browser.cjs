@@ -5,7 +5,7 @@ const {chromium} = require(process.env.PLAYWRIGHT_MODULE || 'playwright');
 const {pick, openStepMenus} = require('./ui-helpers.cjs');
 const assert = require('node:assert/strict'), fs = require('node:fs'), path = require('node:path');
 (async () => {
-  const {fakeBookSource} = await import('./fake-book.mjs'), src = await fakeBookSource(40); process.env.BOOKS_SOURCE_ORIGIN = src.origin;
+  const {fakeBookSource} = await import('./fake-book.mjs'), src = await fakeBookSource(60); process.env.BOOKS_SOURCE_ORIGIN = src.origin;
   const {openStore} = await import('../store.mjs'), {createApp} = await import('../server.mjs');
   const store = openStore(':memory:'), app = createApp(store);
   await new Promise(r => app.listen(0, '127.0.0.1', r));
@@ -44,6 +44,18 @@ const assert = require('node:assert/strict'), fs = require('node:fs'), path = re
     await t.locator('#bk-lesson').selectOption({label: 'الخلايا — ص ٢٦'}); await t.waitForFunction(() => /الصفحة ٢٦ من/.test(document.getElementById('bk-status').textContent));
     await t.locator('#bk-next').click(); await t.waitForURL(/page=27/);
     results.push('«مكتبة الكتب المدرسية»: 12 books; the science book viewer jumped to «الخلايا» (p. 26) and turned to p. 27');
+    // any grade: «دروسي» → الصف الخامس → «حضّر هذا الدرس» → the class opens the book at the lesson's page
+    await t.goto(base + '/teach/plans'); await t.locator('.gl-grade-tabs a', {hasText: 'الخامس'}).click(); await t.waitForURL(/grade=5/);
+    await t.locator('li[data-lesson="p5m07"] button').click(); await t.waitForSelector('#pl-steps li');
+    assert.ok(await t.locator('input[type=radio][name^=src-]').first().isChecked(), 'the curriculum step uses the ministry book');
+    assert.equal(await t.locator('input[aria-label="رقم الصفحة"]').inputValue(), '38');
+    await t.getByRole('button', {name: 'بدء الحصة بهذا الترتيب'}).click(); await t.waitForURL(/\/teach\/live\/[A-Z0-9]{6}$/);
+    const code2 = t.url().slice(-6);
+    await s.goto(base + '/join?code=' + code2); await s.getByLabel('اسم الطالب الأول').fill('ريم'); await s.getByRole('button', {name: 'دخول الحصة'}).click(); await s.waitForFunction(() => window.__voice); await s.locator('#gl-enter').click();
+    await s.waitForSelector('#gl-content .gl-book-wait');
+    await pick(t, '#gl-ministry-book'); await t.waitForFunction(() => /الصفحة ٣٨ من/.test(document.querySelector('.bk-dialog .gl-status')?.textContent || ''));
+    await t.locator('.bk-dialog [data-k=show]').click(); await s.waitForSelector('#gl-content .gl-page img[src^="data:image/jpeg"]');
+    results.push('grade 5: «حضّر هذا الدرس» for «خطة حل المسألة: التخمين والتحقق» made a prep on the book page 38; in class the student saw the waiting card, then the page');
     assert.deepEqual(errors, []);
     console.log(JSON.stringify({ok: true, results}, null, 1));
   } finally { await browser.close(); app.closeAllConnections(); await new Promise(r => app.close(r)); store.close(); await src.close(); }

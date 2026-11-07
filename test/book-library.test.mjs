@@ -52,4 +52,27 @@ test('books in the database, the relay, access, and a class book page kept in me
   assert.equal(shown.image, image); assert.deepEqual(shown.book, {id: 'g4-t1-math', page: 18});
   assert.equal(store.group.session(code).plan.steps.find(s => s.id === 'curriculum').image, undefined, 'never saved');
   assert.equal(store.group.session(code).state.pageVer, 1);
+  // «دروسي» for any grade: each lesson with its book page and «حضّر هذا الدرس»
+  assert.equal(store.group.bookLessons('g5-t1-math').length, 42);
+  const g5 = await (await get('/teach/plans?grade=5', tour.teacher)).text();
+  assert.equal((g5.match(/data-lesson="p5/g) || []).length, 54); assert.match(g5, /href="\/teach\/books\/g5-t1-math\?page=38"/);
+  const made = await fetch(base + '/teach/plans/new', {method: 'POST', headers: {cookie: t1, origin: base, 'content-type': 'application/x-www-form-urlencoded'}, body: 'template=cur-p5m07', redirect: 'manual'});
+  assert.equal(made.status, 303); const planId = made.headers.get('location').split('/').pop();
+  const saved = store.group.plan(tour.teacher, planId).plan;
+  assert.equal(saved.lesson, 'p5m07'); assert.deepEqual([saved.steps[0].source, saved.steps[0].book, saved.steps[0].page], ['book', 'g5-t1-math', 38]);
+});
+
+test('every elementary lesson (grades 1–6, term 1) is linked to its book page and starts a valid prep', async () => {
+  const {allLessons} = await import('../public/book-catalog.js'), {curriculumPlan, validatePlan} = await import('../public/group-plan.js');
+  const all = allLessons();
+  assert.equal(all.length, 314);
+  const count = (g, s) => all.filter(l => l.grade === g && l.subject === s).length;
+  assert.deepEqual([1, 2, 3, 4, 5, 6].map(g => [count(g, 'science'), count(g, 'math')]), [[11, 41], [12, 51], [12, 35], [12, 39], [12, 42], [12, 35]]);
+  assert.equal(new Set(all.map(l => l.id)).size, all.length, 'unique ids');
+  for (const g of [1, 2, 3, 4, 5, 6]) for (const s of ['science', 'math']) {
+    const list = all.filter(l => l.grade === g && l.subject === s), book = BOOKS.find(b => b.grade === g && b.subject === s);
+    assert.ok(list.every((l, i) => l.page >= 1 && l.page < book.pages && (!i || l.page > list[i - 1].page)), `grade ${g} ${s}: pages in book order`);
+  }
+  for (const l of all.filter(l => l.grade !== 4)) { const p = validatePlan(curriculumPlan(l.id)); assert.equal(p.steps[0].source, 'book'); assert.equal(p.steps[0].page, l.page); assert.equal(p.grade, l.grade); }
+  assert.equal(lessonBookPage('p5m07').page, 38); assert.equal(lessonBookPage('p6s04').page, 62); assert.equal(lessonBookPage('p1s01').book, 'g1-t1-science');
 });

@@ -4,6 +4,7 @@ import {ACTIVITIES, cleanValues} from './activities.js';
 import {LIBRARY} from './tool-library.js';
 import {LESSON_PREPS, arDigits} from './lesson-preps-g4.js';
 import {curriculumLessons} from './curriculum-g4.js';
+import {bookOf, lessonOf, lessonBookPage} from './book-catalog.js';
 
 export const STEP_TYPES = {
   page: {label: 'صفحة المنهج على السبورة', short: 'المنهج'},
@@ -127,7 +128,10 @@ export function validatePlan(raw) {
     need(Array.isArray(snippets) && snippets.length <= LIMITS.snippets, `حتى ${LIMITS.snippets} نصوص جاهزة لكل خطوة.`);
     step.snippets = snippets.map((t, j) => text(t, 200, `النص الجاهز ${j + 1}`));
     if (s.type === 'page') {
-      if (s.source === 'upload') {
+      if (s.source === 'book') { // a page of the ministry book, opened from its source in class (never stored)
+        const book = bookOf(s.book); need(book && Number.isInteger(s.page) && s.page >= 1 && s.page <= book.pages - book.offset, 'اختر كتابًا وصفحة صحيحة.');
+        Object.assign(step, {source: 'book', book: book.id, page: s.page});
+      } else if (s.source === 'upload') {
         need(validImage(s.image), 'ارفع صورة الصفحة بصيغة PNG أو JPEG أو WebP حتى ٦٥٠ كيلوبايت تقريبًا.');
         need(s.rights === true, 'أكّد أن لديك حق عرض هذه الصفحة على طلابك.');
         Object.assign(step, {source: 'upload', image: s.image, rights: true});
@@ -194,7 +198,7 @@ export function boardLayout(items) {
 /** What a student may receive for a step: no answer keys, only revealed board items. */
 export function publicStep(step, revealed = []) {
   const base = {id: step.id, type: step.type, title: step.title};
-  if (step.type === 'page') return {...base, source: step.source, page: step.page, image: step.source === 'upload' ? step.image : undefined};
+  if (step.type === 'page') return {...base, source: step.source, page: step.page, image: step.source === 'upload' ? step.image : undefined, ...(step.book ? {book: step.book} : {})};
   if (step.type === 'interactive') return {...base, activity: step.activity};
   if (step.type === 'board') { const at = boardLayout(step.items); return {...base, items: step.items.filter(i => revealed.includes(i.id)).map(i => ({...i, place: at[i.id]}))}; } // each card with its place among all cards
   if (step.type === 'questions' || step.type === 'homework') return {...base, instructions: step.instructions, questions: step.questions.map(({answer, ...q}) => q)};
@@ -228,6 +232,16 @@ export function prepPlan(id) {
     {id: 'homework', type: 'homework', title: 'واجب الدرس', instructions: A(p.hw[0]), narration: {mode: 'live'}, questions: [choice('h1', p.hw[1]), choice('h2', p.hw[2]), {id: 'h3', kind: 'text', prompt: A(p.hw[3])}]},
     {id: 'evaluate', type: 'evaluation', title: 'تقييم الطلاب', narration: {mode: 'live'}, criteria: ['المشاركة', 'فهم الدرس', 'الواجب']});
   return {version: 1, title: l.title, subject: l.subject, grade: 4, lesson: id, tools: p.aids, steps};
+}
+
+/** A new prep for any curriculum lesson: the ministry book at the lesson's page, cards to fill, and an evaluation. */
+export function curriculumPlan(id) {
+  const l = lessonOf(id), at = lessonBookPage(id); if (!l || !at) return null;
+  return {version: 1, title: l.title, subject: l.subject, grade: l.grade, lesson: id, tools: [], steps: [
+    {id: 'curriculum', type: 'page', title: 'صفحة الدرس من كتاب الوزارة', source: 'book', book: at.book, page: at.page, narration: {mode: 'live'}, snippets: [l.title]},
+    {id: 'board-notes', type: 'board', title: 'النقاط الأساسية', narration: {mode: 'live'}, items: [{id: 'n1', kind: 'text', text: l.title}, {id: 'n2', kind: 'text', text: 'اكتب هنا أول نقطة أساسية في الدرس.'}]},
+    {id: 'evaluate', type: 'evaluation', title: 'تقييم الطلاب', narration: {mode: 'live'}, criteria: ['المشاركة', 'فهم الدرس', 'الواجب']}
+  ]};
 }
 
 /** Science 4, term 1, unit 1, chapter 1, lesson 1 (order from the 1447 AH Ministry book; content is original). */

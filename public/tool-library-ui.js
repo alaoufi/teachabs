@@ -3,7 +3,7 @@
 import {el} from './group-view.js';
 import {SUBJECTS} from './group-plan.js';
 import {toolsFor, STAMPS} from './tool-library.js';
-import {curriculumLessons} from './curriculum-g4.js';
+import {allLessons} from './book-catalog.js';
 
 const KIND = {stamp: 'على السبورة', activity: 'شرح تفاعلي', class: 'أداة فصل'};
 const GRADES = ['', 'الأول', 'الثاني', 'الثالث', 'الرابع', 'الخامس', 'السادس', 'الأول المتوسط', 'الثاني المتوسط', 'الثالث المتوسط'];
@@ -28,9 +28,9 @@ export function openLibrary(opts) {
   const body = el('div', {class: 'tl-body'});
   const lessonSel = el('select', {'aria-label': 'الدرس', onchange: e => { state.lesson = e.target.value; draw(); }});
   const fillLessons = () => {
-    const list = curriculumLessons().filter(l => !state.subject || l.subject === state.subject);
-    lessonSel.replaceChildren(el('option', {value: ''}, 'كل الدروس'), ...list.map(l => el('option', {value: l.id, selected: l.id === state.lesson}, l.title)));
-    lessonSel.disabled = !list.length || (state.grade && Number(state.grade) !== 4); // the lesson map covers grade 4, term 1
+    const list = allLessons().filter(l => (!state.subject || l.subject === state.subject) && (!state.grade || l.grade === Number(state.grade)));
+    lessonSel.replaceChildren(el('option', {value: ''}, 'كل الدروس'), ...list.map(l => el('option', {value: l.id, selected: l.id === state.lesson}, state.grade ? l.title : `${l.title} (الصف ${l.grade})`)));
+    lessonSel.disabled = !list.length; // the lesson map covers the elementary books, term 1
   };
   const head = el('div', {class: 'tl-head'},
     el('h2', {text: '🧰 مكتبة الأدوات'}),

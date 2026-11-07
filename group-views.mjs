@@ -7,6 +7,7 @@ import {GRADE_NAMES} from './public/group-plan.js';
 import {COLORS, SIZE_NAMES} from './public/group-ink.js';
 import {CURRICULUM_G4_T1, CURRICULUM_SOURCE, curriculumLessons} from './public/curriculum-g4.js';
 import {LESSON_AIDS} from './public/lesson-preps-g4.js';
+import {allLessons, bookFor} from './public/book-catalog.js';
 
 const TOOL_BUTTONS = [['select', '➤', 'تحريك', 'V'], ['hand', '✋', 'يد', 'H'], ['pen', '✎', 'قلم', 'P'], ['brush', '🖌', 'فرشاة', 'B'], ['marker', '▮', 'تظليل', 'M'], ['rect', '▭', 'مستطيل', 'R'], ['ellipse', '◯', 'دائرة', 'O'], ['line', '／', 'خط', 'L'], ['arrow', '↗', 'سهم', 'A'], ['laser', '🔴', 'مؤشر', 'K'], ['text', 'ت', 'كتابة', 'T'], ['eraser', '⌫', 'ممحاة', 'E']];
 
@@ -17,7 +18,7 @@ const dateText = t => new Intl.DateTimeFormat('ar-SA', {dateStyle: 'medium', tim
 const sendForm = (action, colleagues, label) => colleagues.length ? `<form method="post" action="${action}" class="gl-send"><select name="to" required aria-label="${label}"><option value="">${label}…</option>${colleagues.map(c => `<option value="${e(c.id)}">${e(c.name)}</option>`).join('')}</select><button class="outline">${label.startsWith('حوّل') ? '↪ حوّل' : '↗ أرسل'}</button></form>` : '';
 const originBadge = o => o ? `<span class="gl-origin">📥 ${e(o)}</span>` : '';
 
-export function plansPage(plans, sessions, colleagues = [], sent = false) {
+export function plansPage(plans, sessions, colleagues = [], sent = false, grade = 4) {
   const list = plans.length ? plans.map(p => `<li class="gl-row"><div><b>${e(p.title)}</b><small>آخر تعديل ${dateText(p.updated)}</small>${originBadge(p.origin)}</div>
    <div class="gl-actions"><a class="outline" href="/teach/plans/${p.id}">ترتيب الدرس</a>
    <a class="outline" href="/teach/plans/${p.id}.json" download="${e(p.title)}.json">تنزيل كملف</a>
@@ -25,7 +26,7 @@ export function plansPage(plans, sessions, colleagues = [], sent = false) {
   const live = sessions.length ? `<h2>حصص سابقة وجارية</h2><ul class="gl-list">${sessions.map(s => `<li class="gl-row"><div><b>${e(s.title)}</b><small>الرمز ${e(s.code)} · ${dateText(s.created)} · ${s.live ? 'جارية' : 'انتهى العرض'}</small></div><a class="outline" href="/teach/live/${e(s.code)}">فتح إدارة الحصة</a></li>`).join('')}</ul>` : '';
   return `${css}<section class="gl-wrap" dir="rtl"><div class="section-head welcome-panel"><div class="eyebrow">الحصة الجماعية</div><h1>دروسي</h1>
   <p>رتّب درسك قبل الحصة بالتسلسل: ${STEP_ORDER.map(t => STEP_TYPES[t].short).join(' ← ')}. أثناء الحصة تتحكم بما يظهر للطلاب وما يختفي. <a class="textlink" href="/guide">دليل الاستخدام</a> · <a class="textlink" href="/teach/aids">📚 مكتبة الوسائل الدراسية</a> · <a class="textlink" href="/teach/books">📗 الكتب المدرسية</a></p></div>
-  ${curriculumSection()}
+  ${curriculumSection(grade)}
   <div class="gl-actions gl-templates"><span class="gl-tpl-label">نماذج إضافية للتجربة (ليست ضمن الفصل الأول):</span>${Object.entries(LESSON_TEMPLATES).filter(([id]) => !TEMPLATE_IN_CURRICULUM.has(id)).map(([id, t]) => `<form method="post" action="/teach/plans/new"><input type="hidden" name="template" value="${id}"><button class="btn">${e(t.title)}</button></form>`).join('')}
   <button type="button" class="outline" id="plans-import-btn">استيراد درس من ملف</button><input type="file" id="plans-import" accept=".json,application/json" hidden></div>
   <p id="plans-status" class="gl-status" role="status" aria-live="polite" hidden></p>
@@ -84,7 +85,7 @@ export function booksPage(books, teacher) {
 
 /** One book, page by page (rendered on this device from the source); its lessons jump to their pages. */
 export function bookViewerPage(book, page, lessons) {
-  const titles = Object.fromEntries(curriculumLessons().map(l => [l.id, l.title])), ar = new Intl.NumberFormat('ar-SA');
+  const titles = Object.fromEntries(allLessons().map(l => [l.id, l.title])), ar = new Intl.NumberFormat('ar-SA');
   return `${css}<section class="gl-wrap bk-viewer" dir="rtl" id="book-viewer" data-book="${e(book.id)}" data-page="${page}" data-pages="${book.pages - book.offset}" data-offset="${book.offset}">
   <div class="gl-top"><div><div class="eyebrow">مكتبة الكتب المدرسية</div><h1>${e(book.title)}</h1></div><div class="gl-actions"><a class="outline" href="/teach/books">كل الكتب</a></div></div>
   <div class="bk-bar" role="toolbar" aria-label="التنقل في الكتاب"><button type="button" class="outline" id="bk-prev" aria-label="الصفحة السابقة">◀ السابقة</button>
@@ -122,14 +123,28 @@ export function reviewPlanPage(p, colleagues) {
 const TEMPLATE_IN_CURRICULUM = new Set(curriculumLessons().map(l => l.template).filter(Boolean));
 
 /** The term's lessons in the book's order; a ready lesson starts from its template in one click. */
-function curriculumSection() {
+/** The grade's lessons (elementary, term 1) from the ministry books: a new prep opens at the lesson's book page. */
+function gradeSection(grade) {
+  const ar = new Intl.NumberFormat('ar-SA'), lessons = allLessons().filter(l => l.grade === grade);
+  const subjects = ['science', 'math'].map(subject => {
+    const list = lessons.filter(l => l.subject === subject), book = bookFor(subject, grade); if (!list.length) return '';
+    const units = [...new Set(list.map(l => l.unit))].map(u => `<div class="gl-cur-unit"><h4>${e(u)}</h4>${[...new Set(list.filter(l => l.unit === u).map(l => l.chapter))].map(c => `${c ? `<h5>${e(c)}</h5>` : ''}<ol>${list.filter(l => l.unit === u && l.chapter === c).map(l => `<li data-lesson="${e(l.id)}"><span>${e(l.title)}</span>
+<a class="textlink" href="/teach/books/${e(book.id)}?page=${l.page}" title="افتح كتاب الوزارة على صفحة الدرس">📖 ص ${ar.format(l.page)}</a><form method="post" action="/teach/plans/new"><input type="hidden" name="template" value="cur-${e(l.id)}"><button class="outline gl-mini">حضّر هذا الدرس</button></form></li>`).join('')}</ol>`).join('')}</div>`).join('');
+    return `<details class="gl-cur-subject" open data-subject="${e(subject)}"><summary>${subject === 'math' ? 'الرياضيات' : 'العلوم'} <small>${ar.format(list.length)} درسًا</small></summary>${units}</details>`;
+  }).join('');
+  return `<div class="gl-cur-grid">${subjects}</div>`;
+}
+const gradeTabs = grade => `<nav class="gl-grade-tabs" aria-label="الصف">${[1, 2, 3, 4, 5, 6].map(g => `<a href="/teach/plans?grade=${g}" class="${g === grade ? 'is-on' : ''}"${g === grade ? ' aria-current="page"' : ''}>الصف ${GRADE_NAMES[g]}</a>`).join('')}</nav>`;
+
+function curriculumSection(grade = 4) {
+  if (grade !== 4) return `<section class="gl-curriculum" aria-labelledby="cur-title"><h2 id="cur-title">منهج الصف ${e(GRADE_NAMES[grade])} الابتدائي — الفصل الدراسي الأول</h2>${gradeTabs(grade)}<p class="gl-note">ترتيب الدروس وأرقام صفحاتها من فهارس كتب وزارة التعليم (طبعة ١٤٤٧هـ). «حضّر هذا الدرس» يبدأ تحضيرًا يفتح كتاب الوزارة على صفحة الدرس، وتكمله أنت.</p>${gradeSection(grade)}</section>`;
   const subjects = Object.entries(CURRICULUM_G4_T1).map(([key, sub]) => {
     const all = sub.units.flatMap(u => u.chapters.flatMap(c => c.lessons)), ready = all.filter(l => l.template && LESSON_TEMPLATES[l.template]).length;
     const units = sub.units.map(u => `<div class="gl-cur-unit"><h4>${e(u.title)}</h4>${u.chapters.map(c => `${c.title ? `<h5>${e(c.title)}</h5>` : ''}<ol>${c.lessons.map(l => `<li class="${l.template ? 'is-ready' : ''}"><span>${e(l.title)}</span>${l.template && LESSON_TEMPLATES[l.template]
       ? `<form method="post" action="/teach/plans/new"><input type="hidden" name="template" value="${e(l.template)}"><button class="btn gl-mini">ابدأ من الدرس الجاهز</button></form>` : '<small class="gl-soon">قريبًا</small>'}</li>`).join('')}</ol>`).join('')}</div>`).join('');
     return `<details class="gl-cur-subject" open data-subject="${e(key)}"><summary>${e(sub.name)} <small>${ready} جاهز من ${all.length} درسًا</small></summary>${units}</details>`;
   }).join('');
-  return `<section class="gl-curriculum" aria-labelledby="cur-title"><h2 id="cur-title">منهج الصف الرابع — الفصل الدراسي الأول</h2><p class="gl-note">${e(CURRICULUM_SOURCE)}</p><div class="gl-cur-grid">${subjects}</div></section>`;
+  return `<section class="gl-curriculum" aria-labelledby="cur-title"><h2 id="cur-title">منهج الصف الرابع — الفصل الدراسي الأول</h2>${gradeTabs(4)}<p class="gl-note">${e(CURRICULUM_SOURCE)}</p><div class="gl-cur-grid">${subjects}</div></section>`;
 }
 
 export function plannerPage(id, title) {

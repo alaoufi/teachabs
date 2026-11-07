@@ -6,7 +6,8 @@ import {speech, ttsReady} from './tts.mjs';
 import {initialState, teacherCommand, teacherView, publicView, voiceOf, studentHand, speechText, speakerOf, classExtras, checkAnswer, checkEvaluation, contentFor, narrationFor, segmentAudio, MAX_STUDENTS} from './group-session.mjs';
 import {UserError} from './store.mjs';
 import * as v from './group-views.mjs';
-import {BOOKS, LESSON_PAGES, bookOf, lessonBookPage} from './public/book-catalog.js';
+import {BOOKS, bookOf, lessonBookPage, allLessons} from './public/book-catalog.js';
+import {curriculumPlan} from './public/group-plan.js';
 import {Readable} from 'node:stream';
 
 const need = (ok, message, status = 400) => { if (!ok) throw new UserError(message, status); };
@@ -22,7 +23,7 @@ const PAGE_CSP = "default-src 'self'; script-src 'self'; style-src 'self'; img-s
 
 export function groupService(store) {
   const g = store.group, listeners = new Map();
-  g.seedBooks(BOOKS, Object.fromEntries(Object.keys(LESSON_PAGES).map(l => [l, lessonBookPage(l)])));
+  g.seedBooks(BOOKS, Object.fromEntries(allLessons().map(l => [l.id, lessonBookPage(l.id)]).filter(([, at]) => at)));
   // a ministry book page shown in a class: kept in memory for that class only, never saved
   const bookPages = new Map();
   const withBook = (plan, code) => { const b = bookPages.get(code); if (!b) return plan; return {...plan, steps: plan.steps.map(s => s.id === b.step ? {...s, source: 'upload', image: b.image, rights: true, book: {id: b.book, page: b.page}} : s)}; };
@@ -243,7 +244,8 @@ export function groupService(store) {
       const teacher = teacherOnly(u);
       if (path === '/teach' || path === '/teach/plans') {
         need(method === 'GET', 'إجراء غير متاح.', 405);
-        return page(res, html, 'دروسي للحصة الجماعية', v.plansPage(g.plans(teacher.id), g.sessions(teacher.id), g.colleagues(teacher.scope).filter(c => c.id !== teacher.id), url.searchParams.get('sent') === '1'));
+        const grade = /^[1-6]$/.test(url.searchParams.get('grade') || '') ? Number(url.searchParams.get('grade')) : 4;
+        return page(res, html, 'دروسي للحصة الجماعية', v.plansPage(g.plans(teacher.id), g.sessions(teacher.id), g.colleagues(teacher.scope).filter(c => c.id !== teacher.id), url.searchParams.get('sent') === '1', grade));
       }
       if (path === '/teach/texts') {
         if (method === 'GET') return send(res, g.texts(teacher.id));
@@ -263,7 +265,11 @@ export function groupService(store) {
         let clean; try { clean = validatePlan(body); } catch (e) { if (e instanceof PlanError) throw new UserError(e.message); throw e; }
         return send(res, {id: g.createPlan(teacher.id, clean)});
       }
-      if (path === '/teach/plans/new' && method === 'POST') { const data = await fields(req), t = LESSON_TEMPLATES[data.template] || LESSON_TEMPLATES.light; return redirect('/teach/plans/' + g.createPlan(teacher.id, validatePlan(t.plan()))); }
+      if (path === '/teach/plans/new' && method === 'POST') {
+        const data = await fields(req), cur = /^cur-([a-z0-9-]{1,20})$/.exec(data.template || ''); // any curriculum lesson: a new prep at its book page
+        if (cur) { const p = curriculumPlan(cur[1]); need(p, 'الدرس غير موجود في المنهج.', 404); return redirect('/teach/plans/' + g.createPlan(teacher.id, validatePlan(p))); }
+        const t = LESSON_TEMPLATES[data.template] || LESSON_TEMPLATES.light; return redirect('/teach/plans/' + g.createPlan(teacher.id, validatePlan(t.plan())));
+      }
       const pm = path.match(/^\/teach\/plans\/([0-9a-f-]{36})(\.json|\/delete|\/start|\/send)?$/);
       if (pm) {
         const [, id, action] = pm; need(UUID.test(id), 'الدرس غير موجود.', 404);

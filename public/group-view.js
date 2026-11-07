@@ -129,6 +129,7 @@ export function renderStep(container, content, {teacher = false, revealed = null
   if (content.type === 'page') {
     const frame = el('div', {class: 'gl-page'});
     if (content.source === 'upload') frame.append(el('img', {src: content.image, alt: content.title}));
+    else if (content.source === 'book') frame.append(el('div', {class: 'gl-book-wait'}, el('b', {text: '📖 ' + content.title}), el('p', {text: `صفحة ${content.page} من كتاب الوزارة — تظهر هنا عندما يعرضها المعلم.`})));
     else frame.innerHTML = renderOriginalPage(content.page); // fixed, escaped project content
     container.append(frame);
     return;

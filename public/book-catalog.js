@@ -4,10 +4,14 @@
 // class in memory (never saved). Checked 2026-11-07:
 //  - the source pages and PDF links below answered 200 (application/pdf), with the page counts shown on the source page;
 //  - every PDF begins with one page added by the hosting site (an advertisement), so PDF page = printed page + 1
-//    (verified on real pages for grade 4: math 1-1 is printed 13 / PDF 14, science «الخلايا» printed 26 / PDF 27);
+//    (verified on real pages: grade 4 math 1-1 printed 13 / PDF 14, science «الخلايا» 26 / 27; grade 5 math p. 38, grade 1
+//    science p. 48 and grade 6 math p. 140 open exactly at their lessons);
 //  - the books print «طبعة ١٤٤٧هـ – 2025» (the 1448 AH edition was not found at the source; term 2 is not published yet);
 //  - the links on sa.afedne.com answered error 520 and ien.edu.sa could not be reached from the checking machine.
 // Source: learnatdolphin.com (a copy of the Ministry books); the official source is the «عين» portal (ien.edu.sa).
+
+import {curriculumLessons} from './curriculum-g4.js';
+import {primaryLessons} from './curriculum-primary.js';
 
 export const BOOK_SOURCE = {name: 'منصة الدلفين (نسخة من كتب وزارة التعليم)', official: 'بوابة عين — وزارة التعليم', officialUrl: 'https://ien.edu.sa'};
 const GRADE = ['', 'الأول', 'الثاني', 'الثالث', 'الرابع', 'الخامس', 'السادس'];
@@ -22,7 +26,7 @@ export const BOOKS = Object.entries(V).map(([id, [v, pages]]) => {
   const [, grade, term, subject] = id.match(/^g(\d)-t(\d)-(\w+)$/);
   return {id, track: 'general', stage: 'primary', grade: Number(grade), term: Number(term), subject,
     title: `${SUBJECT[subject]} — الصف ${GRADE[grade]} الابتدائي — الفصل الدراسي الأول`, edition: '١٤٤٧هـ – 2025', pages, offset: 1,
-    offsetChecked: grade === '4', source: `https://learnatdolphin.com/textbooks/primary-${grade}/term-${term}/${subject}/`,
+    offsetChecked: ['g4-t1-math', 'g4-t1-science', 'g5-t1-math', 'g1-t1-science', 'g6-t1-math'].includes(id), source: `https://learnatdolphin.com/textbooks/primary-${grade}/term-${term}/${subject}/`,
     pdf: `https://learnatdolphin.com/wp-content/uploads/textbooks/primary-${grade}/term-${term}/${subject}.pdf?v=${v}`, checked: '2026-11-07'};
 });
 export const bookOf = id => BOOKS.find(b => b.id === id);
@@ -39,8 +43,15 @@ export const LESSON_PAGES = {
   'm5-1': 139, 'm5-2': 142, 'm5-3': 145, 'm5-4': 147, 'm5-5': 151, 'm5-6': 157, 'm5-7': 161, 'm5-8': 163,
   'm6-1': 175, 'm6-2': 179, 'm6-3': 183, 'm6-4': 188, 'm6-5': 191
 };
-/** The book and printed page of a curriculum lesson (grade 4 term 1 lessons: s… science, m… math). */
+/** Every lesson of the elementary books (term 1), in book order: grade 4 from curriculum-g4.js, the others from curriculum-primary.js. */
+export function allLessons() {
+  const g4 = curriculumLessons().map(l => ({id: l.id, grade: 4, subject: l.subject, unit: l.unit, chapter: l.chapter, title: l.title, page: LESSON_PAGES[l.id], ready: Boolean(l.template)}));
+  return [...primaryLessons().filter(l => l.grade < 4), ...g4, ...primaryLessons().filter(l => l.grade > 4)].sort((a, b) => a.grade - b.grade);
+}
+const LESSONS = new Map(allLessons().map(l => [l.id, l]));
+export const lessonOf = id => LESSONS.get(id);
+/** The book and printed page of a curriculum lesson. */
 export function lessonBookPage(lessonId) {
-  const page = LESSON_PAGES[lessonId]; if (!page) return null;
-  return {book: bookFor(lessonId.startsWith('s') ? 'science' : 'math', 4).id, page};
+  const l = LESSONS.get(lessonId); if (!l?.page) return null;
+  const book = bookFor(l.subject, l.grade); return book ? {book: book.id, page: l.page} : null;
 }

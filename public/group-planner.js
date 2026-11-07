@@ -5,7 +5,7 @@ import {openTextPicker, downloadJSON, safeName} from './text-library.js';
 import {ACTIVITIES, activityOf, segmentLabel} from './activities.js';
 import {openLibrary} from './tool-library-ui.js';
 import {toolOf} from './tool-library.js';
-import {curriculumLessons} from './curriculum-g4.js';
+import {allLessons, BOOKS, bookOf, bookFor, lessonBookPage} from './book-catalog.js';
 
 const root = document.getElementById('planner'), id = root.dataset.id;
 const $ = x => document.getElementById(x);
@@ -139,11 +139,18 @@ function questionsEditor(step) {
 function stepEditor(step) {
   const box = el('div', {class: 'pl-body'});
   if (step.type === 'page') {
-    const original = step.source !== 'upload';
+    const src = step.source || 'original', original = src === 'original';
+    const toBook = () => { const at = lessonBookPage(plan.lesson), b = at ? bookOf(at.book) : bookFor(plan.subject, plan.grade) || BOOKS[0]; Object.assign(step, {source: 'book', book: b.id, page: at?.page || 1}); delete step.image; touch(); render(); };
     box.append(el('div', {class: 'pl-row', role: 'radiogroup', 'aria-label': 'مصدر الصفحة'},
-      el('label', {class: 'pl-radio'}, el('input', {type: 'radio', name: 'src-' + step.id, checked: original, onchange: () => { Object.assign(step, {source: 'original', page: step.page || 'science-4-light'}); delete step.image; touch(); render(); }}), 'صفحة أصلية للتجربة'),
-      el('label', {class: 'pl-radio'}, el('input', {type: 'radio', name: 'src-' + step.id, checked: !original, onchange: () => { step.source = 'upload'; touch(); render(); }}), 'صفحة الكتاب الرسمي (ارفع صورتها)')));
-    if (original) {
+      el('label', {class: 'pl-radio'}, el('input', {type: 'radio', name: 'src-' + step.id, checked: src === 'book', onchange: toBook}), '📖 كتاب الوزارة (يُفتح على صفحة الدرس في الحصة)'),
+      el('label', {class: 'pl-radio'}, el('input', {type: 'radio', name: 'src-' + step.id, checked: original, onchange: () => { Object.assign(step, {source: 'original', page: typeof step.page === 'string' ? step.page : 'science-4-light'}); delete step.image; delete step.book; touch(); render(); }}), 'صفحة أصلية للتجربة'),
+      el('label', {class: 'pl-radio'}, el('input', {type: 'radio', name: 'src-' + step.id, checked: src === 'upload', onchange: () => { step.source = 'upload'; delete step.book; touch(); render(); }}), 'صورة صفحة (ارفعها)')));
+    if (src === 'book') {
+      const b = bookOf(step.book) || BOOKS[0];
+      box.append(field('الكتاب', el('select', {'aria-label': 'الكتاب', onchange: e => { step.book = e.target.value; step.page = 1; touch(); render(); }}, BOOKS.map(x => el('option', {value: x.id, selected: x.id === b.id}, x.title)))),
+        field('رقم الصفحة المطبوع', el('input', {type: 'number', min: 1, max: b.pages - b.offset, value: step.page, 'aria-label': 'رقم الصفحة', onchange: e => { step.page = Math.max(1, Math.min(b.pages - b.offset, Number(e.target.value) || 1)); touch(); }})),
+        el('p', {class: 'gl-note', text: 'في الحصة اضغط «📖 كتاب الوزارة» فيفتح على هذه الصفحة، ثم اعرضها على السبورة. لا تُحفظ نسخة من الكتاب.'}));
+    } else if (original) {
       box.append(field('الصفحة', el('select', {onchange: e => { step.page = e.target.value; touch(); render(); }}, Object.entries(ORIGINAL_PAGES).map(([k, p]) => el('option', {value: k, selected: k === step.page}, p.title)))));
       const preview = el('div', {class: 'pl-preview'}); preview.innerHTML = renderOriginalPage(step.page); box.append(preview);
     } else {
@@ -228,7 +235,7 @@ function render() {
     field('المادة', el('select', {onchange: e => { plan.subject = e.target.value; touch(); }}, Object.entries(SUBJECTS).map(([k, v]) => el('option', {value: k, selected: k === plan.subject}, v)))),
     field('الصف', el('select', {onchange: e => { plan.grade = Number(e.target.value); touch(); }}, [1, 2, 3, 4, 5, 6, 7, 8, 9].map(g => el('option', {value: g, selected: g === plan.grade}, gradeName(g))))),
     field('الدرس من المنهج', el('select', {'aria-label': 'الدرس من المنهج', onchange: e => { plan.lesson = e.target.value || undefined; touch(); render(); }}, el('option', {value: ''}, '— بلا —'),
-      ...curriculumLessons().filter(l => l.subject === plan.subject).map(l => el('option', {value: l.id, selected: l.id === plan.lesson}, l.title)))),
+      ...allLessons().filter(l => l.subject === plan.subject && l.grade === plan.grade).map(l => el('option', {value: l.id, selected: l.id === plan.lesson}, `${l.title} — ص ${l.page}`)))),
     toolsField(),
     field('صوت المتحدث', el('select', {'aria-label': 'صوت المتحدث', onchange: e => { plan.speaker = e.target.value; touch(); }}, el('option', {value: 'male', selected: plan.speaker !== 'female'}, '🧔 رجل (حامد)'), el('option', {value: 'female', selected: plan.speaker === 'female'}, '🧕 امرأة (زارية)'))));
   $('pl-steps').replaceChildren(...plan.steps.map((step, i) => {
