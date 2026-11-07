@@ -152,7 +152,7 @@ async function render() {
 }
 
 // ---- the student's own screen: board over everything, microphone, writing sheet, leave with confirmation ----
-let entered = !student, sheetKey = '';
+let entered = !student, sheetKey = '', lastStar = null, starTimer = 0;
 const voice = student ? studentVoice({base: classBase, onChange: () => studentChrome(), onVideo: stream => { const v = $('gl-teachercam'), track = stream.getVideoTracks()[0]; v.srcObject = stream; v.play?.().catch(() => {}); if (track) track.onmute = track.onunmute = track.onended = () => studentChrome(); studentChrome(); }}) : null;
 // The teacher's picture: a small window in the corner of the board; a tap makes it bigger or smaller.
 $('gl-teachercam')?.addEventListener('click', e => e.currentTarget.classList.toggle('is-big'));
@@ -174,6 +174,12 @@ function studentChrome() {
   $('gl-mic').setAttribute('aria-pressed', String(voice.on)); $('gl-mic').classList.toggle('is-on', voice.on);
   $('gl-mic').querySelector('span').textContent = !v.mics ? 'المايك مغلق' : voice.on ? 'أغلق المايك' : 'المايك';
   const tv = $('gl-teachercam'); if (tv) { const vt = tv.srcObject?.getVideoTracks()[0]; tv.hidden = !(v.camera && vt && vt.readyState === 'live' && !vt.muted && view.live); if (!tv.hidden) tv.play?.().catch(() => {}); }
+  // ✋ and ⭐ (ideas from ClassIn): the hand stays up until the teacher answers; a new star pops up briefly
+  $('gl-hand').setAttribute('aria-pressed', String(Boolean(view.hand))); $('gl-hand').classList.toggle('is-on', Boolean(view.hand));
+  $('gl-hand').querySelector('span').textContent = view.hand ? 'يدك مرفوعة' : 'ارفع يدك'; $('gl-hand').disabled = !view.live;
+  $('gl-stars').hidden = !view.stars; $('gl-stars').textContent = '⭐ ' + formatNumber(view.stars || 0);
+  if (view.starSeq && view.starSeq !== lastStar) { if (lastStar !== null) { const p = $('gl-star-pop'); p.hidden = false; p.classList.remove('is-pop'); void p.offsetWidth; p.classList.add('is-pop'); clearTimeout(starTimer); starTimer = setTimeout(() => { p.hidden = true; }, 2200); } lastStar = view.starSeq; }
+  else if (lastStar === null) lastStar = view.starSeq || 0;
   $('gl-ended').hidden = view.live || !entered;
   if (!view.live) $('gl-ended-text').textContent = view.homework?.status === 'open' ? 'شكرًا لك! الواجب متاح في «كتابة».' : 'شكرًا لك!';
 }
@@ -187,6 +193,10 @@ if (student) {
     try { await voice.setMic(!voice.on); status(voice.on ? 'المايك مفتوح: المعلم يسمعك.' : 'أُغلق المايك.'); }
     catch (e) { status(e.message || 'لم يُسمح بالمايك.', true); }
     studentChrome();
+  });
+  $('gl-hand').addEventListener('click', async () => {
+    try { const up = !view?.hand; await (await fetch(classBase + '/hand', {method: 'POST', headers: {'content-type': 'application/json'}, body: JSON.stringify({up})})).json(); status(up ? 'رفعت يدك ✋ سيراها المعلم.' : 'أنزلت يدك.'); }
+    catch { status('تعذّر رفع اليد.', true); }
   });
   $('gl-write').addEventListener('click', () => openSheet($('gl-sheet').hidden));
   $('gl-sheet-close').addEventListener('click', () => openSheet(false));

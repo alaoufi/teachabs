@@ -46,3 +46,21 @@ test('rectangle and circle tools: outlines made of points, accepted as ink', () 
   s = teacherCommand(s, plan, {op: 'stroke', tool: 'ellipse', size: 'm', color: '#173e34', points: o});
   assert.equal(s.strokes[plan.steps[i].id][0].tool, 'ellipse');
 });
+
+import {studentHand, teacherView} from '../group-session.mjs';
+test('✋ hands: raised in order, seen by the teacher, lowered by the teacher; ⭐ stars reach only that student', () => {
+  const plan = validatePlan(LESSON_TEMPLATES.cells.plan());
+  let s = studentHand(initialState(plan), 'b', true);
+  s = studentHand(s, 'a', true);
+  assert.deepEqual(teacherView(s, plan, [], []).hands, ['b', 'a'], 'first raised first');
+  assert.equal(publicView(s, plan, 'a', []).hand, true);
+  s = teacherCommand(s, plan, {op: 'hand-down', student: 'b'});
+  assert.deepEqual(teacherView(s, plan, [], []).hands, ['a']);
+  s = studentHand(s, 'a', false); assert.deepEqual(teacherView(s, plan, [], []).hands, []);
+  assert.throws(() => studentHand(s, 'a', 'yes'), /قيمة غير صالحة/);
+  s = teacherCommand(s, plan, {op: 'star', student: 'a'}); s = teacherCommand(s, plan, {op: 'star', student: 'a'});
+  assert.equal(publicView(s, plan, 'a', []).stars, 2); assert.ok(publicView(s, plan, 'a', []).starSeq);
+  assert.equal(publicView(s, plan, 'c', []).stars, 0); assert.equal(publicView(s, plan, 'c', []).starSeq, undefined, 'others do not see the star pop');
+  s = studentHand(studentHand(s, 'a', true), 'c', true); s = teacherCommand(s, plan, {op: 'hand-down', all: true});
+  assert.deepEqual(teacherView(s, plan, [], []).hands, []);
+});

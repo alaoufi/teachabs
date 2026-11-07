@@ -35,7 +35,7 @@ const assert = require('node:assert/strict'), fs = require('node:fs'), path = re
     });
     assert.equal(lay.position, 'fixed'); assert.equal(lay.header, 'none');
     assert.ok(lay.board[0] >= 0 && lay.board[2] <= lay.vw && lay.board[1] >= 0 && lay.board[3] <= lay.bar[0] && lay.bar[1] <= lay.vh, JSON.stringify(lay));
-    assert.deepEqual(lay.buttons, ['gl-mic', 'gl-write', 'gl-leave']);
+    assert.deepEqual(lay.buttons, ['gl-mic', 'gl-hand', 'gl-write', 'gl-leave']);
     await s.mouse.wheel(0, 800); assert.equal(await s.evaluate(() => scrollY), 0, 'nothing scrolls under the board');
     await s.waitForTimeout(700); await s.screenshot({path: path.join(out, 'board-first-student.png')});
     results.push('student: the board pops up over everything; only 🎤, ✏️ and ✕; nothing scrolls');

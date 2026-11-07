@@ -650,3 +650,27 @@ body:has(#planner) .demo{margin-bottom:8px;padding:6px 10px}
 .pl-layout-board .gl-item.is-dragging{cursor:grabbing;outline:3px dashed #e8890c;z-index:3}
 .pl-layout-warn{color:#9a3412;font-weight:700}
 .pl-place-row{align-items:center;gap:8px}
+
+/* ===== stage 052 (ideas from ClassIn): ✋ raise hand and ⭐ encouragement stars ===== */
+.gl-wrap .gl-hands{background:#fff3cd;border:2px solid #e0a800;color:#7a4b00;font-weight:800;animation:gl-hand-pulse 1.4s ease-in-out infinite}
+@keyframes gl-hand-pulse{50%{box-shadow:0 0 0 6px #e0a80033}}
+.gl-students li.is-hand{background:#fff8e1;border-radius:10px}
+.gl-students li{gap:6px;flex-wrap:wrap}
+.gl-wrap .gl-sbtn#gl-hand.is-on{background:#fff3cd;border-color:#e0a800;color:#7a4b00}
+.gl-stars{font-weight:800;color:#a36b00;font-size:14px;white-space:nowrap}
+.gl-star-pop{position:fixed;inset:0;display:grid;place-content:center;justify-items:center;z-index:1200;pointer-events:none}
+.gl-star-pop span{font-size:120px;line-height:1;filter:drop-shadow(0 8px 18px #a36b0066)}
+.gl-star-pop b{font-size:34px;color:#7a4b00;background:#fffbea;border-radius:14px;padding:4px 16px;margin-top:6px}
+.gl-star-pop.is-pop span{animation:gl-star 1.1s cubic-bezier(.2,1.6,.4,1) both}
+@keyframes gl-star{from{transform:scale(.2) rotate(-30deg);opacity:0}to{transform:none;opacity:1}}
+/* the student bar keeps every button on screen on narrow phones: the status text gives way first */
+.gl-sbar{min-width:0}
+.gl-sbar .gl-status-dot{flex:1 1 0;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+@media(max-width:430px){.gl-sbar{gap:4px!important;padding-inline:6px!important}.gl-sbar .gl-sbtn{padding-inline:8px!important}.gl-sbar #gl-hand span{display:none}.gl-sbar .gl-status-dot{font-size:11px}}
+/* upright phone and tablet: the voice and camera panel in two short rows; colour shows the state */
+@media(max-width:1100px) and (orientation:portrait){
+ .gl-present #gl-av{gap:4px;padding:4px}
+ .gl-present #gl-av .gl-avbtn{flex:1 1 30%;min-height:38px;font-size:12px;padding:2px 6px}
+ .gl-present #gl-av .gl-avs{display:none}
+ .gl-present #gl-av .gl-avbtn.is-on .gl-avl::after{content:" ●";color:#ffcdd2}
+}

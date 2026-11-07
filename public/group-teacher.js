@@ -18,7 +18,7 @@ const remember = (k, d) => { try { const v = localStorage.getItem('gl-' + k); re
 const keep = (k, v) => { try { localStorage.setItem('gl-' + k, v ? '1' : '0'); } catch {} };
 let autoAdvance = remember('auto', true), listenHere = remember('here', true), lastSegmentSeq = 0, advanceTimer = 0, speakTimer = 0;
 const autoStart = remember('autostart', true), autoStarted = new Set();
-let lastStepId = null; // interactive steps whose explanation already started by itself in this class
+let lastStepId = null, lastHands = 0; // interactive steps whose explanation already started by itself in this class
 const INKABLE = ['page', 'board', 'interactive', 'questions'];
 
 async function command(body) {
@@ -276,7 +276,15 @@ function renderSide() {
   $('gl-count').textContent = `(${formatNumber(view.students.length)})`;
   $('gl-count').classList.toggle('has-students', view.students.length > 0);
   const talking = new Set(voice.speaking());
-  $('gl-students').replaceChildren(...(view.students.length ? view.students.map(st => el('li', {class: talking.has(st.id) ? 'is-talking' : ''}, el('span', {text: (talking.has(st.id) ? '🎤 ' : '') + st.name}),
+  // ✋ raised hands first, in the order they went up; ⭐ gives a star the student sees at once
+  const hands = view.hands || [], up = new Set(hands), stars = view.stars || {};
+  $('gl-hands').hidden = !hands.length; $('gl-hands-n').textContent = formatNumber(hands.length);
+  if (hands.length > lastHands) status(`✋ ${view.students.find(x => x.id === hands[hands.length - 1])?.name || 'طالب'} يرفع يده.`);
+  lastHands = hands.length;
+  const order = [...view.students].sort((a, b) => (up.has(b.id) - up.has(a.id)) || (hands.indexOf(a.id) - hands.indexOf(b.id)));
+  $('gl-students').replaceChildren(...(view.students.length ? order.map(st => el('li', {class: (talking.has(st.id) ? 'is-talking ' : '') + (up.has(st.id) ? 'is-hand' : '')}, el('span', {text: (up.has(st.id) ? '✋ ' : '') + (talking.has(st.id) ? '🎤 ' : '') + st.name + (stars[st.id] ? ` ⭐${formatNumber(stars[st.id])}` : '')}),
+    up.has(st.id) ? el('button', {type: 'button', class: 'outline gl-mini', onclick: () => command({op: 'hand-down', student: st.id})}, 'أنزل يده') : null,
+    el('button', {type: 'button', class: 'outline gl-mini gl-star-btn', 'aria-label': 'نجمة لـ ' + st.name, onclick: () => command({op: 'star', student: st.id})}, '⭐ نجمة'),
     el('button', {type: 'button', class: 'quiet', 'aria-label': 'إخراج ' + st.name, onclick: async () => { if (!confirm(`إخراج ${st.name} من الحصة؟`)) return; try { await post('/remove', {student: st.id}); } catch (e) { status(e.message, true); } }}, 'إخراج'))) : [el('li', {class: 'gl-empty', text: 'بانتظار انضمام الطلاب برمز الحصة.'})]));
   const hw = plan.steps.find(s => s.type === 'homework');
   $('gl-homework').replaceChildren(...(hw ? [homeworkButtons(), el('ul', {class: 'gl-hw'}, view.students.map(st => {
@@ -321,6 +329,7 @@ function render() {
 // ---- controls ----
 $('gl-prev').addEventListener('click', () => command({op: 'go', index: view.state.index - 1}));
 $('gl-drawer-btn').addEventListener('click', () => openDrawer($('gl-drawer').hidden));
+$('gl-hands').addEventListener('click', () => openDrawer(true));
 $('gl-drawer-close').addEventListener('click', () => openDrawer(false));
 document.addEventListener('keydown', e => { if (e.key === 'Escape' && !$('gl-drawer').hidden && !document.querySelector('dialog[open]')) openDrawer(false); });
 $('gl-code').addEventListener('click', async () => { try { await navigator.clipboard.writeText($('gl-code').dataset.join); status('نُسخ رابط الطلاب: ' + $('gl-code').dataset.join); } catch { status('رابط الطلاب: ' + $('gl-code').dataset.join); } });

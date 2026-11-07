@@ -158,6 +158,16 @@ export function teacherCommand(state, plan, cmd) {
     case 'homework': need(['none', 'open', 'closed'].includes(cmd.status) && plan.steps.some(x => x.type === 'homework'), 'لا يوجد واجب في الدرس.'); s.homework = cmd.status; return s;
     case 'publish-evaluation': need(typeof cmd.on === 'boolean', 'قيمة غير صالحة.'); s.evaluationPublished = cmd.on; return s;
     case 'live': need(typeof cmd.on === 'boolean', 'قيمة غير صالحة.'); s.live = cmd.on; return s;
+    case 'hand-down': { // the teacher answered the raised hand (one student, or everyone)
+      s.hands = {...(s.hands || {})};
+      if (cmd.all === true) s.hands = {}; else { need(typeof cmd.student === 'string', 'طالب غير معروف.'); delete s.hands[cmd.student]; }
+      return s;
+    }
+    case 'star': { // encouragement: a star for a student, seen by that student
+      need(typeof cmd.student === 'string' && cmd.student.length <= 64, 'طالب غير معروف.');
+      s.stars = {...(s.stars || {})}; s.stars[cmd.student] = Math.min(99, (s.stars[cmd.student] || 0) + 1);
+      s.lastStar = {student: cmd.student, seq: s.seq}; return s;
+    }
     case 'voice': { // live voice: the teacher's own microphone and camera, and whether students may use their microphones
       s.voice ||= voiceOf(state);
       if (Object.hasOwn(cmd, 'teacher')) { need(typeof cmd.teacher === 'boolean', 'قيمة غير صالحة.'); s.voice.teacher = cmd.teacher; }
@@ -212,6 +222,14 @@ const byStudent = (responses, kind, stepId) => {
   return out;
 };
 
+/** A student raises or lowers their hand; the teacher sees the order in which hands went up. */
+export function studentHand(state, student, up) {
+  need(typeof up === 'boolean', 'قيمة غير صالحة.');
+  const s = structuredClone(state); s.hands = {...(s.hands || {})};
+  if (up) s.hands[student] ||= Date.now(); else delete s.hands[student];
+  s.seq = (s.seq || 0) + 1; return s;
+}
+
 export function teacherView(state, plan, students, responses) {
   const step = current(state, plan), results = {};
   for (const st of plan.steps.filter(x => x.type === 'questions')) {
@@ -223,12 +241,13 @@ export function teacherView(state, plan, students, responses) {
     return [s.id, {answers, submitted: Object.keys(answers).length, ...scoreOf(hw, answers)}];
   })) : {};
   const ev = evaluationStep(plan), evaluations = ev ? Object.fromEntries(responses.filter(r => r.kind === 'evaluation').map(r => [r.student, r.data])) : {};
-  return {role: 'teacher', state, voice: voiceOf(state), act: step.type === 'interactive' ? actOf(state, step) : null, current: step.id, students, results, homework, evaluations};
+  return {role: 'teacher', state, voice: voiceOf(state), hands: Object.entries(state.hands || {}).sort((a, b) => a[1] - b[1]).map(([id]) => id), stars: state.stars || {}, act: step.type === 'interactive' ? actOf(state, step) : null, current: step.id, students, results, homework, evaluations};
 }
 
 export function publicView(state, plan, student, responses, studentNames = {}) {
   const step = current(state, plan), shown = state.live && state.shown;
   const view = {role: student ? 'student' : 'display', live: state.live, title: plan.title, index: state.index, total: plan.steps.length, shown, seq: state.seq, voice: voiceOf(state)};
+  if (student) { view.hand = Boolean(state.hands?.[student]); view.stars = state.stars?.[student] || 0; if (state.lastStar?.student === student) view.starSeq = state.lastStar.seq; }
   if (shown) {
     const revealed = state.revealed[step.id] || [];
     view.step = {id: step.id, type: step.type, title: step.title, key: `${step.id}:${revealed.join(',')}${step.type === 'page' ? ':p' + (state.pageVer || 0) : ''}`};

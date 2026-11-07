@@ -71,7 +71,7 @@ export function teacherPage(code, title, base) {
   return `${css}<section class="gl-wrap gl-teacher gl-present" dir="rtl" id="gl-app" data-code="${e(code)}" data-role="teacher">
   <header class="gl-bar gl-bar-top">
    <div class="gl-bar-title"><h1>${e(title)}</h1><button type="button" class="gl-code-chip" id="gl-code" data-join="${e(join)}" title="انسخ رابط الطلاب: ${e(join)}">الرمز <b class="gl-code">${e(code)}</b></button><span id="gl-status" class="gl-status-dot" role="status" aria-live="polite">جارٍ الاتصال…</span></div>
-   <div class="gl-bar-actions"><a class="outline gl-mini" href="/teach/live/${e(code)}/display" target="_blank" rel="noopener" title="افتح على السبورة الذكية أو جهاز العرض">🖥 شاشة العرض</a><button type="button" class="outline gl-mini" id="gl-drawer-btn" aria-expanded="false" aria-controls="gl-drawer">👥 الطلاب والنتائج <span id="gl-count"></span></button><a class="quiet gl-mini" href="/guide" target="_blank" rel="noopener">الدليل</a><button type="button" class="quiet gl-mini" id="gl-live">إنهاء العرض</button></div>
+   <div class="gl-bar-actions"><a class="outline gl-mini" href="/teach/live/${e(code)}/display" target="_blank" rel="noopener" title="افتح على السبورة الذكية أو جهاز العرض">🖥 شاشة العرض</a><button type="button" class="gl-mini gl-hands" id="gl-hands" hidden title="طلاب رفعوا أيديهم">✋ <b id="gl-hands-n"></b></button><button type="button" class="outline gl-mini" id="gl-drawer-btn" aria-expanded="false" aria-controls="gl-drawer">👥 الطلاب والنتائج <span id="gl-count"></span></button><a class="quiet gl-mini" href="/guide" target="_blank" rel="noopener">الدليل</a><button type="button" class="quiet gl-mini" id="gl-live">إنهاء العرض</button></div>
   </header>
   <nav class="gl-bar gl-bar-steps" aria-label="تسلسل الدرس">
    <button type="button" id="gl-prev" class="gl-mini" title="السابق (PageUp)">→</button>
@@ -122,9 +122,11 @@ export function studentPage(code, name, title) {
   ${boardShell('<video class="gl-cam" id="gl-teachercam" playsinline autoplay muted hidden aria-label="المعلم"></video>', true)}<p id="gl-wait" class="gl-wait" hidden></p>
   <nav class="gl-sbar" aria-label="أدوات الطالب">
    <button type="button" class="gl-sbtn" id="gl-mic" aria-pressed="false">🎤 <span>المايك</span></button>
+   <button type="button" class="gl-sbtn" id="gl-hand" aria-pressed="false">✋ <span>ارفع يدك</span></button>
    <button type="button" class="gl-sbtn" id="gl-write" aria-expanded="false" aria-controls="gl-sheet">✏️ <span>كتابة</span><b class="gl-dot" id="gl-write-dot" hidden></b></button>
    <span id="gl-status" class="gl-status-dot" role="status" aria-live="polite">جارٍ الاتصال…</span>
    <button type="button" class="gl-sbtn" id="gl-audio" hidden>🔈 <span>استمع</span></button>
+   <span class="gl-stars" id="gl-stars" hidden aria-label="نجومك"></span>
    <button type="button" class="gl-sbtn gl-leave" id="gl-leave" aria-label="مغادرة الحصة">✕</button>
   </nav>
   <section class="gl-sheet" id="gl-sheet" hidden aria-label="الكتابة والإجابات"><div class="gl-sheet-head"><b>✏️ كتابة</b><button type="button" class="outline gl-mini" id="gl-sheet-close">↓ العودة إلى السبورة</button></div>
@@ -132,6 +134,7 @@ export function studentPage(code, name, title) {
    <section class="gl-answer" id="gl-answer" hidden aria-label="أجب عن الأسئلة"></section>
    <section class="gl-homework" id="gl-hw" hidden aria-label="الواجب"></section>
    <section class="gl-myeval" id="gl-eval" hidden aria-label="تقييمي"></section></section>
+  <div class="gl-star-pop" id="gl-star-pop" hidden aria-live="assertive"><span>⭐</span><b>أحسنت!</b></div>
   <div class="gl-ended" id="gl-ended" hidden role="alertdialog" aria-modal="true" aria-labelledby="gl-ended-title"><div class="gl-start-card"><h2 id="gl-ended-title">انتهت الحصة</h2><p id="gl-ended-text">شكرًا لك!</p>
    <button type="button" class="btn" id="gl-ended-close">إغلاق</button></div></div>
  </section><script type="module" src="/group-student.js?v=3"></script>`;

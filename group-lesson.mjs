@@ -1,7 +1,7 @@
 // Group lesson service: planner, live teacher console, display screen and student seats.
 import {validatePlan, defaultPlan, PlanError, LIMITS, LESSON_TEMPLATES} from './public/group-plan.js';
 import {validImage} from './public/group-plan.js';
-import {initialState, teacherCommand, teacherView, publicView, voiceOf, checkAnswer, checkEvaluation, contentFor, narrationFor, segmentAudio, MAX_STUDENTS} from './group-session.mjs';
+import {initialState, teacherCommand, teacherView, publicView, voiceOf, studentHand, checkAnswer, checkEvaluation, contentFor, narrationFor, segmentAudio, MAX_STUDENTS} from './group-session.mjs';
 import {UserError} from './store.mjs';
 import * as v from './group-views.mjs';
 
@@ -90,7 +90,7 @@ export function groupService(store) {
     matches: path => path === '/join' || path === '/start/student' || path.startsWith('/teach/') || path === '/teach' || path.startsWith('/class/'),
     async handle(ctx) {
       const {req, res, url} = ctx, path = url.pathname;
-      const api = /\/(events|content|narration|answer|command|evaluate|remove|plan|display-events|texts|delete|import|rtc|page-image)$/.test(path) || /^\/teach\/texts\//.test(path) || path.endsWith('.json') || req.headers['content-type']?.startsWith('application/json');
+      const api = /\/(events|content|narration|answer|hand|command|evaluate|remove|plan|display-events|texts|delete|import|rtc|page-image)$/.test(path) || /^\/teach\/texts\//.test(path) || path.endsWith('.json') || req.headers['content-type']?.startsWith('application/json');
       try { return await route(ctx); } catch (err) {
         if (api && err instanceof UserError && !res.headersSent) return send(res, {error: err.message}, err.status);
         throw err;
@@ -124,7 +124,7 @@ export function groupService(store) {
         res.setHeader('Set-Cookie', `gl_${code}=${joined.token}; Path=/class/${code}; Max-Age=1209600; HttpOnly; SameSite=Lax${base.startsWith('https:') ? '; Secure' : ''}`);
         broadcast(code); return redirect('/class/' + code);
       }
-      const cls = path.match(/^\/class\/([A-Z0-9]{6})(?:\/(events|content|narration|answer|rtc))?$/);
+      const cls = path.match(/^\/class\/([A-Z0-9]{6})(?:\/(events|content|narration|answer|rtc|hand))?$/);
       if (cls) {
         const [, code, action] = cls; need(CODE.test(code), 'رمز الحصة غير صالح.', 404);
         const s = g.session(code), me = s && g.student(code, studentToken(req, code));
@@ -136,6 +136,12 @@ export function groupService(store) {
           need(s.state.live, 'انتهت الحصة.', 409);
           if (m.type === 'mic' && m.data === true) need(voiceOf(s.state).mics, 'أغلق المعلم مايك الطلاب الآن.', 409);
           relay(code, 'teacher', {from: me.id, name: me.name, type: m.type, data: m.data, cid: m.cid});
+          return send(res, {ok: true});
+        }
+        if (action === 'hand' && method === 'POST') { // ✋ raise or lower the hand
+          const body = await json(req, base, 256);
+          need(s.state.live, 'انتهت الحصة.', 409);
+          g.saveState(code, studentHand(s.state, me.id, body.up)); broadcast(code);
           return send(res, {ok: true});
         }
         if (action === 'content' && method === 'GET') return send(res, contentFor(s.state, s.plan, url.searchParams.get('step') || ''));
