@@ -3,6 +3,7 @@ import {renderOriginalPage, boardLayout} from './group-plan.js';
 import {formatNumber} from './science-shadow-model.js';
 import {activityOf, tweenValues} from './activities.js';
 import {TOOLS, TEXT_SIZES, smoothPath, straightPath, cameraTransform, wrapText} from './group-ink.js';
+import {STAMPS} from './tool-library.js';
 
 export const el = (tag, attrs = {}, ...children) => {
   const node = document.createElement(tag);
@@ -230,25 +231,12 @@ export function laserTrail(svg, points, start = false) {
   setTimeout(() => path.remove(), 1100);
 }
 
-/** 📏 a 10 cm ruler or 📐 a protractor, drawn in board units; moved and erased like ink. */
+/** A tool from «مكتبة الأدوات» laid on the board (ruler, number line, clock…); moved and erased like ink. */
 function stampNode(item) {
   const g = document.createElementNS(SVG, 'g'), add = (tag, attrs, text) => { const n = document.createElementNS(SVG, tag); for (const [k, v] of Object.entries(attrs)) n.setAttribute(k, v); if (text !== undefined) n.textContent = text; g.append(n); return n; };
   g.setAttribute('class', 'gl-stamp gl-stamp-' + item.name); g.setAttribute('transform', `translate(${item.x} ${item.y})`);
   if (item.id) g.dataset.id = item.id;
-  if (item.name === 'ruler') {
-    add('rect', {x: 0, y: 0, width: 420, height: 56, rx: 6, class: 'gl-stamp-body'});
-    for (let mm = 0; mm <= 100; mm++) { const x = 10 + mm * 4, h = mm % 10 ? (mm % 5 ? 10 : 16) : 24; add('line', {x1: x, y1: 0, x2: x, y2: h, class: 'gl-stamp-tick'}); if (!(mm % 10)) add('text', {x, y: 42, class: 'gl-stamp-num'}, String(mm / 10)); }
-    add('text', {x: 404, y: 52, class: 'gl-stamp-unit'}, 'سم');
-  } else {
-    const r = 160;
-    add('path', {d: `M0 0 L${2 * r} 0 A${r} ${r} 0 0 0 0 0 Z`, class: 'gl-stamp-body', transform: `translate(0 ${r})`});
-    for (let d = 0; d <= 180; d += 5) {
-      const a = Math.PI * d / 180, c = Math.cos(a), sn = Math.sin(a), len = d % 10 ? 8 : (d % 30 ? 14 : 22);
-      add('line', {x1: r - r * c, y1: r - r * sn, x2: r - (r - len) * c, y2: r - (r - len) * sn, class: 'gl-stamp-tick'});
-      if (!(d % 30)) add('text', {x: r - (r - 38) * c, y: r - (r - 38) * sn + 5, class: 'gl-stamp-num'}, String(d));
-    }
-    add('circle', {cx: r, cy: r, r: 4, class: 'gl-stamp-tick'});
-  }
+  STAMPS[item.name]?.draw(add);
   return g;
 }
 

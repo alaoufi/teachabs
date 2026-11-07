@@ -89,7 +89,7 @@ test('⏱ timer, 🎭 curtain and 📏📐 measuring tools', () => {
   const id = s.strokes[plan.steps[s.index].id][0].id;
   s = teacherCommand(s, plan, {op: 'move', id, dx: 50, dy: -20});
   assert.deepEqual(s.strokes[plan.steps[s.index].id][0], {id, kind: 'stamp', name: 'ruler', x: 150, y: 180});
-  assert.throws(() => teacherCommand(s, plan, {op: 'stamp', name: 'compass', x: 1, y: 1}), /أداة غير معروفة/);
+  assert.throws(() => teacherCommand(s, plan, {op: 'stamp', name: 'telescope', x: 1, y: 1}), /أداة غير معروفة/);
 });
 
 test('🧭 class management: random pick without repeats, attention lock, work mode', () => {

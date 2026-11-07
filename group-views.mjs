@@ -72,6 +72,7 @@ export function teacherPage(code, title, base) {
       ${fly('pens', '✎', 'أقلام', ['pen', 'brush', 'marker', 'text'].map(t => toolBtn(byTool[t])).join(''))}
       ${fly('shapes', '◯', 'أشكال', ['rect', 'ellipse', 'line', 'arrow'].map(t => toolBtn(byTool[t])).join(''))}
       ${['laser', 'eraser'].map(t => toolBtn(byTool[t])).join('')}</div>
+     <div class="gl-toolgroup gl-lesson-tools" role="group" aria-label="أدوات الدرس">${fly('lesson', '🧰', 'أدوات الدرس', '<span id="gl-lesson-tools" class="gl-lesson-tools-list"></span><button type="button" id="gl-open-library" class="btn">📚 المكتبة كاملة</button>', 'gl-lesson-fly')}</div>
      <div class="gl-toolgroup gl-look" role="group" aria-label="اللون والحجم">
       ${fly('colors', '<i class="gl-current-color"></i>', 'اللون', COLORS.map((c, i) => `<button type="button" class="gl-color" data-color="${c.value}" aria-label="${c.name}" title="${c.name}" aria-pressed="${i ? 'false' : 'true'}"><i data-swatch="${i}"></i></button>`).join(''), 'gl-colors')}
       ${fly('sizes', '<i class="gl-current-size" data-dot="m"></i>', 'الحجم', Object.entries(SIZE_NAMES).map(([k, n]) => `<button type="button" class="gl-size" data-size="${k}" aria-pressed="${k === 'm' ? 'true' : 'false'}" title="حجم ${n}"><i data-dot="${k}"></i><span>${n}</span></button>`).join(''))}</div>

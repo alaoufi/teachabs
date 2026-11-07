@@ -1,5 +1,6 @@
 // Pure state machine for a live group lesson. The teacher controls sequence, visibility and what is shown to everyone.
 import {publicStep, RATING, WORK_MODES} from './public/group-plan.js';
+import {STAMPS} from './public/tool-library.js';
 import {activityOf, cleanValues} from './public/activities.js';
 import {UserError} from './store.mjs';
 import {TOOLS, TEXT_SIZES, LIMITS as INK, colorAllowed, clampCamera} from './public/group-ink.js';
@@ -179,7 +180,7 @@ export function teacherCommand(state, plan, cmd) {
     }
     case 'stamp': { // 📏 ruler or 📐 protractor laid on the board; moved and erased like ink
       need(INKABLE.includes(step.type), 'الكتابة متاحة على المنهج والشرح والسبورة والأسئلة.');
-      need(['ruler', 'protractor'].includes(cmd.name), 'أداة غير معروفة.');
+      need(typeof cmd.name === 'string' && Object.hasOwn(STAMPS, cmd.name), 'أداة غير معروفة.');
       need(Number.isFinite(cmd.x) && Number.isFinite(cmd.y) && cmd.x >= 0 && cmd.x <= 1000 && cmd.y >= 0 && cmd.y <= 600, 'موضع غير صالح.');
       return addInk(s, step, {kind: 'stamp', name: cmd.name, x: Math.round(cmd.x), y: Math.round(cmd.y)});
     }

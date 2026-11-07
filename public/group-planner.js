@@ -3,6 +3,9 @@ import {STEP_TYPES, NARRATION, SUBJECTS, ORIGINAL_PAGES, LIMITS, renderOriginalP
 import {el} from './group-view.js';
 import {openTextPicker, downloadJSON, safeName} from './text-library.js';
 import {ACTIVITIES, activityOf, segmentLabel} from './activities.js';
+import {openLibrary} from './tool-library-ui.js';
+import {toolOf} from './tool-library.js';
+import {curriculumLessons} from './curriculum-g4.js';
 
 const root = document.getElementById('planner'), id = root.dataset.id;
 const $ = x => document.getElementById(x);
@@ -224,6 +227,9 @@ function render() {
     field('عنوان الدرس', textInput(plan.title, 80, v => { plan.title = v; $('pl-heading').textContent = v; })),
     field('المادة', el('select', {onchange: e => { plan.subject = e.target.value; touch(); }}, Object.entries(SUBJECTS).map(([k, v]) => el('option', {value: k, selected: k === plan.subject}, v)))),
     field('الصف', el('select', {onchange: e => { plan.grade = Number(e.target.value); touch(); }}, [1, 2, 3, 4, 5, 6].map(g => el('option', {value: g, selected: g === plan.grade}, 'الصف ' + ['', 'الأول', 'الثاني', 'الثالث', 'الرابع', 'الخامس', 'السادس'][g])))),
+    field('الدرس من المنهج', el('select', {'aria-label': 'الدرس من المنهج', onchange: e => { plan.lesson = e.target.value || undefined; touch(); render(); }}, el('option', {value: ''}, '— بلا —'),
+      ...curriculumLessons().filter(l => l.subject === plan.subject).map(l => el('option', {value: l.id, selected: l.id === plan.lesson}, l.title)))),
+    toolsField(),
     field('صوت المتحدث', el('select', {'aria-label': 'صوت المتحدث', onchange: e => { plan.speaker = e.target.value; touch(); }}, el('option', {value: 'male', selected: plan.speaker !== 'female'}, '🧔 رجل (حامد)'), el('option', {value: 'female', selected: plan.speaker === 'female'}, '🧕 امرأة (زارية)'))));
   $('pl-steps').replaceChildren(...plan.steps.map((step, i) => {
     const details = el('details', {class: 'pl-step', open: openSteps.has(step.id), ontoggle: e => e.target.open ? openSteps.add(step.id) : openSteps.delete(step.id)},
@@ -332,4 +338,26 @@ function layoutEditor(step) {
     el('div', {class: 'pl-row'}, el('b', {text: 'مكان النصوص على السبورة'}),
       el('button', {type: 'button', class: 'quiet', onclick: () => { step.items.forEach(it => delete it.at); touch(); render(); }}, 'ترتيب تلقائي للكل')),
     el('p', {class: 'pl-hint', text: 'هكذا تظهر في الحصة. اسحب كل بطاقة إلى مكانها؛ الرقم ترتيب ظهورها.'}), board, warn);
+}
+
+
+// ---- «🧰 أدوات الدرس»: pinned from the library for this lesson; ready in class with one tap ----
+function toolsField() {
+  plan.tools ||= [];
+  const chips = plan.tools.map(id => toolOf(id)).filter(Boolean).map(t => el('span', {class: 'pl-tool-chip', title: t.desc}, `${t.icon} ${t.title}`,
+    el('button', {type: 'button', class: 'quiet', 'aria-label': 'إزالة ' + t.title, onclick: () => { plan.tools = plan.tools.filter(x => x !== t.id); touch(); render(); }}, '✕')));
+  return el('div', {class: 'pl-tools', 'aria-label': 'أدوات الدرس'},
+    el('div', {class: 'pl-row'}, el('b', {text: '🧰 أدوات الدرس'}), el('button', {type: 'button', class: 'btn', id: 'pl-library', onclick: () => openLibrary({
+      subject: plan.subject, grade: plan.grade, lesson: plan.lesson || '', pinned: new Set(plan.tools),
+      onPin: (t, on) => {
+        plan.tools = on ? [...new Set([...plan.tools, t.id])] : plan.tools.filter(x => x !== t.id);
+        // an interactive explanation pinned for the first time becomes a step of the lesson
+        if (on && t.kind === 'activity' && !plan.steps.some(st => st.type === 'interactive' && st.activity === t.id)) {
+          const a = activityOf(t.id), at = plan.steps.findIndex(st => ['questions', 'homework', 'evaluation'].includes(st.type));
+          const step = {id: uid('s'), type: 'interactive', title: t.title, activity: t.id, narration: {mode: 'live'}, narrator: {segments: a.narrator()}};
+          plan.steps.splice(at < 0 ? plan.steps.length : at, 0, step); status(`أُضيفت خطوة «${t.title}» إلى الدرس.`);
+        }
+        touch(); render();
+      }})}, 'افتح المكتبة')),
+    chips.length ? el('div', {class: 'pl-tool-chips'}, ...chips) : el('p', {class: 'pl-hint', text: 'لم تثبّت أدوات بعد. افتح المكتبة واختر ما يناسب درسك؛ تظهر لك في الحصة تحت «🧰».'}));
 }

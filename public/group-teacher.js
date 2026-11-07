@@ -1,6 +1,8 @@
 // Teacher console for the live group lesson: sequence, visibility, board ink, activity, results, homework, evaluation.
 import {STEP_TYPES, NARRATION, RATING, publicStep} from './group-plan.js';
 import {el, renderStep, renderInk, playNarration, stopNarration, renderDisplay, speechUrl, renderExtras} from './group-view.js';
+import {openLibrary} from './tool-library-ui.js';
+import {toolOf, STAMPS} from './tool-library.js';
 import {attachBoardTools} from './group-board-tools.js';
 import {renderNarrator, setSpeaking} from './group-view.js';
 import {openTextPicker} from './text-library.js';
@@ -543,3 +545,35 @@ function renderClassTools() {
   $('gl-pick').textContent = '🎲 اختر طالبًا' + (view.students?.length ? ` (بقي ${formatNumber(left || view.students.length)})` : '');
   document.querySelector('.gl-class-fly .gl-fly-btn').classList.toggle('is-on', Boolean(st.attention || st.workMode));
 }
+
+// ---- «🧰 أدوات الدرس»: the tools pinned while preparing the lesson, and the whole library, one tap away ----
+function placeStamp(name) {
+  const c = view?.state?.camera?.[step().id] || {z: 1, x: 0, y: 0}, z = c.z || 1, st = STAMPS[name];
+  // the first free spot in what the teacher sees, away from the tools already on the board
+  const boxes = (view?.state?.strokes?.[step().id] || []).filter(i => i.kind === 'stamp' && STAMPS[i.name]).map(i => ({x: i.x, y: i.y, w: STAMPS[i.name].w, h: STAMPS[i.name].h}));
+  const left = Math.max(0, c.x), top = Math.max(0, c.y), right = Math.min(1000, c.x + 1000 / z), bottom = Math.min(600, c.y + 600 / z);
+  const free = (x, y) => boxes.every(b => x + st.w + 8 <= b.x || x >= b.x + b.w + 8 || y + st.h + 8 <= b.y || y >= b.y + b.h + 8);
+  let at = null;
+  for (let y = top + 10; !at && y + st.h <= bottom; y += 20) for (let x = right - st.w - 10; x >= left; x -= 20) if (free(x, y)) { at = [x, y]; break; }
+  at ||= [Math.max(0, Math.min(1000 - st.w, c.x + 500 / z - st.w / 2 - boxes.length * 24)), Math.max(0, Math.min(600 - st.h, c.y + 300 / z - st.h / 2 + boxes.length * 24))];
+  command({op: 'stamp', name, x: Math.round(at[0]), y: Math.round(at[1])}); status('وُضعت الأداة. حرّكها بأداة «تحريك»، وامسحها بالممحاة.');
+}
+function useTool(t) {
+  if (t.kind === 'stamp') return placeStamp(t.id);
+  if (t.kind === 'activity') {
+    const i = plan.steps.findIndex(st => st.type === 'interactive' && st.activity === t.id);
+    return i >= 0 ? command({op: 'go', index: i}) : status('هذا الشرح التفاعلي ليس خطوة في هذا الدرس. أضفه من «ترتيب الدرس».', true);
+  }
+  if (t.id === 'timer') return command({op: 'timer', seconds: 180});
+  if (t.id === 'picker') return $('gl-pick').click();
+  if (t.id === 'curtain') return command({op: 'curtain', level: 100});
+  if (t.id === 'laser') return tools.setTool('laser');
+}
+const useLabel = t => ({stamp: 'ضعها على السبورة', activity: 'انتقل إليه', class: 'شغّلها'})[t.kind];
+function renderLessonTools() {
+  const box = $('gl-lesson-tools'); if (!box || !plan) return;
+  const list = (plan.tools || []).map(toolOf).filter(Boolean);
+  box.replaceChildren(...(list.length ? list.map(t => el('button', {type: 'button', class: 'gl-lesson-tool', 'data-lib': t.id, title: `${t.title}: ${useLabel(t)}`, onclick: () => useTool(t)}, el('span', {text: t.icon}), el('span', {text: t.title}))) : [el('small', {class: 'gl-hint', text: 'لا أدوات مثبتة لهذا الدرس.'})]));
+}
+$('gl-open-library').addEventListener('click', () => openLibrary({subject: plan.subject, grade: plan.grade, lesson: plan.lesson || '', onUse: useTool, useLabel}));
+plansReady.then(renderLessonTools);

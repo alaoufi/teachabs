@@ -786,3 +786,42 @@ body:has(#planner) .demo{margin-bottom:8px;padding:6px 10px}
 .gl-work{position:fixed;top:8px;left:50%;transform:translateX(-50%);z-index:1100;background:#fffbea;border:2px solid #e0a800;color:#5a3d00;font-weight:800;border-radius:999px;padding:4px 16px;font-size:16px;box-shadow:0 6px 14px #0002}
 @media (max-width:760px){.gl-class-menu{position:fixed!important;top:64px!important;left:8px!important;right:8px!important;inset-inline-start:auto;min-width:0;z-index:60}}
 @media (min-width:761px){.gl-bar-top .gl-class-fly .gl-fly-label{display:none}.gl-bar-top .gl-class-fly .gl-fly-btn{padding:2px 8px}}
+
+/* ===== stage 058: «مكتبة الأدوات» ===== */
+.tl-dialog{width:min(1000px,96vw);max-height:90vh;padding:0;border:0;border-radius:18px;box-shadow:0 20px 60px #0006;direction:rtl}
+.tl-dialog::backdrop{background:#0b1f2a99}
+.tl-head{position:sticky;top:0;z-index:2;display:flex;flex-wrap:wrap;gap:6px;align-items:center;padding:10px 12px;background:#fffefb;border-bottom:1px solid #d6e5df}
+.tl-head h2{margin:0 0 0 auto;font-size:20px}
+.tl-head select,.tl-head input{min-height:38px;border-radius:10px;border:1px solid #b7ceca;padding:2px 8px;font:inherit;max-width:220px}
+.tl-body{padding:10px 12px 16px;overflow:auto;max-height:calc(90vh - 70px)}
+.tl-group{font-size:15px;margin:10px 0 6px}
+.tl-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:10px}
+.tl-card{border:1px solid #d6e5df;border-radius:14px;padding:8px;background:#fff;display:flex;flex-direction:column;gap:4px}
+.tl-card.is-pinned{border:2px solid #1f5b4a;background:#f2f9f5}
+.tl-card h3{font-size:14px;margin:0}.tl-card p{font-size:12px;margin:0;color:#4b5b56;flex:1}
+.tl-kind{font-size:11px;color:#7a6a00;background:#fff7d6;border-radius:8px;padding:0 6px;align-self:flex-start}
+.tl-visual{height:96px;display:grid;place-items:center;background:#fffdf5;border-radius:10px;overflow:hidden}
+.tl-preview{width:100%;height:100%}
+.tl-icon{font-size:44px}
+.tl-actions{display:flex;gap:4px;flex-wrap:wrap}.tl-actions button{min-height:34px;font-size:12px;padding:2px 8px;flex:1}
+/* drawings of the board tools */
+.gl-stamp-line{stroke:#1f3d35;stroke-width:3;fill:none}
+.gl-stamp-gridline{stroke:#9db8b0;stroke-width:1}
+.gl-stamp-num.big{font-size:20px}.gl-stamp-num.small{font-size:13px;direction:rtl}.gl-stamp-num.letter{font-size:28px;direction:ltr}
+.gl-stamp-cell{fill:#fffdf5;stroke:#5b6f68;stroke-width:1.5}
+.gl-stamp-cell.f1{fill:#d8efe4}.gl-stamp-cell.f2{fill:#fde7c8}.gl-stamp-cell.f3{fill:#dfe6fb}.gl-stamp-cell.f4{fill:#f9d9df}.gl-stamp-cell.f0{fill:#fff3b8}
+.gl-stamp-cell.see{fill-opacity:.55}
+.gl-stamp-shape{fill:#e9f3ff;stroke:#2b5ea7;stroke-width:3}
+.gl-stamp-hand{stroke:#1f3d35;stroke-width:3;stroke-linecap:round}.gl-stamp-hand.thick{stroke-width:6}
+.gl-stamp-dot{fill:#1f3d35}.gl-stamp-mercury{fill:#d32f2f}
+.gl-lesson-tools-list{display:contents}
+.gl-fly[data-fly=lesson] .gl-fly-menu{min-width:220px}
+.gl-wrap .gl-lesson-tool{display:flex;flex-direction:column;align-items:center;gap:0;min-height:52px;font-size:11px;padding:2px 4px;line-height:1.2}
+.gl-lesson-tool span:first-child{font-size:20px}
+#gl-open-library{grid-column:1/-1;min-height:38px}
+.gl-present footer .gl-lesson-tools{grid-template-columns:1fr!important}
+/* planner: the lesson's tools */
+.pl-tools{grid-column:1/-1;border:1px dashed #b7ceca;border-radius:12px;padding:6px 10px;background:#fbfdfc}
+.pl-tool-chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:4px}
+.pl-tool-chip{display:inline-flex;align-items:center;gap:4px;background:#e8f4ee;border:1px solid #b9d9ca;border-radius:999px;padding:2px 4px 2px 10px;font-size:13px}
+.pl-tool-chip button{min-height:24px!important;padding:0 6px!important}
