@@ -15,7 +15,7 @@ const assert = require('node:assert/strict'), fs = require('node:fs'), path = re
   const results = [], errors = [];
   const watch = p => { p.on('pageerror', e => errors.push(e.message)); p.on('console', m => { if (m.type() === 'error' && !/Failed to load resource/.test(m.text())) errors.push(m.text()); }); };
   // A real network: connection messages are delayed by different amounts, so they may arrive out of order.
-  const jitter = async ctx => { if (!process.env.LIVE_BASE) await ctx.route(/\/rtc$/, async route => { await new Promise(r => setTimeout(r, Math.random() * 600)); route.continue(); }); };
+  const jitter = async ctx => { if (!process.env.LIVE_BASE) await ctx.route(/\/rtc$/, async route => { await new Promise(r => setTimeout(r, Math.random() * 1200)); route.continue(); }); };
   const until = async (p, fn, arg, ms = 20000) => { const end = Date.now() + ms; for (;;) { const v = await p.evaluate(fn, arg); if (v) return v; if (Date.now() > end) throw new Error('timed out: ' + fn); await p.waitForTimeout(250); } };
   try {
     const tc = await browser.newContext({viewport: {width: 1366, height: 768}, permissions: ['microphone', 'camera']}); tc.setDefaultTimeout(30000);
@@ -30,6 +30,8 @@ const assert = require('node:assert/strict'), fs = require('node:fs'), path = re
     await s.addInitScript(() => { window.__spoken = []; window.speechSynthesis && (speechSynthesis.speak = u => { window.__spoken.push(u.text); setTimeout(() => u.onend?.(), 10); }); });
     await s.goto(base + '/start/student'); await s.waitForURL(/\/class\/[A-Z0-9]{6}$/);
     await s.waitForFunction(() => window.__voice); await s.locator('#gl-enter').click(); await s.waitForSelector('#gl-content .gl-page');
+    // as on a real server: the student's device says hello twice, so the teacher starts two connection attempts in a row
+    await s.evaluate(() => fetch(location.pathname + '/rtc', {method: 'POST', headers: {'content-type': 'application/json'}, body: JSON.stringify({type: 'hello', data: null})}));
     results.push('the student entered the running class at the same time as the teacher');
 
     // ---- the control panel is always on screen ----

@@ -67,7 +67,7 @@ export function groupService(store) {
   async function rtcMessage(req, base) {
     const body = await json(req, base, 24_000);
     need(body && RTC_TYPES.includes(body.type), 'رسالة صوت غير صالحة.');
-    return {type: body.type, data: body.data ?? null, to: typeof body.to === 'string' ? body.to : null};
+    return {type: body.type, data: body.data ?? null, to: typeof body.to === 'string' ? body.to : null, cid: typeof body.cid === 'string' && body.cid.length <= 40 ? body.cid : null}; // cid: which connection attempt
   }
   function relay(code, target, payload) {
     let sent = 0;
@@ -135,7 +135,7 @@ export function groupService(store) {
           const m = await rtcMessage(req, base);
           need(s.state.live, 'انتهت الحصة.', 409);
           if (m.type === 'mic' && m.data === true) need(voiceOf(s.state).mics, 'أغلق المعلم مايك الطلاب الآن.', 409);
-          relay(code, 'teacher', {from: me.id, name: me.name, type: m.type, data: m.data});
+          relay(code, 'teacher', {from: me.id, name: me.name, type: m.type, data: m.data, cid: m.cid});
           return send(res, {ok: true});
         }
         if (action === 'content' && method === 'GET') return send(res, contentFor(s.state, s.plan, url.searchParams.get('step') || ''));
@@ -214,7 +214,7 @@ export function groupService(store) {
         if (action === 'rtc' && method === 'POST') {
           const m = await rtcMessage(req, base);
           need(m.to && g.students(code).some(x => x.id === m.to), 'الطالب غير موجود في الحصة.', 404);
-          return send(res, {ok: true, delivered: relay(code, m.to, {from: 'teacher', type: m.type, data: m.data})});
+          return send(res, {ok: true, delivered: relay(code, m.to, {from: 'teacher', type: m.type, data: m.data, cid: m.cid})});
         }
         if (action === 'command' && method === 'POST') {
           const body = await json(req, base, 65536);

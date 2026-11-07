@@ -50,26 +50,26 @@ export function teacherVoice({base, onChange = () => {}}) {
   const peers = new Map(), speaking = new Set();
   let track = null, cam = null;
   const lines = new Map(); // one ordered line of messages per student
-  const send = (to, type, data) => { if (!lines.has(to)) lines.set(to, ordered((t, d) => post(base + '/rtc', {to, type: t, data: d}).catch(() => {}))); return lines.get(to)(type, data); };
+  const send = (to, type, data, cid) => { if (!lines.has(to)) lines.set(to, ordered((t, d, c) => post(base + '/rtc', {to, type: t, data: d, cid: c}).catch(() => {}))); return lines.get(to)(type, data, cid); };
   function close(id) { const p = peers.get(id); if (!p) return; p.pc.close(); p.audio?.remove(); peers.delete(id); speaking.delete(id); onChange(); }
   async function connect(id) {
     close(id);
-    const pc = new RTCPeerConnection({iceServers: ICE}), tr = pc.addTransceiver('audio', {direction: 'sendrecv'}), vt = pc.addTransceiver('video', {direction: 'sendonly'}), p = {pc, tr, vt, audio: null, ice: candidates(pc)};
+    const pc = new RTCPeerConnection({iceServers: ICE}), tr = pc.addTransceiver('audio', {direction: 'sendrecv'}), vt = pc.addTransceiver('video', {direction: 'sendonly'}), cid = Math.random().toString(36).slice(2, 12), p = {pc, tr, vt, cid, audio: null, ice: candidates(pc)};
     peers.set(id, p);
     if (track) await tr.sender.replaceTrack(track);
     if (cam) await vt.sender.replaceTrack(cam);
-    pc.onicecandidate = e => { if (e.candidate) send(id, 'ice', e.candidate.toJSON()); };
+    pc.onicecandidate = e => { if (e.candidate) send(id, 'ice', e.candidate.toJSON(), cid); };
     pc.ontrack = e => { if (e.track.kind !== 'audio') return; p.audio?.remove(); p.audio = player(new MediaStream([e.track])); };
     pc.onconnectionstatechange = () => onChange();
     await pc.setLocalDescription(await pc.createOffer());
-    send(id, 'offer', pc.localDescription.toJSON());
+    send(id, 'offer', pc.localDescription.toJSON(), cid);
   }
   async function message(m) {
     if (m.type === 'hello') return connect(m.from);
     const p = peers.get(m.from);
     if (m.type === 'bye') return close(m.from);
     if (m.type === 'mic') { if (m.data) speaking.add(m.from); else speaking.delete(m.from); return onChange(); }
-    if (!p) return;
+    if (!p || (m.cid && m.cid !== p.cid)) return; // a reply to an older connection attempt
     if (m.type === 'answer') { await p.pc.setRemoteDescription(m.data); await p.ice.flush(); }
     if (m.type === 'ice') await p.ice.add(m.data);
   }
@@ -88,7 +88,7 @@ export function teacherVoice({base, onChange = () => {}}) {
   /** Emergency: the teacher's microphone and camera off at once. */
   async function stopAll() { await setMic(false); await setCamera(false); }
   return {
-    message, setMic, setCamera, stopAll,
+    message: ordered(message), setMic, setCamera, stopAll,
     get on() { return Boolean(track); },
     get camera() { return cam; },
     speaking: () => [...speaking],
@@ -99,13 +99,15 @@ export function teacherVoice({base, onChange = () => {}}) {
 
 /** Student side: answers the teacher's offer; the microphone is off until the student opens it. */
 export function studentVoice({base, onChange = () => {}, onVideo = () => {}}) {
-  let pc = null, tr = null, track = null, audio = null, video = null, ice = null, early = [];
-  const send = ordered((type, data) => post(base + '/rtc', {type, data}));
+  let pc = null, tr = null, track = null, audio = null, video = null, ice = null, early = [], cid = null, lastHello = 0;
+  const line = ordered((type, data, c) => post(base + '/rtc', {type, data, cid: c}));
+  const send = (type, data, c = cid) => line(type, data, c); // tagged with the connection it belongs to
   async function message(m) {
     if (m.type === 'offer') {
-      pc?.close(); audio?.remove(); audio = null;
-      pc = new RTCPeerConnection({iceServers: ICE}); ice = candidates(pc);
-      pc.onicecandidate = e => { if (e.candidate) send('ice', e.candidate.toJSON()).catch(() => {}); };
+      pc?.close(); audio?.remove(); audio = null; cid = m.cid || null;
+      early = early.filter(c => c.cid === cid).map(c => c.data);
+      pc = new RTCPeerConnection({iceServers: ICE}); ice = candidates(pc); const mine = cid;
+      pc.onicecandidate = e => { if (e.candidate) send('ice', e.candidate.toJSON(), mine).catch(() => {}); };
       pc.ontrack = e => {
         if (e.track.kind === 'video') { video = new MediaStream([e.track]); onVideo(video); return; }
         audio?.remove(); audio = player(new MediaStream([e.track]));
@@ -118,9 +120,9 @@ export function studentVoice({base, onChange = () => {}, onVideo = () => {}}) {
       for (const t of all) if (t !== tr && t.receiver.track.kind === 'video') t.direction = 'recvonly';
       if (track) await tr.sender.replaceTrack(track);
       await pc.setLocalDescription(await pc.createAnswer());
-      await send('answer', pc.localDescription.toJSON());
+      await send('answer', pc.localDescription.toJSON(), mine);
       onChange();
-    } else if (m.type === 'ice') { if (ice) await ice.add(m.data); else early.push(m.data); }
+    } else if (m.type === 'ice') { if (ice && (!m.cid || m.cid === cid)) await ice.add(m.data); else if (m.cid !== cid) early.push({cid: m.cid, data: m.data}); }
   }
   async function setMic(on) {
     if (on) { if (!track) track = await microphone(); await send('mic', true); }
@@ -129,8 +131,8 @@ export function studentVoice({base, onChange = () => {}, onVideo = () => {}}) {
     onChange();
   }
   return {
-    message, setMic,
-    hello: () => send('hello', null).catch(() => {}),
+    message: ordered(message), setMic,
+    hello: () => { if (Date.now() - lastHello < 2500) return; lastHello = Date.now(); return send('hello', null).catch(() => {}); }, // one hello is enough
     resume: () => audio?.play?.().catch(() => {}),
     get on() { return Boolean(track); },
     get state() { return pc?.connectionState || 'new'; },
