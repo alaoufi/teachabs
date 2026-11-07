@@ -101,6 +101,7 @@ function narrationEditor(step) {
   if (n.mode === 'speech') {
     box.append(field('النص الذي يقرؤه الجهاز', area(n.text, 600, v => { n.text = v; }, 3)), libraryButton('اختر من النصوص التوضيحية', t => { n.text = t; }));
     box.append(el('button', {type: 'button', class: 'outline', onclick: () => {
+      if (window.App?.speak) { if (!window.App.speak(n.text || '', 'preview')) status('لا يوجد صوت عربي في هذا الجوال. ثبّته من الإعدادات: تحويل النص إلى كلام.', true); return; } // inside the Android app
       if (!('speechSynthesis' in window)) return status('هذا المتصفح لا يدعم القراءة الآلية.', true);
       speechSynthesis.cancel(); const u = new SpeechSynthesisUtterance(n.text || ''); u.lang = 'ar-SA';
       const arabic = speechSynthesis.getVoices().find(v => v.lang?.toLowerCase().startsWith('ar')); if (arabic) u.voice = arabic; else status('لا يوجد صوت عربي مثبت على هذا الجهاز؛ قد تختلف القراءة على أجهزة الطلاب.', true);

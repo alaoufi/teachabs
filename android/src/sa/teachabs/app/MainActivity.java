@@ -36,6 +36,9 @@ import android.graphics.Color;
 import android.os.Handler;
 import android.os.Looper;
 import android.widget.Toast;
+import android.speech.tts.TextToSpeech;
+import android.speech.tts.UtteranceProgressListener;
+import java.util.Locale;
 
 /**
  * «احتراف التدريس» for Android: opens the trial site in a full-screen WebView.
@@ -46,7 +49,7 @@ public class MainActivity extends Activity {
     static final String HOME = "https://abdulrahman-edu-trial.onrender.com/";
     static final String HOST = "abdulrahman-edu-trial.onrender.com";
     static final int FILE_REQUEST = 41, MIC_REQUEST = 42;
-    static final String VERSION = "1.0";
+    static final String VERSION = "1.1";
 
     WebView web;
     ProgressBar progress;
@@ -54,6 +57,8 @@ public class MainActivity extends Activity {
     TextView label;
     final Runnable slowNote = () -> label.setText("الخادم يستيقظ بعد خمول… قد يستغرق حتى دقيقة");
     final Handler ui = new Handler(Looper.getMainLooper());
+    // The page cannot speak inside an Android WebView, so the app reads the lesson's explanations aloud itself.
+    TextToSpeech tts; volatile String ttsState = "loading"; // loading | ar | none
     final Runnable showLoading = () -> loading.setVisibility(View.VISIBLE);
     ValueCallback<Uri[]> pendingFiles;
     PermissionRequest pendingMic; String[] pendingWant;
@@ -94,6 +99,18 @@ public class MainActivity extends Activity {
         CookieManager.getInstance().setAcceptCookie(true);
         CookieManager.getInstance().setAcceptThirdPartyCookies(web, false);
 
+        tts = new TextToSpeech(this, status -> {
+            if (status != TextToSpeech.SUCCESS) { ttsState = "none"; return; }
+            int r = tts.setLanguage(new Locale("ar", "SA"));
+            if (r == TextToSpeech.LANG_MISSING_DATA || r == TextToSpeech.LANG_NOT_SUPPORTED) r = tts.setLanguage(new Locale("ar"));
+            ttsState = (r == TextToSpeech.LANG_MISSING_DATA || r == TextToSpeech.LANG_NOT_SUPPORTED) ? "none" : "ar";
+            tts.setOnUtteranceProgressListener(new UtteranceProgressListener() {
+                @Override public void onStart(String id) {}
+                @Override public void onDone(String id) { done(id); }
+                @Override public void onError(String id) { done(id); }
+                void done(String id) { ui.post(() -> web.evaluateJavascript("window.__appSpeechDone&&window.__appSpeechDone(" + org.json.JSONObject.quote(id) + ")", null)); }
+            });
+        });
         web.addJavascriptInterface(new Bridge(), "App");
         web.setWebViewClient(new WebViewClient() {
             @Override
@@ -225,7 +242,17 @@ public class MainActivity extends Activity {
             });
         }
         @JavascriptInterface public void retry() { ui.post(() -> warmUp()); }
+        /** "ar" when an Arabic voice is ready, "none" when the phone has none, "loading" while it starts. */
+        @JavascriptInterface public String voice() { return ttsState; }
+        @JavascriptInterface public boolean speak(String text, String id) {
+            if (!"ar".equals(ttsState) || text == null) return false;
+            return tts.speak(text, TextToSpeech.QUEUE_FLUSH, null, id) == TextToSpeech.SUCCESS;
+        }
+        @JavascriptInterface public void stopSpeaking() { if (tts != null) tts.stop(); }
     }
+
+    @Override
+    protected void onDestroy() { if (tts != null) { tts.stop(); tts.shutdown(); } super.onDestroy(); }
 
     @Override
     public void onBackPressed() {

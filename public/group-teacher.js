@@ -421,3 +421,6 @@ function classGone() {
   box.innerHTML = '<div class="gl-start-card"><h2>انتهت هذه الحصة التجريبية</h2><p>أُعيد تشغيل خادم التجربة فمُسحت الحصص الجارية. ابدأ من جديد.</p><a class="btn" href="/teach/plans">ابدأ من جديد</a></div>';
   document.body.append(box);
 }
+
+// Inside the Android app: say once if the phone has no Arabic voice, so the teacher knows why the explanation is silent.
+setTimeout(() => { if (window.App?.voice?.() === 'none') status('جوالك لا يحوي صوتًا عربيًا لقراءة الشرح؛ يبقى مكتوبًا. للتثبيت: الإعدادات ← تحويل النص إلى كلام ← اللغة العربية.', true); }, 4000);

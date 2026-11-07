@@ -228,3 +228,6 @@ if (student) {
   events.onopen = () => { if (entered) voice.hello(); }; // after a reconnect the teacher rebuilds the audio link
   window.__voice = voice; // read by the browser tests
 }
+
+// Inside the Android app: say once if the phone has no Arabic voice, so the teacher knows why the explanation is silent.
+setTimeout(() => { if (window.App?.voice?.() === 'none') status('جوالك لا يحوي صوتًا عربيًا لقراءة الشرح؛ يبقى مكتوبًا. للتثبيت: الإعدادات ← تحويل النص إلى كلام ← اللغة العربية.', true); }, 4000);

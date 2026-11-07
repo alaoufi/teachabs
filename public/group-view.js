@@ -167,7 +167,8 @@ export function renderDisplay(d) {
 
 // ---- narration ----
 let audio = null;
-export function stopNarration() { audio?.pause(); audio = null; if ('speechSynthesis' in window) speechSynthesis.cancel(); }
+let speakingId = null;
+export function stopNarration() { audio?.pause(); audio = null; speakingId = null; window.App?.stopSpeaking?.(); if ('speechSynthesis' in window) speechSynthesis.cancel(); }
 /** Plays recorded audio or Arabic device speech. Resolves false when the browser blocked it or no Arabic voice exists. */
 export async function playNarration(n, {onEnd = () => {}} = {}) {
   stopNarration();
@@ -176,6 +177,13 @@ export async function playNarration(n, {onEnd = () => {}} = {}) {
     try { await a.play(); return true; } catch { onEnd(); return false; }
   }
   if (n.mode === 'speech') {
+    // Inside the Android app the page cannot speak; the app reads the text aloud with the phone's Arabic voice.
+    if (window.App?.speak) {
+      const id = 'n' + Date.now() + Math.random().toString(36).slice(2, 6);
+      speakingId = id; window.__appSpeechDone = done => { if (done === speakingId) { speakingId = null; onEnd(); } };
+      if (window.App.speak(n.text, id)) return true;
+      speakingId = null; onEnd(); return false;
+    }
     if (!('speechSynthesis' in window)) { onEnd(); return false; }
     const voices = speechSynthesis.getVoices(), arabic = voices.find(v => v.lang?.toLowerCase().startsWith('ar'));
     if (voices.length && !arabic) { onEnd(); return false; }
