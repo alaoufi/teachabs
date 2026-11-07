@@ -6,7 +6,7 @@ import {ACTIVITIES} from './public/activities.js';
 import {GRADE_NAMES} from './public/group-plan.js';
 import {COLORS, SIZE_NAMES} from './public/group-ink.js';
 import {CURRICULUM_G4_T1, CURRICULUM_SOURCE, curriculumLessons} from './public/curriculum-g4.js';
-import {LESSON_AIDS} from './public/lesson-preps-g4.js';
+import {ALL_AIDS as LESSON_AIDS} from './public/lesson-preps.js';
 import {allLessons, bookFor} from './public/book-catalog.js';
 
 const TOOL_BUTTONS = [['select', '➤', 'تحريك', 'V'], ['hand', '✋', 'يد', 'H'], ['pen', '✎', 'قلم', 'P'], ['brush', '🖌', 'فرشاة', 'B'], ['marker', '▮', 'تظليل', 'M'], ['rect', '▭', 'مستطيل', 'R'], ['ellipse', '◯', 'دائرة', 'O'], ['line', '／', 'خط', 'L'], ['arrow', '↗', 'سهم', 'A'], ['laser', '🔴', 'مؤشر', 'K'], ['text', 'ت', 'كتابة', 'T'], ['eraser', '⌫', 'ممحاة', 'E']];
@@ -57,12 +57,16 @@ export function aidsPage({subject = '', grade = '', teacher = false} = {}) {
   const cards = aids.map(t => { const ls = usedBy(t.id); return `<article class="aid-card" data-aid="${e(t.id)}"><div class="aid-pic">${aidPicture(t)}</div><div class="aid-body"><h3>${t.icon} ${e(t.title)}</h3><p>${e(t.desc)}</p>
 <small><b>${AID_KIND[t.kind]}</b> · ${e(gradesText(t.grades))}</small>${ls.length ? `<small class="aid-lessons">في دروس الصف الرابع: ${ls.map(l => e(l.title)).join('، ')}</small>` : ''}</div></article>`; }).join('') || '<p class="gl-empty">لا توجد وسائل بهذا الاختيار.</p>';
   const lessonsBlock = (!grade || grade === '4') ? Object.entries(CURRICULUM_G4_T1).filter(([k]) => !subject || k === subject).map(([k, sub]) => `<details class="aid-term" open><summary>${e(sub.name)} — الصف الرابع، الفصل الدراسي الأول</summary><ol class="aid-lesson-list">${sub.units.flatMap(u => u.chapters.flatMap(c => c.lessons)).map(l => `<li data-lesson="${e(l.id)}"><b>${e(l.title)}</b><span class="aid-chips">${(LESSON_AIDS[l.id] || []).map(id => toolOf(id)).filter(Boolean).map(t => `<span class="gl-origin">${t.icon} ${e(t.title)}</span>`).join(' ')}</span>${teacher && l.template ? `<form method="post" action="/teach/plans/new"><input type="hidden" name="template" value="${e(l.template)}"><button class="btn gl-mini">ابدأ من الدرس الجاهز</button></form>` : ''}</li>`).join('')}</ol></details>`).join('') : '';
+  const otherBlock = [1, 2, 3, 5, 6].filter(g => !grade || String(g) === grade).flatMap(g => ['science', 'math'].filter(k => !subject || k === subject).map(k => {
+    const ls = allLessons().filter(l => l.grade === g && l.subject === k && LESSON_TEMPLATES['ready-' + l.id]); if (!ls.length) return '';
+    return `<details class="aid-term"${grade ? ' open' : ''}><summary>${k === 'math' ? 'الرياضيات' : 'العلوم'} — الصف ${e(GRADE_NAMES[g])}، الفصل الدراسي الأول</summary><ol class="aid-lesson-list">${ls.map(l => `<li data-lesson="${e(l.id)}"><b>${e(l.title)}</b><span class="aid-chips">${(LESSON_AIDS[l.id] || []).map(id => toolOf(id)).filter(Boolean).map(t => `<span class="gl-origin">${t.icon} ${e(t.title)}</span>`).join(' ')}</span>${teacher ? `<form method="post" action="/teach/plans/new"><input type="hidden" name="template" value="ready-${e(l.id)}"><button class="btn gl-mini">ابدأ من الدرس الجاهز</button></form>` : ''}</li>`).join('')}</ol></details>`;
+  })).join('');
   const sel = (name, opts, cur) => `<select name="${name}" aria-label="${name === 'subject' ? 'المادة' : 'الصف'}">${Object.entries(opts).map(([k, v]) => `<option value="${e(k)}"${String(k) === String(cur) ? ' selected' : ''}>${e(v)}</option>`).join('')}</select>`;
   const grades = {'': 'كل الصفوف', ...Object.fromEntries([1, 2, 3, 4, 5, 6, 7, 8, 9].map(g => [g, 'الصف ' + GRADE_NAMES[g]]))};
   return `${css}<section class="gl-wrap aids-page" dir="rtl"><div class="section-head welcome-panel"><div class="eyebrow">مكتبة المدرسة</div><h1>مكتبة الوسائل الدراسية</h1>
-  <p>${new Intl.NumberFormat('ar-SA').format(LIBRARY.length)} وسيلة: شروح تفاعلية، ووسائل توضع على السبورة، وأدوات للفصل. لكل درس من دروس الصف الرابع (الفصل الأول) وسائله وتحضيره الجاهز، ويثبّت المعلم ما يريد منها في تحضير درسه.</p>
+  <p>${new Intl.NumberFormat('ar-SA').format(LIBRARY.length)} وسيلة: شروح تفاعلية، ووسائل توضع على السبورة، وأدوات للفصل. لكل درس له تحضير جاهز (الفصل الأول) وسائله، ويثبّت المعلم ما يريد منها في تحضير درسه.</p>
   <form method="get" action="/teach/aids" class="gl-actions aid-filters">${sel('subject', subjects, subject)}${sel('grade', grades, grade)}<noscript><button class="btn">عرض</button></noscript></form></div>
-  ${lessonsBlock ? `<h2>وسائل كل درس وتحضيره الجاهز</h2>${lessonsBlock}` : ''}
+  ${lessonsBlock + otherBlock ? `<h2>وسائل كل درس وتحضيره الجاهز</h2>${lessonsBlock}${otherBlock}` : ''}
   <h2>الوسائل (${new Intl.NumberFormat('ar-SA').format(aids.length)})</h2><div class="aid-grid">${cards}</div>
   <p class="gl-note">الرسوم والشروح من إعداد المشروع، وليست منسوخة من الكتب. ترتيب الدروس من فهرس كتب وزارة التعليم ١٤٤٧هـ.</p>
   <p>${teacher ? '<a class="textlink" href="/teach/plans">دروسي</a>' : '<a class="textlink" href="/admin">العودة إلى الإدارة</a>'}</p></section><script type="module" src="/aids-page.js"></script>`;
@@ -129,8 +133,9 @@ function gradeSection(grade) {
   const subjects = ['science', 'math'].map(subject => {
     const list = lessons.filter(l => l.subject === subject), book = bookFor(subject, grade); if (!list.length) return '';
     const units = [...new Set(list.map(l => l.unit))].map(u => `<div class="gl-cur-unit"><h4>${e(u)}</h4>${[...new Set(list.filter(l => l.unit === u).map(l => l.chapter))].map(c => `${c ? `<h5>${e(c)}</h5>` : ''}<ol>${list.filter(l => l.unit === u && l.chapter === c).map(l => `<li data-lesson="${e(l.id)}"><span>${e(l.title)}</span>
-<a class="textlink" href="/teach/books/${e(book.id)}?page=${l.page}" title="افتح كتاب الوزارة على صفحة الدرس">📖 ص ${ar.format(l.page)}</a><form method="post" action="/teach/plans/new"><input type="hidden" name="template" value="cur-${e(l.id)}"><button class="outline gl-mini">حضّر هذا الدرس</button></form></li>`).join('')}</ol>`).join('')}</div>`).join('');
-    return `<details class="gl-cur-subject" open data-subject="${e(subject)}"><summary>${subject === 'math' ? 'الرياضيات' : 'العلوم'} <small>${ar.format(list.length)} درسًا</small></summary>${units}</details>`;
+<a class="textlink" href="/teach/books/${e(book.id)}?page=${l.page}" title="افتح كتاب الوزارة على صفحة الدرس">📖 ص ${ar.format(l.page)}</a>${LESSON_TEMPLATES['ready-' + l.id] ? `<form method="post" action="/teach/plans/new"><input type="hidden" name="template" value="ready-${e(l.id)}"><button class="btn gl-mini">ابدأ من الدرس الجاهز</button></form>` : ''}<form method="post" action="/teach/plans/new"><input type="hidden" name="template" value="cur-${e(l.id)}"><button class="outline gl-mini">${LESSON_TEMPLATES['ready-' + l.id] ? 'تحضير فارغ' : 'حضّر هذا الدرس'}</button></form></li>`).join('')}</ol>`).join('')}</div>`).join('');
+    const ready = list.filter(l => LESSON_TEMPLATES['ready-' + l.id]).length;
+    return `<details class="gl-cur-subject" open data-subject="${e(subject)}"><summary>${subject === 'math' ? 'الرياضيات' : 'العلوم'} <small>${ready ? `${ar.format(ready)} جاهز من ` : ''}${ar.format(list.length)} درسًا</small></summary>${units}</details>`;
   }).join('');
   return `<div class="gl-cur-grid">${subjects}</div>`;
 }

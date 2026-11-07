@@ -286,7 +286,7 @@ test('activity engine: states of matter values, phases, hidden prediction and a 
   assert.ok(!/particle/.test(hidden) && /توقّع/.test(hidden), 'prediction hides the state');
   assert.ok(!/style=/.test(renderMatter({temp: -10})), 'no inline styles (strict CSP)');
   const plan2 = validatePlan(matterPlan());
-  assert.deepEqual(Object.keys(LESSON_TEMPLATES).slice(0, 4), ['cells', 'placevalue', 'light', 'matter']); assert.equal(Object.keys(LESSON_TEMPLATES).length, 53); // + a ready prep for each of the 49 other lessons of the term
+  assert.deepEqual(Object.keys(LESSON_TEMPLATES).slice(0, 4), ['cells', 'placevalue', 'light', 'matter']); assert.equal(Object.keys(LESSON_TEMPLATES).filter(k => !k.startsWith('ready-')).length, 53); // + a ready prep for each of the 49 other lessons of the term
   const i = plan2.steps.findIndex(s => s.type === 'interactive');
   assert.equal(plan2.steps[i].activity, 'matter');
   let s = run2(plan2, initialState(plan2), {op: 'go', index: i}, {op: 'activity', action: 'set', values: {temp: 100}});

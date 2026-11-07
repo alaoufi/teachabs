@@ -2,7 +2,8 @@
 // Shared by the server (validation) and the browser (planner and live views). Pure functions only.
 import {ACTIVITIES, cleanValues} from './activities.js';
 import {LIBRARY} from './tool-library.js';
-import {LESSON_PREPS, arDigits} from './lesson-preps-g4.js';
+import {LESSON_PREPS} from './lesson-preps-g4.js';
+import {READY_PREPS, arDigits} from './lesson-preps.js';
 import {curriculumLessons} from './curriculum-g4.js';
 import {bookOf, lessonOf, lessonBookPage} from './book-catalog.js';
 
@@ -222,16 +223,22 @@ for (const [id, p] of Object.entries(LESSON_PREPS)) {
   ORIGINAL_PAGES['g4-' + id] = {title: `${l.subject === 'math' ? 'رياضيات' : 'علوم'} ٤ — ${l.title} (صفحة أصلية للتجربة)`, lines: [l.title, ...p.pts.slice(0, 3), 'سؤال: ' + p.ask].map(arDigits)};
   LESSON_TEMPLATES['g4-' + id] = {title: l.title, subject: l.subject, plan: () => inLessonOrder(prepPlan(id))};
 }
+// ready preps of the other elementary grades (stage 066 on): the page step opens the ministry book at the lesson's page
+for (const id of Object.keys(READY_PREPS)) {
+  const l = lessonOf(id); if (l && lessonBookPage(id)) LESSON_TEMPLATES['ready-' + id] = {title: l.title, subject: l.subject, plan: () => inLessonOrder(prepPlan(id))};
+}
 /** The ready prep of a curriculum lesson: page, interactive explanation (when one fits), key points, questions, homework, evaluation. */
 export function prepPlan(id) {
-  const p = LESSON_PREPS[id], l = G4[id], A = arDigits, choice = (qid, [prompt, options, answer]) => ({id: qid, kind: 'choice', prompt: A(prompt), options: options.map(A), answer});
-  const steps = [{id: 'curriculum', type: 'page', title: 'نقرأ صفحة الدرس', source: 'original', page: 'g4-' + id, narration: {mode: 'speech', text: A(p.say)}, snippets: p.sn.map(A)}];
+  const g4 = Boolean(G4[id]), p = g4 ? LESSON_PREPS[id] : READY_PREPS[id], l = g4 ? G4[id] : lessonOf(id), A = arDigits, at = g4 ? null : lessonBookPage(id);
+  const choice = (qid, [prompt, options, answer]) => ({id: qid, kind: 'choice', prompt: A(prompt), options: options.map(A), answer});
+  const steps = [g4 ? {id: 'curriculum', type: 'page', title: 'نقرأ صفحة الدرس', source: 'original', page: 'g4-' + id, narration: {mode: 'speech', text: A(p.say)}, snippets: p.sn.map(A)}
+    : {id: 'curriculum', type: 'page', title: 'نقرأ صفحة الدرس من كتاب الوزارة', source: 'book', book: at.book, page: at.page, narration: {mode: 'speech', text: A(p.say)}, snippets: p.sn.map(A)}];
   if (p.act) steps.push({id: 'explain', type: 'interactive', title: ('نجرب: ' + ACTIVITIES[p.act].title).slice(0, 80), activity: p.act, snippets: p.pts.slice(1, 3).map(A), narration: {mode: 'live'}});
   steps.push({id: 'board-notes', type: 'board', title: 'النقاط الأساسية', narration: {mode: 'speech', text: A('لنثبّت النقاط الأساسية. ' + p.pts.join(' ')).slice(0, 600)}, items: p.pts.map((t, i) => ({id: 'n' + (i + 1), kind: 'text', text: A(t)}))},
     {id: 'check', type: 'questions', title: 'أسئلة سريعة', narration: {mode: 'live'}, questions: [...p.q.slice(0, 3).map((x, i) => choice('q' + (i + 1), x)), {id: 'q4', kind: 'text', prompt: A(p.q[3])}]},
     {id: 'homework', type: 'homework', title: 'واجب الدرس', instructions: A(p.hw[0]), narration: {mode: 'live'}, questions: [choice('h1', p.hw[1]), choice('h2', p.hw[2]), {id: 'h3', kind: 'text', prompt: A(p.hw[3])}]},
     {id: 'evaluate', type: 'evaluation', title: 'تقييم الطلاب', narration: {mode: 'live'}, criteria: ['المشاركة', 'فهم الدرس', 'الواجب']});
-  return {version: 1, title: l.title, subject: l.subject, grade: 4, lesson: id, tools: p.aids, steps};
+  return {version: 1, title: l.title, subject: l.subject, grade: g4 ? 4 : l.grade, lesson: id, tools: p.aids, steps};
 }
 
 /** A new prep for any curriculum lesson: the ministry book at the lesson's page, cards to fill, and an evaluation. */

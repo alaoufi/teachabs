@@ -5,7 +5,7 @@
 // Ideas: Microsoft Whiteboard (ruler, protractor), Classroomscreen (timer, random name, work symbols), virtual
 // manipulatives of maths classrooms (number line, fraction bars, hundred chart, clock), and graphic organisers.
 
-import {LESSON_AIDS} from './lesson-preps-g4.js';
+import {ALL_AIDS as LESSON_AIDS} from './lesson-preps.js';
 
 const ALL = [1, 2, 3, 4, 5, 6, 7, 8, 9];
 const ar = n => String(n).replace(/\d/g, d => '٠١٢٣٤٥٦٧٨٩'[d]);
@@ -159,9 +159,9 @@ export const LIBRARY = [
   {id: 'area', kind: 'activity', icon: '⬛', title: 'المساحة والمحيط', desc: 'مستطيل على شبكة: نعدّ الوحدات المربعة ونحسب المحيط.', subjects: ['math'], grades: [3, 4, 5, 6, 7], lessons: []},
   {id: 'balance', kind: 'activity', icon: '⚖️', title: 'حل المعادلات بالميزان', desc: 'المعادلة ميزان متوازن: نطرح من الطرفين ثم نقسم حتى نجد س.', subjects: ['math'], grades: [5, 6, 7, 8, 9], lessons: []},
   {id: 'linear', kind: 'activity', icon: '📈', title: 'الدالة الخطية', desc: 'ص = م س + ب: جدول القيم والتمثيل البياني والميل والمقطع.', subjects: ['math'], grades: [7, 8, 9], lessons: []},
-  {id: 'placechart', kind: 'stamp', icon: '🏷', title: 'جدول المنازل', desc: 'من الآحاد إلى الملايين لكتابة الأعداد.', subjects: ['math'], grades: [2, 3, 4, 5], lessons: ['m1-1', 'm1-2', 'm1-4', 'm1-5', 'm1-6']},
+  {id: 'placechart', kind: 'stamp', icon: '🏷', title: 'جدول المنازل', desc: 'من الآحاد إلى الملايين لكتابة الأعداد.', subjects: ['math'], grades: [1, 2, 3, 4, 5], lessons: ['m1-1', 'm1-2', 'm1-4', 'm1-5', 'm1-6']},
   {id: 'numberline10', kind: 'stamp', icon: '📏', title: 'خط الأعداد ٠–١٠', desc: 'للعد والجمع والطرح والمقارنة.', subjects: ['math'], grades: [1, 2, 3], lessons: ['m2-4', 'm2-5']},
-  {id: 'numberline100', kind: 'stamp', icon: '📏', title: 'خط الأعداد ٠–١٠٠', desc: 'للتقريب والترتيب والتقدير.', subjects: ['math'], grades: [2, 3, 4, 5], lessons: ['m1-4', 'm1-5', 'm1-6', 'm2-2']},
+  {id: 'numberline100', kind: 'stamp', icon: '📏', title: 'خط الأعداد ٠–١٠٠', desc: 'للعد والتقريب والترتيب والتقدير.', subjects: ['math'], grades: [1, 2, 3, 4, 5], lessons: ['m1-4', 'm1-5', 'm1-6', 'm2-2']},
   {id: 'hundred', kind: 'stamp', icon: '💯', title: 'لوحة المئة', desc: 'الأعداد من ١ إلى ١٠٠ لاكتشاف الأنماط.', subjects: ['math'], grades: [1, 2, 3, 4], lessons: ['m5-1']},
   {id: 'multtable', kind: 'stamp', icon: '✖️', title: 'جدول الضرب', desc: 'من ١ إلى ١٠، للمضاعفات والقواسم.', subjects: ['math'], grades: [3, 4, 5], lessons: ['m4-7', 'm5-1', 'm5-2', 'm5-5', 'm5-6', 'm5-8', 'm6-1', 'm6-4']},
   {id: 'functable', kind: 'stamp', icon: '🧮', title: 'جدول الدالة', desc: 'مدخلة ومخرجة لاكتشاف القاعدة.', subjects: ['math'], grades: [4, 5, 6], lessons: ['m4-4', 'm4-5', 'm4-7']},
@@ -192,13 +192,13 @@ export const LIBRARY = [
   {id: 'atom', kind: 'activity', icon: '⚛️', title: 'تركيب الذرة', desc: 'البروتونات والنيوترونات والإلكترونات لأول عشرين عنصرًا.', subjects: ['science'], grades: [7, 8, 9], lessons: []},
   {id: 'thermometer', kind: 'stamp', icon: '🌡', title: 'ميزان الحرارة', desc: 'بالدرجات السيليزية من ٠ إلى ١٠٠.', subjects: ['science', 'math'], grades: [2, 3, 4, 5, 6], lessons: []},
   {id: 'foodchain', kind: 'stamp', icon: '🔗', title: 'السلسلة الغذائية', desc: 'منتج ومستهلكون بأسهم انتقال الطاقة.', subjects: ['science'], grades: [3, 4, 5], lessons: ['s2-3-1', 's2-3-2', 's2-3-3']},
-  {id: 'vertebrates', kind: 'stamp', icon: '🦴', title: 'فقاريات ولافقاريات', desc: 'جدول بعمودين لتصنيف الحيوانات.', subjects: ['science'], grades: [3, 4, 5], lessons: ['s1-1-2', 's1-2-1', 's1-2-2', 's1-2-3']},
+  {id: 'vertebrates', kind: 'stamp', icon: '🦴', title: 'فقاريات ولافقاريات', desc: 'جدول بعمودين لتصنيف الحيوانات.', subjects: ['science'], grades: [1, 2, 3, 4, 5], lessons: ['s1-1-2', 's1-2-1', 's1-2-2', 's1-2-3']},
   {id: 'plate', kind: 'stamp', icon: '🍽', title: 'طبق الغذاء الصحي', desc: 'الخضروات والفواكه والحبوب والبروتين.', subjects: ['science'], grades: ALL, lessons: ['s3-5-1', 's3-5-2']},
   // ---- languages, social studies and Islamic studies ----
   {id: 'arabicletters', kind: 'stamp', icon: '🔤', title: 'الحروف العربية', desc: 'الحروف الثمانية والعشرون.', subjects: ['arabic', 'islamic'], grades: [1, 2, 3], lessons: []},
   {id: 'writinglines', kind: 'stamp', icon: '✍️', title: 'سطور الكتابة', desc: 'أربعة أسطر للخط والإملاء.', subjects: ['arabic', 'english', 'islamic'], grades: ALL, lessons: []},
   {id: 'englishabc', kind: 'stamp', icon: '🔠', title: 'الحروف الإنجليزية', desc: 'من A إلى Z بالحرفين الكبير والصغير.', subjects: ['english'], grades: ALL, lessons: []},
-  {id: 'compass', kind: 'stamp', icon: '🧭', title: 'الاتجاهات الأربعة', desc: 'شمال وجنوب وشرق وغرب.', subjects: ['science', 'islamic'], grades: [2, 3, 4, 5, 6], lessons: []},
+  {id: 'compass', kind: 'stamp', icon: '🧭', title: 'الاتجاهات الأربعة', desc: 'شمال وجنوب وشرق وغرب.', subjects: ['science', 'islamic', 'math'], grades: [1, 2, 3, 4, 5, 6], lessons: []},
   // ---- organisers for every subject ----
   {id: 'venn', kind: 'stamp', icon: '⭕', title: 'شكل فِن للمقارنة', desc: 'دائرتان متداخلتان: المختلف والمشترك.', subjects: ['*'], grades: ALL, lessons: []},
   {id: 'tchart', kind: 'stamp', icon: '📋', title: 'جدول المقارنة', desc: 'أوجه الشبه وأوجه الاختلاف.', subjects: ['*'], grades: ALL, lessons: []},

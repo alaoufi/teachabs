@@ -61,3 +61,51 @@ test('«مكتبة الوسائل الدراسية»: teachers and academic affa
   assert.equal((await get('/teach/aids', ids.finance)).status, 403);
   assert.match(await (await get('/teach/plans', teacher)).text(), /href="\/teach\/aids"/);
 });
+
+// Stage 066 on: ready preps of the other elementary grades, one file per grade, gathered in lesson-preps.js.
+test('every ready prep of grades 1, 2, 3, 5 and 6 validates, opens its book page, and its computation keys are right', async () => {
+  const {READY_PREPS, ALL_AIDS} = await import('../public/lesson-preps.js');
+  const {primaryLessons} = await import('../public/curriculum-primary.js');
+  const {lessonBookPage} = await import('../public/book-catalog.js');
+  const ops = {'+': (a, b) => a + b, '−': (a, b) => a - b, '×': (a, b) => a * b};
+  const byGrade = {}; let checked = 0;
+  for (const [id, p] of Object.entries(READY_PREPS)) {
+    const l = primaryLessons().find(x => x.id === id); assert.ok(l, id + ' is a curriculum lesson');
+    byGrade[l.grade] = (byGrade[l.grade] || 0) + 1;
+    assert.ok(p.aids.length >= 2 && p.aids.every(a => LIBRARY.some(t => t.id === a)), id + ' aids exist');
+    assert.ok(p.aids.every(a => LIBRARY.find(t => t.id === a).grades.includes(l.grade) || LIBRARY.find(t => t.id === a).kind === 'class'), id + ' aids fit the grade');
+    if (p.act) assert.ok(ACTIVITIES[p.act] && (!LIBRARY.find(t => t.id === p.act) || LIBRARY.find(t => t.id === p.act).grades.includes(l.grade)), id + ' activity fits the grade');
+    assert.equal(p.pts.length, 4); assert.equal(p.q.length, 4); assert.equal(p.hw.length, 4); assert.equal(p.sn.length, 6, id);
+    for (const [prompt, opts, a] of [...p.q.slice(0, 3), p.hw[1], p.hw[2]]) {
+      assert.ok(a >= 0 && a < opts.length, id); assert.equal(new Set(opts).size, opts.length, id + ' distinct options');
+      const m = prompt.match(/^([\d,]+) ([+−×]) ([\d,]+) =$/);
+      if (m) { assert.equal(num(opts[a]), ops[m[2]](num(m[1]), num(m[3])), `${id}: ${prompt}`); checked++; }
+    }
+    const plan = validatePlan(LESSON_TEMPLATES['ready-' + id].plan());
+    assert.equal(plan.lesson, id); assert.equal(plan.grade, l.grade); assert.deepEqual(plan.tools, p.aids);
+    const page = plan.steps[0], at = lessonBookPage(id);
+    assert.equal(page.source, 'book'); assert.equal(page.book, at.book); assert.equal(page.page, at.page);
+    assert.doesNotMatch(JSON.stringify(plan.steps), /"(prompt|text|instructions)":"[^"]*[0-9]/, id + ': Arabic-Indic digits only');
+    assert.deepEqual(ALL_AIDS[id], p.aids);
+  }
+  for (const g of Object.keys(byGrade)) assert.equal(byGrade[g], primaryLessons().filter(l => l.grade === Number(g)).length, `grade ${g}: every lesson has a prep`);
+  assert.ok(byGrade[1] === 52, 'grade 1 done');
+  assert.ok(checked >= 20, 'checked ' + checked);
+  assert.equal(toolsFor({subject: 'math', grade: 1, lesson: 'p1m26'}).forLesson[0].id, READY_PREPS.p1m26.aids[0]);
+});
+
+test('«دروسي» of grade 1 starts a lesson from its ready prep, at its book page', async t => {
+  const {openStore} = await import('../store.mjs'), {createApp} = await import('../server.mjs');
+  const store = openStore(':memory:'), app = createApp(store);
+  await new Promise(r => app.listen(0, '127.0.0.1', r));
+  t.after(async () => { app.closeAllConnections(); await new Promise(r => app.close(r)); store.close(); });
+  const base = 'http://127.0.0.1:' + app.address().port, ids = store.admin.demo();
+  const teacher = store.activate(store.admin.createTeacher(ids.education, {name: 'معلم الأول', email: 'g1.t@example.invalid', subjects: ['math'], grades: [1], language: 'ar'}).token, 'test-password-123');
+  const cookie = 'ks=' + store.session(teacher);
+  const page = await (await fetch(base + '/teach/plans?grade=1', {headers: {cookie}})).text();
+  assert.equal(new Set(page.match(/value="ready-p1[sm]\d\d"/g)).size, 52); assert.match(page, /٤١ جاهز من ٤١ درسًا/);
+  const made = await fetch(base + '/teach/plans/new', {method: 'POST', headers: {cookie, origin: base, 'content-type': 'application/x-www-form-urlencoded'}, body: 'template=ready-p1m26', redirect: 'manual'});
+  assert.equal(made.status, 303); const id = made.headers.get('location').split('/').pop();
+  const saved = store.group.plan(teacher, id); assert.equal(saved.plan.lesson, 'p1m26'); assert.equal(saved.plan.steps[0].source, 'book');
+  assert.match(await (await fetch(base + '/teach/aids?grade=1', {headers: {cookie}})).text(), /value="ready-p1m26"/);
+});
