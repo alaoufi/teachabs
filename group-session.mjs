@@ -9,7 +9,7 @@ export const MAX_STUDENTS = 40, MAX_STROKES = INK.items, MAX_POINTS = INK.points
 const INKABLE = ['page', 'board', 'interactive', 'questions'];
 
 export function initialState(plan) {
-  return {live: true, index: 0, shown: !plan.steps[0].startHidden, revealed: {}, open: {}, display: {}, strokes: {}, camera: {}, narrator: initialNarrator(), acts: {}, explore: false, homework: 'none', evaluationPublished: false, narrate: null, seq: 0};
+  return {speaker: plan.speaker === 'female' ? 'female' : 'male', live: true, index: 0, shown: !plan.steps[0].startHidden, revealed: {}, open: {}, display: {}, strokes: {}, camera: {}, narrator: initialNarrator(), acts: {}, explore: false, homework: 'none', evaluationPublished: false, narrate: null, seq: 0};
 }
 
 const current = (state, plan) => plan.steps[state.index];
@@ -158,6 +158,7 @@ export function teacherCommand(state, plan, cmd) {
     case 'homework': need(['none', 'open', 'closed'].includes(cmd.status) && plan.steps.some(x => x.type === 'homework'), 'لا يوجد واجب في الدرس.'); s.homework = cmd.status; return s;
     case 'publish-evaluation': need(typeof cmd.on === 'boolean', 'قيمة غير صالحة.'); s.evaluationPublished = cmd.on; return s;
     case 'live': need(typeof cmd.on === 'boolean', 'قيمة غير صالحة.'); s.live = cmd.on; return s;
+    case 'speaker': need(['male', 'female'].includes(cmd.speaker), 'صوت غير معروف.'); s.speaker = cmd.speaker; return s; // the narrator's voice: man or woman
     case 'hand-down': { // the teacher answered the raised hand (one student, or everyone)
       s.hands = {...(s.hands || {})};
       if (cmd.all === true) s.hands = {}; else { need(typeof cmd.student === 'string', 'طالب غير معروف.'); delete s.hands[cmd.student]; }
@@ -246,7 +247,7 @@ export function teacherView(state, plan, students, responses) {
 
 export function publicView(state, plan, student, responses, studentNames = {}) {
   const step = current(state, plan), shown = state.live && state.shown;
-  const view = {role: student ? 'student' : 'display', live: state.live, title: plan.title, index: state.index, total: plan.steps.length, shown, seq: state.seq, voice: voiceOf(state)};
+  const view = {role: student ? 'student' : 'display', live: state.live, title: plan.title, index: state.index, total: plan.steps.length, shown, seq: state.seq, voice: voiceOf(state), speaker: speakerOf(state)};
   if (student) { view.hand = Boolean(state.hands?.[student]); view.stars = state.stars?.[student] || 0; if (state.lastStar?.student === student) view.starSeq = state.lastStar.seq; }
   if (shown) {
     const revealed = state.revealed[step.id] || [];
@@ -317,3 +318,11 @@ export function narrationFor(state, plan, stepId) {
   need(step && step === current(state, plan) && state.live && state.shown && step.narration.mode !== 'live', 'لا يوجد شرح صوتي معروض الآن.', 403);
   return step.narration;
 }
+
+/** The text the narrator speaks for a step's explanation or one segment of the activity tour, or null. */
+export function speechText(plan, stepId, segment) {
+  const step = plan.steps.find(s => s.id === stepId); if (!step) return null;
+  if (segment !== null && segment !== undefined) { const g = step.narrator?.segments[segment]; return g && !g.audio ? g.text : null; }
+  return step.narration?.mode === 'speech' ? step.narration.text : null;
+}
+export const speakerOf = state => state.speaker === 'female' ? 'female' : 'male';

@@ -1,7 +1,8 @@
 // Group lesson service: planner, live teacher console, display screen and student seats.
 import {validatePlan, defaultPlan, PlanError, LIMITS, LESSON_TEMPLATES} from './public/group-plan.js';
 import {validImage} from './public/group-plan.js';
-import {initialState, teacherCommand, teacherView, publicView, voiceOf, studentHand, checkAnswer, checkEvaluation, contentFor, narrationFor, segmentAudio, MAX_STUDENTS} from './group-session.mjs';
+import {speech, ttsReady} from './tts.mjs';
+import {initialState, teacherCommand, teacherView, publicView, voiceOf, studentHand, speechText, speakerOf, checkAnswer, checkEvaluation, contentFor, narrationFor, segmentAudio, MAX_STUDENTS} from './group-session.mjs';
 import {UserError} from './store.mjs';
 import * as v from './group-views.mjs';
 
@@ -48,7 +49,7 @@ export function groupService(store) {
     const ids = new Set(d.students.map(x => x.id));
     for (const l of set) {
       if (l.kind === 'student' && !ids.has(l.id)) { l.res.write('event: removed\ndata: {}\n\n'); l.res.end(); set.delete(l); continue; }
-      const data = l.kind === 'teacher' ? teacherView(d.s.state, d.s.plan, d.students, d.responses) : publicView(d.s.state, d.s.plan, l.kind === 'student' ? l.id : null, d.responses, d.names);
+      const data = {...(l.kind === 'teacher' ? teacherView(d.s.state, d.s.plan, d.students, d.responses) : publicView(d.s.state, d.s.plan, l.kind === 'student' ? l.id : null, d.responses, d.names)), natural: ttsReady()}; // natural: the server has the man/woman voice
       l.res.write('event: view\ndata: ' + JSON.stringify(data) + '\n\n');
     }
   }
@@ -59,9 +60,16 @@ export function groupService(store) {
     const timer = setInterval(() => res.write(': heartbeat\n\n'), 15000); timer.unref();
     res.on('close', () => { clearInterval(timer); listeners.get(code)?.delete(entry); });
     const d = views(code);
-    res.write('event: view\ndata: ' + JSON.stringify(kind === 'teacher' ? teacherView(d.s.state, d.s.plan, d.students, d.responses) : publicView(d.s.state, d.s.plan, kind === 'student' ? id : null, d.responses, d.names)) + '\n\n');
+    res.write('event: view\ndata: ' + JSON.stringify({...(kind === 'teacher' ? teacherView(d.s.state, d.s.plan, d.students, d.responses) : publicView(d.s.state, d.s.plan, kind === 'student' ? id : null, d.responses, d.names)), natural: ttsReady()}) + '\n\n');
   }
 
+  // ---- natural voice: the narrator's text as MP3 in the class's chosen voice (404 → the page uses the device's voice) ----
+  async function sendSpeech(res, text, speaker) {
+    if (!text || !ttsReady()) throw new UserError('لا يوجد صوت طبيعي لهذا الشرح.', 404);
+    let audio; try { audio = await speech(text, speaker); } catch (e) { console.error('tts', e.message); throw new UserError('تعذّر توليد الصوت الآن.', 502); }
+    if (!audio) throw new UserError('لا يوجد صوت طبيعي لهذا الشرح.', 404);
+    res.writeHead(200, {'content-type': 'audio/mpeg', 'content-length': audio.length, 'cache-control': 'private, max-age=86400'}); res.end(audio);
+  }
   // ---- live voice signalling: each student connects to the teacher only; messages are relayed, never stored ----
   const RTC_TYPES = ['hello', 'offer', 'answer', 'ice', 'mic', 'bye'];
   async function rtcMessage(req, base) {
@@ -90,7 +98,7 @@ export function groupService(store) {
     matches: path => path === '/join' || path === '/start/student' || path.startsWith('/teach/') || path === '/teach' || path.startsWith('/class/'),
     async handle(ctx) {
       const {req, res, url} = ctx, path = url.pathname;
-      const api = /\/(events|content|narration|answer|hand|command|evaluate|remove|plan|display-events|texts|delete|import|rtc|page-image)$/.test(path) || /^\/teach\/texts\//.test(path) || path.endsWith('.json') || req.headers['content-type']?.startsWith('application/json');
+      const api = /\/(events|content|narration|answer|hand|speech|command|evaluate|remove|plan|display-events|texts|delete|import|rtc|page-image)$/.test(path) || /^\/teach\/texts\//.test(path) || path.endsWith('.json') || req.headers['content-type']?.startsWith('application/json');
       try { return await route(ctx); } catch (err) {
         if (api && err instanceof UserError && !res.headersSent) return send(res, {error: err.message}, err.status);
         throw err;
@@ -124,7 +132,7 @@ export function groupService(store) {
         res.setHeader('Set-Cookie', `gl_${code}=${joined.token}; Path=/class/${code}; Max-Age=1209600; HttpOnly; SameSite=Lax${base.startsWith('https:') ? '; Secure' : ''}`);
         broadcast(code); return redirect('/class/' + code);
       }
-      const cls = path.match(/^\/class\/([A-Z0-9]{6})(?:\/(events|content|narration|answer|rtc|hand))?$/);
+      const cls = path.match(/^\/class\/([A-Z0-9]{6})(?:\/(events|content|narration|answer|rtc|hand|speech))?$/);
       if (cls) {
         const [, code, action] = cls; need(CODE.test(code), 'رمز الحصة غير صالح.', 404);
         const s = g.session(code), me = s && g.student(code, studentToken(req, code));
@@ -137,6 +145,11 @@ export function groupService(store) {
           if (m.type === 'mic' && m.data === true) need(voiceOf(s.state).mics, 'أغلق المعلم مايك الطلاب الآن.', 409);
           relay(code, 'teacher', {from: me.id, name: me.name, type: m.type, data: m.data, cid: m.cid});
           return send(res, {ok: true});
+        }
+        if (action === 'speech' && method === 'GET') { // only what is shown in class now
+          const step = url.searchParams.get('step') || '', seg = url.searchParams.get('segment');
+          const n = seg === null ? narrationFor(s.state, s.plan, step) : segmentAudio(s.state, s.plan, step, Number(seg));
+          return sendSpeech(res, n.mode === 'speech' ? n.text : null, speakerOf(s.state));
         }
         if (action === 'hand' && method === 'POST') { // ✋ raise or lower the hand
           const body = await json(req, base, 256);
@@ -199,12 +212,17 @@ export function groupService(store) {
         if (action === '/start' && method === 'POST') { await fields(req); const clean = validatePlan(plan.plan); return redirect('/teach/live/' + g.startSession(teacher.id, clean, initialState(clean))); }
         throw new UserError('إجراء غير متاح.', 405);
       }
-      const lm = path.match(/^\/teach\/live\/([A-Z0-9]{6})(?:\/(events|plan|command|evaluate|remove|display|display-events|rtc|page-image))?$/);
+      const lm = path.match(/^\/teach\/live\/([A-Z0-9]{6})(?:\/(events|plan|command|evaluate|remove|display|display-events|rtc|page-image|speech))?$/);
       if (lm) {
         const [, code, action] = lm, s = ownSession(teacher, code);
         if (!action && method === 'GET') return page(res, html, 'إدارة الحصة', v.teacherPage(code, s.plan.title, base), true, true); // the teacher's microphone and camera
         if (action === 'display' && method === 'GET') return page(res, html, 'شاشة العرض', v.displayPage(code, s.plan.title, base));
         if (action === 'plan' && method === 'GET') return send(res, s.plan);
+        if (action === 'speech' && method === 'GET') { // the teacher (and the display screen) may hear any step of their lesson
+          const seg = url.searchParams.get('segment'), sample = url.searchParams.get('sample');
+          const speaker = ['male', 'female'].includes(url.searchParams.get('v')) && sample ? url.searchParams.get('v') : speakerOf(s.state);
+          return sendSpeech(res, sample ? 'مرحبًا، أنا صوت المتحدث في حصتكم. أشرح لكم الدرس خطوة بخطوة.' : speechText(s.plan, url.searchParams.get('step') || '', seg === null ? null : Number(seg)), speaker);
+        }
         if (action === 'events' && method === 'GET') return subscribe(req, res, code, 'teacher', teacher.id);
         if (action === 'display-events' && method === 'GET') return subscribe(req, res, code, 'display', null);
         if (action === 'page-image' && method === 'POST') { // the teacher photographs the book page during the class; it stays in this class only

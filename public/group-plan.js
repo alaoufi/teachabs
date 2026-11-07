@@ -101,7 +101,7 @@ function narratorScript(activity, raw) {
 export function validatePlan(raw) {
   need(raw && typeof raw === 'object', 'خطة غير صالحة.');
   need(JSON.stringify(raw).length <= LIMITS.plan, 'حجم الدرس كبير. قلل الصور أو التسجيلات.');
-  const plan = {version: 1, title: text(raw.title, 80, 'عنوان الدرس'), subject: raw.subject, grade: raw.grade};
+  const plan = {version: 1, title: text(raw.title, 80, 'عنوان الدرس'), subject: raw.subject, grade: raw.grade, speaker: raw.speaker === 'female' ? 'female' : 'male'}; // the narrator's voice
   need(Object.hasOwn(SUBJECTS, plan.subject), 'اختر المادة.');
   need(Number.isInteger(plan.grade) && plan.grade >= 1 && plan.grade <= 6, 'اختر الصف من الأول إلى السادس.');
   need(Array.isArray(raw.steps) && raw.steps.length >= 1 && raw.steps.length <= LIMITS.steps, `الدرس يحتاج من خطوة إلى ${LIMITS.steps} خطوة.`);

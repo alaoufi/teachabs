@@ -176,6 +176,12 @@ export async function playNarration(n, {onEnd = () => {}} = {}) {
     const a = audio = new Audio(n.audio); a.onended = a.onerror = () => onEnd();
     try { await a.play(); return true; } catch { onEnd(); return false; }
   }
+  if (n.mode === 'speech' && n.url) {
+    // A natural voice made on the server (man or woman, as the teacher chose); without one, the device's voice below.
+    const a = audio = new Audio(n.url); let ended = false; a.onended = () => { if (!ended) { ended = true; onEnd(); } };
+    try { await a.play(); return true; }
+    catch { if (audio === a) audio = null; return playNarration({mode: 'speech', text: n.text}, {onEnd}); }
+  }
   if (n.mode === 'speech') {
     // Inside the Android app the page cannot speak; the app reads the text aloud with the phone's Arabic voice.
     if (window.App?.speak) {
@@ -201,4 +207,9 @@ const boardEl = typeof document !== 'undefined' && document.getElementById('gl-b
 if (boardEl && 'ResizeObserver' in window) {
   const fit = () => { const w = boardEl.clientWidth; if (w) boardEl.style.setProperty('--k', String(w / 1000)); };
   new ResizeObserver(fit).observe(boardEl); fit();
+}
+
+/** Where the natural voice of a step's explanation (or of one narrator segment) is fetched from. */
+export function speechUrl(base, stepId, segment, speaker) {
+  return `${base}/speech?step=${encodeURIComponent(stepId)}${segment === undefined || segment === null ? '' : '&segment=' + segment}&v=${speaker || 'male'}`;
 }

@@ -1,6 +1,6 @@
 // Student seat and classroom display screen: shows only what the teacher has made visible.
 import {publicStep} from './group-plan.js';
-import {el, renderStep, renderInk, playNarration, stopNarration, renderNarrator, setSpeaking} from './group-view.js';
+import {el, renderStep, renderInk, playNarration, stopNarration, renderNarrator, setSpeaking, speechUrl} from './group-view.js';
 import {speakingMs} from './narrator-scripts.js';
 import {attachBoardTools} from './group-board-tools.js';
 import {formatNumber} from './science-shadow-model.js';
@@ -109,8 +109,8 @@ async function narrator(n) {
   const animate = ms => { setSpeaking(board, true); speakTimer = setTimeout(() => setSpeaking(board, false), ms); };
   if (!n.speak) { if (!n.muted) animate(speakingMs(n.text)); return; }
   try {
-    const voice = student ? await getJSON(`${classBase}/narration?step=${encodeURIComponent(view.step.id)}&segment=${n.segment}`)
-      : (g => g.audio ? {mode: 'recorded', audio: g.audio} : {mode: 'speech', text: g.text})(plan.steps.find(s => s.id === view.step.id).narrator.segments[n.segment]);
+    const voice = withVoice(student ? await getJSON(`${classBase}/narration?step=${encodeURIComponent(view.step.id)}&segment=${n.segment}`)
+      : (g => g.audio ? {mode: 'recorded', audio: g.audio} : {mode: 'speech', text: g.text})(plan.steps.find(s => s.id === view.step.id).narrator.segments[n.segment]), view.step.id, n.segment);
     setSpeaking(board, true);
     if (!await playNarration(voice, {onEnd: () => setSpeaking(board, false)})) {
       animate(speakingMs(n.text)); // caption still shows when the device has no Arabic voice
@@ -145,7 +145,7 @@ async function render() {
   if (view.narrate && view.narrate.seq > lastNarration) {
     lastNarration = view.narrate.seq;
     try {
-      const n = student ? await getJSON(`${classBase}/narration?step=${encodeURIComponent(view.narrate.step)}`) : plan.steps.find(s => s.id === view.narrate.step).narration;
+      const n = withVoice(student ? await getJSON(`${classBase}/narration?step=${encodeURIComponent(view.narrate.step)}`) : plan.steps.find(s => s.id === view.narrate.step).narration, view.narrate.step, null);
       if (!await playNarration(n)) { pendingNarration = n; $('gl-audio').hidden = false; $('gl-audio').textContent = 'استمع لشرح المعلم'; }
     } catch (e) { status(e.message, true); }
   }
@@ -153,6 +153,8 @@ async function render() {
 
 // ---- the student's own screen: board over everything, microphone, writing sheet, leave with confirmation ----
 let entered = !student, sheetKey = '', lastStar = null, starTimer = 0;
+/** The natural voice (man or woman, as the teacher chose) for a spoken explanation, when the server has it. */
+const withVoice = (n, stepId, segment) => n.mode === 'speech' && view?.natural ? {...n, url: speechUrl(student ? classBase : '/teach/live/' + code, stepId, segment, view?.speaker)} : n;
 const voice = student ? studentVoice({base: classBase, onChange: () => studentChrome(), onVideo: stream => { const v = $('gl-teachercam'), track = stream.getVideoTracks()[0]; v.srcObject = stream; v.play?.().catch(() => {}); if (track) track.onmute = track.onunmute = track.onended = () => studentChrome(); studentChrome(); }}) : null;
 // The teacher's picture: a small window in the corner of the board; a tap makes it bigger or smaller.
 $('gl-teachercam')?.addEventListener('click', e => e.currentTarget.classList.toggle('is-big'));

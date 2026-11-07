@@ -1,6 +1,6 @@
 // Teacher console for the live group lesson: sequence, visibility, board ink, activity, results, homework, evaluation.
 import {STEP_TYPES, NARRATION, RATING, publicStep} from './group-plan.js';
-import {el, renderStep, renderInk, playNarration, stopNarration, renderDisplay} from './group-view.js';
+import {el, renderStep, renderInk, playNarration, stopNarration, renderDisplay, speechUrl} from './group-view.js';
 import {attachBoardTools} from './group-board-tools.js';
 import {renderNarrator, setSpeaking} from './group-view.js';
 import {openTextPicker} from './text-library.js';
@@ -18,7 +18,11 @@ const remember = (k, d) => { try { const v = localStorage.getItem('gl-' + k); re
 const keep = (k, v) => { try { localStorage.setItem('gl-' + k, v ? '1' : '0'); } catch {} };
 let autoAdvance = remember('auto', true), listenHere = remember('here', true), lastSegmentSeq = 0, advanceTimer = 0, speakTimer = 0;
 const autoStart = remember('autostart', true), autoStarted = new Set();
-let lastStepId = null, lastHands = 0; // interactive steps whose explanation already started by itself in this class
+let lastStepId = null, lastHands = 0;
+const speaker = () => view?.state?.speaker === 'female' ? 'female' : 'male';
+/** A step's prepared explanation, with the natural voice when the server has one. */
+const speakerButton = () => !view?.natural ? null : el('button', {type: 'button', class: 'gl-mini gl-speaker', 'data-narr': 'speaker', title: 'صوت المتحدث: رجل أو امرأة', onclick: () => command({op: 'speaker', speaker: speaker() === 'male' ? 'female' : 'male'})}, speaker() === 'male' ? '🧔 رجل' : '🧕 امرأة');
+const spoken = s => s.narration.mode === 'speech' && view?.natural ? {...s.narration, url: speechUrl(base, s.id, null, speaker())} : s.narration; // interactive steps whose explanation already started by itself in this class
 const INKABLE = ['page', 'board', 'interactive', 'questions'];
 
 async function command(body) {
@@ -82,9 +86,9 @@ function renderQuick(s) {
     if (s.narration.mode === 'live') parts.push(el('span', {class: 'gl-live-voice', text: '🎙 اشرح بصوتك'}));
     else parts.push(el('span', {class: 'gl-quick-out', text: s.narration.mode === 'recorded' ? '🔊 شرح الدرس (تسجيلك):' : '🔊 شرح الدرس الصوتي:'}),
       el('button', {type: 'button', class: 'gl-mini', onclick: () => command({op: 'narrate', target: 'screen'})}, '▶ شاشة العرض'),
-      el('button', {type: 'button', class: 'gl-mini', title: 'يُسمع على أجهزة الطلاب وعلى جهازك معهم', onclick: () => { command({op: 'narrate', target: 'students'}); if (listenHere) playNarration(s.narration).catch(() => {}); }}, '▶ على أجهزة الطلاب'),
-      el('button', {type: 'button', class: 'gl-mini', onclick: async () => { if (!await playNarration(s.narration)) status('تعذّر تشغيل الشرح هنا.', true); }}, '▶ هنا'),
-      el('button', {type: 'button', class: 'quiet gl-mini', onclick: stopNarration}, '■'));
+      el('button', {type: 'button', class: 'gl-mini', title: 'يُسمع على أجهزة الطلاب وعلى جهازك معهم', onclick: () => { command({op: 'narrate', target: 'students'}); if (listenHere) playNarration(spoken(s)).catch(() => {}); }}, '▶ على أجهزة الطلاب'),
+      el('button', {type: 'button', class: 'gl-mini', onclick: async () => { if (!await playNarration(spoken(s))) status('تعذّر تشغيل الشرح هنا.', true); }}, '▶ هنا'),
+      el('button', {type: 'button', class: 'quiet gl-mini', onclick: stopNarration}, '■'), s.narration.mode === 'speech' ? speakerButton() : null);
   }
   // Keep the focused button focused across live updates.
   const active = q.contains(document.activeElement) ? document.activeElement.textContent : null;
@@ -139,7 +143,7 @@ function renderTeacherNarrator(s) {
   lastSegmentSeq = n.seq;
   clearTimeout(advanceTimer); clearTimeout(speakTimer);
   const duration = speakingMs(g.text) + 1600;
-  if (listenHere && !n.muted) { stopNarration(); setSpeaking($('gl-board'), true); playNarration(g.audio ? {mode: 'recorded', audio: g.audio} : {mode: 'speech', text: g.text}, {onEnd: () => setSpeaking($('gl-board'), false)}); }
+  if (listenHere && !n.muted) { stopNarration(); setSpeaking($('gl-board'), true); playNarration(g.audio ? {mode: 'recorded', audio: g.audio} : {mode: 'speech', text: g.text, url: view.natural ? speechUrl(base, s.id, n.segment, speaker()) : undefined}, {onEnd: () => setSpeaking($('gl-board'), false)}); }
   else if (info) { setSpeaking($('gl-board'), true); speakTimer = setTimeout(() => setSpeaking($('gl-board'), false), duration - 1600); }
   if (autoAdvance && n.segment < s.narrator.segments.length - 1) advanceTimer = setTimeout(() => { if (step()?.id === s.id && view.state.narrator.segment === n.segment) command({op: 'narrator', action: 'next'}); }, duration + 800);
 }
@@ -176,6 +180,7 @@ function narratorQuick(s) {
     on ? el('button', {type: 'button', 'data-narr': 'next', class: 'btn', disabled: n.segment === segs.length - 1, onclick: () => act('next')}, 'التالي') : null,
     el('button', {type: 'button', 'data-narr': 'mute', 'aria-pressed': String(n.muted), onclick: () => { if (!n.muted) stopNarration(); act('mute', {on: !n.muted}); }}, n.muted ? '🔇 مكتوم' : '🔊 كتم'),
     el('button', {type: 'button', 'data-narr': 'visible', 'aria-pressed': String(!n.visible), onclick: () => act('visible', {on: !n.visible})}, n.visible ? 'إخفاء' : 'إظهار'),
+    speakerButton(),
     el('button', {type: 'button', 'data-narr': 'here', 'aria-pressed': String(listenHere), title: 'يُسمع الشرح على جهازك أيضًا', onclick: () => { listenHere = !listenHere; keep('here', listenHere); if (!listenHere) stopNarration(); renderQuick(step()); }}, listenHere ? '🎧 أسمعه هنا' : '🎧 لا أسمعه هنا'),
     el('button', {type: 'button', 'data-narr': 'auto', 'aria-pressed': String(autoAdvance), title: 'ينتقل من مقطع إلى التالي وحده', onclick: () => { autoAdvance = !autoAdvance; keep('auto', autoAdvance); clearTimeout(advanceTimer); renderQuick(step()); }}, autoAdvance ? '⏩ تلقائي' : '⏸ يدوي'),
     on ? el('button', {type: 'button', class: 'quiet', 'data-narr': 'stop', onclick: () => { clearTimeout(advanceTimer); stopNarration(); act('stop'); }}, '■ إنهاء') : null);
@@ -457,6 +462,12 @@ function voiceHelp(problem) {
   $('gl-voice-help').hidden = false;
 }
 $('gl-test-voice').addEventListener('click', async () => {
+  const natural = view?.natural && await fetch(`${base}/speech?sample=1&v=${speaker()}`).then(r => r.ok ? r.blob() : null).catch(() => null);
+  if (natural) {
+    await playNarration({mode: 'recorded', audio: URL.createObjectURL(natural)});
+    $('gl-voice-help-text').replaceChildren(el('p', {text: `هذا صوت المتحدث الطبيعي: ${speaker() === 'male' ? 'حامد (رجل)' : 'زارية (امرأة)'}. يُسمع على كل الأجهزة. غيّره بزر «🧔 صوت رجل / 🧕 صوت امرأة» فوق السبورة.`}));
+    $('gl-voice-help').hidden = false; return;
+  }
   const problem = await voiceProblem();
   if (!problem) await playNarration({mode: 'speech', text: SAMPLE});
   voiceHelp(problem);

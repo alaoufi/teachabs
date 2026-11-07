@@ -223,7 +223,8 @@ function render() {
   $('pl-meta').replaceChildren(
     field('عنوان الدرس', textInput(plan.title, 80, v => { plan.title = v; $('pl-heading').textContent = v; })),
     field('المادة', el('select', {onchange: e => { plan.subject = e.target.value; touch(); }}, Object.entries(SUBJECTS).map(([k, v]) => el('option', {value: k, selected: k === plan.subject}, v)))),
-    field('الصف', el('select', {onchange: e => { plan.grade = Number(e.target.value); touch(); }}, [1, 2, 3, 4, 5, 6].map(g => el('option', {value: g, selected: g === plan.grade}, 'الصف ' + ['', 'الأول', 'الثاني', 'الثالث', 'الرابع', 'الخامس', 'السادس'][g])))));
+    field('الصف', el('select', {onchange: e => { plan.grade = Number(e.target.value); touch(); }}, [1, 2, 3, 4, 5, 6].map(g => el('option', {value: g, selected: g === plan.grade}, 'الصف ' + ['', 'الأول', 'الثاني', 'الثالث', 'الرابع', 'الخامس', 'السادس'][g])))),
+    field('صوت المتحدث', el('select', {'aria-label': 'صوت المتحدث', onchange: e => { plan.speaker = e.target.value; touch(); }}, el('option', {value: 'male', selected: plan.speaker !== 'female'}, '🧔 رجل (حامد)'), el('option', {value: 'female', selected: plan.speaker === 'female'}, '🧕 امرأة (زارية)'))));
   $('pl-steps').replaceChildren(...plan.steps.map((step, i) => {
     const details = el('details', {class: 'pl-step', open: openSteps.has(step.id), ontoggle: e => e.target.open ? openSteps.add(step.id) : openSteps.delete(step.id)},
       el('summary', {}, el('span', {class: 'pl-num', text: String(i + 1)}), el('span', {class: 'pl-type', text: STEP_TYPES[step.type].short}), el('span', {class: 'pl-title', text: step.title || 'بلا عنوان'})),
