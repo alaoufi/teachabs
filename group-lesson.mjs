@@ -175,12 +175,28 @@ export function groupService(store) {
         throw new UserError('إجراء غير متاح.', 405);
       }
 
+      // ---------- academic affairs: every teacher's lesson prep in the school; read it, assign a copy to a teacher ----------
+      if (path === '/teach/review' || path.startsWith('/teach/review/')) {
+        if (!u && method === 'GET') return redirect('/login');
+        need(u && u.role === 'admin', 'هذه الصفحة للشؤون التعليمية.', 403);
+        const actor = store.admin.requireAccess(u.id, 'education.read'), canWrite = actor.permissions.includes('education.write');
+        if (path === '/teach/review') { need(method === 'GET', 'إجراء غير متاح.', 405); return page(res, html, 'تحضيرات الدروس', v.reviewPage(g.scopePlans(actor.scope), url.searchParams.get('assigned') === '1')); }
+        const rm = path.match(/^\/teach\/review\/([0-9a-f-]{36})(\/assign)?$/); need(rm, 'الصفحة غير موجودة.', 404);
+        const p = g.scopePlan(actor.scope, rm[1]); need(p, 'التحضير غير موجود.', 404);
+        if (!rm[2] && method === 'GET') return page(res, html, 'تحضير: ' + p.title, v.reviewPlanPage(p, canWrite ? g.colleagues(actor.scope) : null));
+        need(rm[2] && method === 'POST', 'إجراء غير متاح.', 405);
+        need(canWrite, 'تحويل التحضير يحتاج صلاحية «إدارة المعلمين والجداول».', 403);
+        const data = await fields(req), to = g.colleagues(actor.scope).find(t => t.id === data.to); need(to, 'اختر معلمًا من المدرسة.');
+        g.copyPlan(p.id, to.id, `من الشؤون التعليمية (${actor.name}) — تحضير ${p.teacherName}`);
+        return redirect('/teach/review?assigned=1');
+      }
+
       // ---------- teacher ----------
       if (!u && method === 'GET' && !/events$/.test(path)) return redirect('/login');
       const teacher = teacherOnly(u);
       if (path === '/teach' || path === '/teach/plans') {
         need(method === 'GET', 'إجراء غير متاح.', 405);
-        return page(res, html, 'دروسي للحصة الجماعية', v.plansPage(g.plans(teacher.id), g.sessions(teacher.id)));
+        return page(res, html, 'دروسي للحصة الجماعية', v.plansPage(g.plans(teacher.id), g.sessions(teacher.id), g.colleagues(teacher.scope).filter(c => c.id !== teacher.id), url.searchParams.get('sent') === '1'));
       }
       if (path === '/teach/texts') {
         if (method === 'GET') return send(res, g.texts(teacher.id));
@@ -201,7 +217,7 @@ export function groupService(store) {
         return send(res, {id: g.createPlan(teacher.id, clean)});
       }
       if (path === '/teach/plans/new' && method === 'POST') { const data = await fields(req), t = LESSON_TEMPLATES[data.template] || LESSON_TEMPLATES.light; return redirect('/teach/plans/' + g.createPlan(teacher.id, validatePlan(t.plan()))); }
-      const pm = path.match(/^\/teach\/plans\/([0-9a-f-]{36})(\.json|\/delete|\/start)?$/);
+      const pm = path.match(/^\/teach\/plans\/([0-9a-f-]{36})(\.json|\/delete|\/start|\/send)?$/);
       if (pm) {
         const [, id, action] = pm; need(UUID.test(id), 'الدرس غير موجود.', 404);
         const plan = g.plan(teacher.id, id); need(plan, 'الدرس غير موجود.', 404);
@@ -213,6 +229,10 @@ export function groupService(store) {
           g.savePlan(teacher.id, id, clean); return send(res, {ok: true, title: clean.title});
         }
         if (action === '/delete' && method === 'POST') { await fields(req); g.deletePlan(teacher.id, id); return redirect('/teach/plans'); }
+        if (action === '/send' && method === 'POST') { // a copy of the prep, with its board arrangement, to a colleague of the same school
+          const data = await fields(req), to = g.colleagues(teacher.scope).find(t => t.id === data.to && t.id !== teacher.id); need(to, 'اختر معلمًا من مدرستك.');
+          g.copyPlan(id, to.id, `أرسله إليك ${teacher.name}`); return redirect('/teach/plans?sent=1');
+        }
         if (action === '/start' && method === 'POST') { await fields(req); const clean = validatePlan(plan.plan); return redirect('/teach/live/' + g.startSession(teacher.id, clean, initialState(clean))); }
         throw new UserError('إجراء غير متاح.', 405);
       }

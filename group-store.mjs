@@ -10,6 +10,8 @@ export function createGroupStore({db, one, all, run, transaction}) {
   CREATE TABLE IF NOT EXISTS group_students(id TEXT PRIMARY KEY,code TEXT NOT NULL REFERENCES group_sessions(code),name TEXT NOT NULL,token TEXT NOT NULL UNIQUE,joined INTEGER NOT NULL,removed INTEGER NOT NULL DEFAULT 0);
   CREATE TABLE IF NOT EXISTS group_texts(id TEXT PRIMARY KEY,teacher TEXT NOT NULL REFERENCES users(id),title TEXT NOT NULL,body TEXT NOT NULL,origin TEXT,updated INTEGER NOT NULL);
   CREATE TABLE IF NOT EXISTS group_responses(code TEXT NOT NULL REFERENCES group_sessions(code),student TEXT NOT NULL REFERENCES group_students(id),step TEXT NOT NULL,item TEXT NOT NULL,kind TEXT NOT NULL,data TEXT NOT NULL,updated INTEGER NOT NULL,PRIMARY KEY(code,student,step,item,kind));`);
+  // where a plan came from when it was sent by a colleague or assigned by academic affairs
+  try { db.exec('ALTER TABLE group_plans ADD COLUMN origin TEXT'); } catch {}
   const parse = row => row && {...row, plan: JSON.parse(row.plan), ...(row.state ? {state: JSON.parse(row.state)} : {})};
   return {
     texts: teacher => all('SELECT id,title,body,origin,updated FROM group_texts WHERE teacher=? ORDER BY updated DESC', teacher),
@@ -17,9 +19,19 @@ export function createGroupStore({db, one, all, run, transaction}) {
     createText(teacher, {title, body, origin}) { const id = randomUUID(); run('INSERT INTO group_texts VALUES(?,?,?,?,?,?)', id, teacher, title, body, origin || null, Date.now()); return id; },
     updateText: (teacher, id, {title, body}) => run('UPDATE group_texts SET title=?,body=?,updated=? WHERE id=? AND teacher=?', title, body, Date.now(), id, teacher).changes === 1,
     deleteText: (teacher, id) => run('DELETE FROM group_texts WHERE id=? AND teacher=?', id, teacher).changes === 1,
-    plans: teacher => all('SELECT id,title,updated FROM group_plans WHERE teacher=? ORDER BY updated DESC', teacher),
+    plans: teacher => all('SELECT id,title,updated,origin FROM group_plans WHERE teacher=? ORDER BY updated DESC', teacher),
+    /** A copy of a plan in another teacher's lessons, marked with where it came from. */
+    copyPlan(fromId, toTeacher, origin) {
+      const row = one('SELECT title,plan FROM group_plans WHERE id=?', fromId); if (!row) return null;
+      const id = randomUUID(); run('INSERT INTO group_plans(id,teacher,title,plan,updated,origin) VALUES(?,?,?,?,?,?)', id, toTeacher, row.title, row.plan, Date.now(), origin); return id;
+    },
+    /** Teachers of the same school (scope), for «send to a colleague» and for academic affairs. */
+    colleagues: scope => all("SELECT id,name FROM users WHERE role='teacher' AND scope=? ORDER BY name", scope),
+    /** Every lesson prep of a school's teachers, for academic affairs. */
+    scopePlans: scope => all("SELECT p.id,p.title,p.updated,p.origin,p.teacher,u.name teacherName,json_extract(p.plan,'$.subject') subject,json_extract(p.plan,'$.grade') grade FROM group_plans p JOIN users u ON u.id=p.teacher WHERE u.scope=? AND u.role='teacher' ORDER BY p.updated DESC LIMIT 500", scope),
+    scopePlan: (scope, id) => parse(one("SELECT p.*,u.name teacherName FROM group_plans p JOIN users u ON u.id=p.teacher WHERE p.id=? AND u.scope=? AND u.role='teacher'", id, scope)),
     plan: (teacher, id) => parse(one('SELECT * FROM group_plans WHERE id=? AND teacher=?', id, teacher)),
-    createPlan(teacher, plan) { const id = randomUUID(); run('INSERT INTO group_plans VALUES(?,?,?,?,?)', id, teacher, plan.title, JSON.stringify(plan), Date.now()); return id; },
+    createPlan(teacher, plan) { const id = randomUUID(); run('INSERT INTO group_plans(id,teacher,title,plan,updated) VALUES(?,?,?,?,?)', id, teacher, plan.title, JSON.stringify(plan), Date.now()); return id; },
     savePlan: (teacher, id, plan) => run('UPDATE group_plans SET title=?,plan=?,updated=? WHERE id=? AND teacher=?', plan.title, JSON.stringify(plan), Date.now(), id, teacher).changes === 1,
     deletePlan: (teacher, id) => run('DELETE FROM group_plans WHERE id=? AND teacher=?', id, teacher).changes === 1,
     startSession(teacher, plan, state) {

@@ -1,6 +1,7 @@
 // HTML scaffolds for the group lesson. Dynamic parts are filled by same-origin modules.
 import {e} from './views.mjs';
-import {STEP_TYPES, STEP_ORDER, LESSON_TEMPLATES, WORK_MODES} from './public/group-plan.js';
+import {STEP_TYPES, STEP_ORDER, LESSON_TEMPLATES, WORK_MODES, SUBJECTS} from './public/group-plan.js';
+import {toolOf} from './public/tool-library.js';
 import {COLORS, SIZE_NAMES} from './public/group-ink.js';
 import {CURRICULUM_G4_T1, CURRICULUM_SOURCE, curriculumLessons} from './public/curriculum-g4.js';
 
@@ -9,11 +10,15 @@ const TOOL_BUTTONS = [['select', '➤', 'تحريك', 'V'], ['hand', '✋', 'ي�
 const css = '<link rel="stylesheet" href="/group-lesson.css?v=4"><script type="module" src="/error-report.js"></script>';
 const dateText = t => new Intl.DateTimeFormat('ar-SA', {dateStyle: 'medium', timeStyle: 'short', timeZone: 'Asia/Riyadh'}).format(t);
 
-export function plansPage(plans, sessions) {
-  const list = plans.length ? plans.map(p => `<li class="gl-row"><div><b>${e(p.title)}</b><small>آخر تعديل ${dateText(p.updated)}</small></div>
+/** «↗ أرسل لمعلم»: a copy of the prep, with its board arrangement, goes to a colleague of the same school. */
+const sendForm = (action, colleagues, label) => colleagues.length ? `<form method="post" action="${action}" class="gl-send"><select name="to" required aria-label="${label}"><option value="">${label}…</option>${colleagues.map(c => `<option value="${e(c.id)}">${e(c.name)}</option>`).join('')}</select><button class="outline">${label.startsWith('حوّل') ? '↪ حوّل' : '↗ أرسل'}</button></form>` : '';
+const originBadge = o => o ? `<span class="gl-origin">📥 ${e(o)}</span>` : '';
+
+export function plansPage(plans, sessions, colleagues = [], sent = false) {
+  const list = plans.length ? plans.map(p => `<li class="gl-row"><div><b>${e(p.title)}</b><small>آخر تعديل ${dateText(p.updated)}</small>${originBadge(p.origin)}</div>
    <div class="gl-actions"><a class="outline" href="/teach/plans/${p.id}">ترتيب الدرس</a>
    <a class="outline" href="/teach/plans/${p.id}.json" download="${e(p.title)}.json">تنزيل كملف</a>
-   <form method="post" action="/teach/plans/${p.id}/start"><button class="btn">بدء الحصة</button></form></div></li>`).join('') : '<li class="gl-empty">لا توجد دروس بعد. ابدأ بالنموذج الجاهز ثم عدّله.</li>';
+   <form method="post" action="/teach/plans/${p.id}/start"><button class="btn">بدء الحصة</button></form>${sendForm(`/teach/plans/${p.id}/send`, colleagues, 'أرسل لمعلم')}</div></li>`).join('') : '<li class="gl-empty">لا توجد دروس بعد. ابدأ بالنموذج الجاهز ثم عدّله.</li>';
   const live = sessions.length ? `<h2>حصص سابقة وجارية</h2><ul class="gl-list">${sessions.map(s => `<li class="gl-row"><div><b>${e(s.title)}</b><small>الرمز ${e(s.code)} · ${dateText(s.created)} · ${s.live ? 'جارية' : 'انتهى العرض'}</small></div><a class="outline" href="/teach/live/${e(s.code)}">فتح إدارة الحصة</a></li>`).join('')}</ul>` : '';
   return `${css}<section class="gl-wrap" dir="rtl"><div class="section-head welcome-panel"><div class="eyebrow">الحصة الجماعية</div><h1>دروسي</h1>
   <p>رتّب درسك قبل الحصة بالتسلسل: ${STEP_ORDER.map(t => STEP_TYPES[t].short).join(' ← ')}. أثناء الحصة تتحكم بما يظهر للطلاب وما يختفي. <a class="textlink" href="/guide">دليل الاستخدام</a></p></div>
@@ -21,8 +26,32 @@ export function plansPage(plans, sessions) {
   <div class="gl-actions gl-templates"><span class="gl-tpl-label">نماذج إضافية للتجربة (ليست ضمن الفصل الأول):</span>${Object.entries(LESSON_TEMPLATES).filter(([id]) => !TEMPLATE_IN_CURRICULUM.has(id)).map(([id, t]) => `<form method="post" action="/teach/plans/new"><input type="hidden" name="template" value="${id}"><button class="btn">${e(t.title)}</button></form>`).join('')}
   <button type="button" class="outline" id="plans-import-btn">استيراد درس من ملف</button><input type="file" id="plans-import" accept=".json,application/json" hidden></div>
   <p id="plans-status" class="gl-status" role="status" aria-live="polite" hidden></p>
+  ${sent ? '<p class="gl-status" role="status">✓ أُرسلت نسخة من التحضير مع ترتيب السبورة إلى المعلم، وتبقى نسختك كما هي.</p>' : ''}
+  <p class="gl-note">كل درس تحضّره يُحفظ هنا مع ترتيب السبورة وأدواته، فتستعمله في الحصص القادمة. يمكنك إرسال نسخة لمعلم من مدرستك، وتطّلع الشؤون التعليمية على التحضيرات وتحوّلها.</p>
   <ul class="gl-list">${list}</ul>${live}
   <p class="gl-note">خادم التجربة مؤقت وقد يتوقف في أي وقت: نزّل دروسك كملفات واحتفظ بها، ويمكنك استيرادها لاحقًا. استخدم أسماء أولى فقط وبيانات وهمية.</p></section><script type="module" src="/group-plans.js?v=1"></script>`;
+}
+
+/** Academic affairs: the school's lesson preps. */
+export function reviewPage(plans, assigned) {
+  const rows = plans.length ? plans.map(p => `<li class="gl-row gl-review-row"><div><b>${e(p.title)}</b><small>${e(p.teacherName)} · ${e(SUBJECTS[p.subject] || '')}${p.grade ? ' · الصف ' + e(p.grade) : ''} · آخر تعديل ${dateText(p.updated)}</small>${originBadge(p.origin)}</div>
+   <div class="gl-actions"><a class="outline" href="/teach/review/${p.id}">عرض التحضير</a></div></li>`).join('') : '<li class="gl-empty">لم يحضّر معلمو المدرسة دروسًا بعد.</li>';
+  return `${css}<section class="gl-wrap" dir="rtl"><div class="section-head welcome-panel"><div class="eyebrow">الشؤون التعليمية</div><h1>تحضيرات الدروس</h1>
+  <p>تحضيرات معلمي المدرسة كما حفظوها مع ترتيب السبورة والأدوات. افتح أي تحضير لتطّلع عليه، وحوّل نسخة منه لمعلم آخر عند الحاجة (يبقى الأصل عند صاحبه).</p></div>
+  ${assigned ? '<p class="gl-status" role="status">✓ حُوّلت نسخة من التحضير إلى المعلم، وستظهر في «دروسي» عنده.</p>' : ''}
+  <ul class="gl-list">${rows}</ul><p><a class="textlink" href="/admin">العودة إلى الإدارة</a></p></section>`;
+}
+
+/** One prep, read only, with «حوّل لمعلم» when the admin may manage teachers. */
+export function reviewPlanPage(p, colleagues) {
+  const plan = p.plan, tools = (plan.tools || []).map(toolOf).filter(Boolean);
+  const steps = plan.steps.map((s, i) => `<li><b>${i + 1}. ${e(s.title)}</b> <small>${e(STEP_TYPES[s.type]?.label || s.type)}${s.startHidden ? ' · مخفية في البداية' : ''}</small>${s.narration?.text ? `<p class="gl-note">🔊 ${e(s.narration.text.slice(0, 220))}${s.narration.text.length > 220 ? '…' : ''}</p>` : ''}</li>`).join('');
+  return `${css}<section class="gl-wrap" dir="rtl"><div class="section-head welcome-panel"><div class="eyebrow">الشؤون التعليمية · تحضير ${e(p.teacherName)}</div><h1>${e(p.title)}</h1>
+  <p>${e(SUBJECTS[plan.subject] || '')} · الصف ${e(plan.grade)} · ${plan.steps.length} خطوات · آخر تعديل ${dateText(p.updated)}</p>${originBadge(p.origin)}</div>
+  ${tools.length ? `<h2>أدوات الدرس المثبتة</h2><p class="gl-review-tools">${tools.map(t => `<span class="gl-origin">${t.icon} ${e(t.title)}</span>`).join(' ')}</p>` : ''}
+  <h2>ترتيب الدرس</h2><ol class="gl-list gl-review-steps">${steps}</ol>
+  ${colleagues ? (colleagues.length ? `<h2>تحويل نسخة لمعلم</h2>${sendForm(`/teach/review/${p.id}/assign`, colleagues.filter(c => c.id !== p.teacher), 'حوّل لمعلم')}` : '<p class="gl-note">لا يوجد معلمون آخرون في المدرسة.</p>') : '<p class="gl-note">تحويل التحضير يحتاج صلاحية «إدارة المعلمين والجداول».</p>'}
+  <p><a class="textlink" href="/teach/review">كل التحضيرات</a></p></section>`;
 }
 
 const TEMPLATE_IN_CURRICULUM = new Set(curriculumLessons().map(l => l.template).filter(Boolean));
