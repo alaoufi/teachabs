@@ -53,6 +53,8 @@ const text = (value, max, label, {required = true} = {}) => {
 const ID = /^[a-z0-9-]{1,40}$/;
 const IMAGE = /^data:image\/(png|jpeg|webp);base64,[A-Za-z0-9+/]+=*$/;
 const AUDIO = /^data:audio\/(webm|ogg|mp4|mpeg)(;codecs=[a-z0-9.]+)?;base64,[A-Za-z0-9+/]+=*$/;
+/** 🚦 work symbols shown to the class (an idea from Classroomscreen). */
+export const WORK_MODES = {none: 'بلا', silent: '🤫 عمل بصمت', whisper: '🗣 همس', pairs: '👥 عمل ثنائي', groups: '👨‍👩‍👧 عمل في مجموعات', listen: '👂 استمعوا'};
 export const LIMITS = {steps: 20, image: 900_000, audio: 1_500_000, plan: 9_000_000, items: 12, questions: 10, criteria: 6, snippets: 12, segments: 12};
 
 export function validImage(value) { return typeof value === 'string' && value.length <= LIMITS.image && IMAGE.test(value); }

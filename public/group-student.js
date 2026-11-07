@@ -1,5 +1,5 @@
 // Student seat and classroom display screen: shows only what the teacher has made visible.
-import {publicStep} from './group-plan.js';
+import {publicStep, WORK_MODES} from './group-plan.js';
 import {el, renderStep, renderInk, playNarration, stopNarration, renderNarrator, setSpeaking, speechUrl, laserTrail, renderExtras} from './group-view.js';
 import {speakingMs} from './narrator-scripts.js';
 import {attachBoardTools} from './group-board-tools.js';
@@ -153,7 +153,7 @@ async function render() {
 }
 
 // ---- the student's own screen: board over everything, microphone, writing sheet, leave with confirmation ----
-let entered = !student, sheetKey = '', lastStar = null, starTimer = 0;
+let entered = !student, sheetKey = '', lastStar = null, starTimer = 0, lastPick = null, pickTimer = 0;
 /** The natural voice (man or woman, as the teacher chose) for a spoken explanation, when the server has it. */
 const withVoice = (n, stepId, segment) => n.mode === 'speech' && view?.natural ? {...n, url: speechUrl(student ? classBase : '/teach/live/' + code, stepId, segment, view?.speaker)} : n;
 const voice = student ? studentVoice({base: classBase, onChange: () => studentChrome(), onVideo: stream => { const v = $('gl-teachercam'), track = stream.getVideoTracks()[0]; v.srcObject = stream; v.play?.().catch(() => {}); if (track) track.onmute = track.onunmute = track.onended = () => studentChrome(); studentChrome(); }}) : null;
@@ -177,6 +177,13 @@ function studentChrome() {
   $('gl-mic').setAttribute('aria-pressed', String(voice.on)); $('gl-mic').classList.toggle('is-on', voice.on);
   $('gl-mic').querySelector('span').textContent = !v.mics ? 'المايك مغلق' : voice.on ? 'أغلق المايك' : 'المايك';
   const tv = $('gl-teachercam'); if (tv) { const vt = tv.srcObject?.getVideoTracks()[0]; tv.hidden = !(v.camera && vt && vt.readyState === 'live' && !vt.muted && view.live); if (!tv.hidden) tv.play?.().catch(() => {}); }
+  // 👀 attention lock, 🚦 work mode and 🎲 the picked student (ideas from Pear Deck, Classroomscreen, ClassDojo)
+  $('gl-attention-cover').hidden = !view.attention || !view.live;
+  $('gl-work').hidden = !view.workMode; $('gl-work').textContent = WORK_MODES[view.workMode] || '';
+  if (view.pick && view.pick.seq !== lastPick) {
+    if (lastPick !== null) { const p = $('gl-pick-pop'), mine = view.pick.student === view.me; p.replaceChildren(el('span', {text: '🎲'}), el('b', {text: mine ? 'أنت! تفضّل بالإجابة' : view.pick.name})); p.classList.toggle('is-me', mine); p.hidden = false; clearTimeout(pickTimer); pickTimer = setTimeout(() => { p.hidden = true; }, 3500); }
+    lastPick = view.pick.seq;
+  } else if (lastPick === null) lastPick = view.pick?.seq ?? 0;
   // ✋ and ⭐ (ideas from ClassIn): the hand stays up until the teacher answers; a new star pops up briefly
   $('gl-hand').setAttribute('aria-pressed', String(Boolean(view.hand))); $('gl-hand').classList.toggle('is-on', Boolean(view.hand));
   $('gl-hand').querySelector('span').textContent = view.hand ? 'يدك مرفوعة' : 'ارفع يدك'; $('gl-hand').disabled = !view.live;

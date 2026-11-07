@@ -337,7 +337,7 @@ function render() {
   if (cur?.type === 'interactive' && cur.narrator?.segments.length && view.state.narrator?.segment === -1 && view.state.live && autoStart && !autoStarted.has(cur.id)) {
     autoStarted.add(cur.id); command({op: 'narrator', action: 'start'});
   }
-  renderSequence(); renderBoard(); renderQuick(step()); renderExtras($('gl-board'), view, {teacher: true});
+  renderSequence(); renderBoard(); renderQuick(step()); renderExtras($('gl-board'), view, {teacher: true}); renderClassTools();
   // Re-render the step tools but keep keyboard focus on the same control.
   const active = $('gl-panel').contains(document.activeElement) ? document.activeElement : null;
   const key = active && (active.getAttribute('aria-label') || active.textContent);
@@ -523,3 +523,23 @@ for (const b of document.querySelectorAll('.gl-stamp-btn')) b.addEventListener('
   command({op: 'stamp', name: b.dataset.stamp, x: Math.round(Math.min(800, c.x + 500 / z - 200)), y: Math.round(Math.max(0, Math.min(440, c.y + 300 / z + below)))});
   status('وُضعت الأداة. حرّكها بأداة «تحريك»، وامسحها بالممحاة.');
 });
+
+// ---- 🧭 class management (ideas from Classroomscreen, ClassDojo, Pear Deck, Whiteboard.fi) ----
+$('gl-pick').addEventListener('click', () => {
+  const all = view?.students || []; if (!all.length) return status('لا يوجد طلاب في الحصة بعد.', true);
+  const done = new Set(view.state.picked || []), left = all.filter(x => !done.has(x.id)), pool = left.length ? left : all; // nobody twice until everyone had a turn
+  const who = pool[Math.floor(Math.random() * pool.length)];
+  command({op: 'pick', student: who.id, name: who.name}); status(`🎲 ${who.name}`);
+});
+$('gl-pick-reset').addEventListener('click', () => command({op: 'pick-reset'}));
+$('gl-attention').addEventListener('click', () => command({op: 'attention', on: !view?.state?.attention}));
+for (const b of document.querySelectorAll('.gl-work-btn')) b.addEventListener('click', () => command({op: 'work-mode', mode: b.dataset.mode}));
+function renderClassTools() {
+  const st = view?.state || {}; if (!$('gl-attention')) return;
+  $('gl-attention').setAttribute('aria-pressed', String(Boolean(st.attention)));
+  $('gl-attention').textContent = st.attention ? '👀 الشاشات مقفلة — افتحها' : '👀 انتباه: اقفل شاشات الطلاب';
+  for (const b of document.querySelectorAll('.gl-work-btn')) b.setAttribute('aria-pressed', String((st.workMode || 'none') === b.dataset.mode));
+  const left = (view.students || []).filter(x => !(st.picked || []).includes(x.id)).length;
+  $('gl-pick').textContent = '🎲 اختر طالبًا' + (view.students?.length ? ` (بقي ${formatNumber(left || view.students.length)})` : '');
+  document.querySelector('.gl-class-fly .gl-fly-btn').classList.toggle('is-on', Boolean(st.attention || st.workMode));
+}

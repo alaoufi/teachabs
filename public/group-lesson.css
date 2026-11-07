@@ -766,3 +766,23 @@ body:has(#planner) .demo{margin-bottom:8px;padding:6px 10px}
 .gl-stamp-tick{stroke:#3a2f00;stroke-width:1.5}
 .gl-stamp-num{font-size:14px;fill:#3a2f00;text-anchor:middle;font-weight:700;direction:ltr}
 .gl-stamp-unit{font-size:12px;fill:#3a2f00}
+
+/* ===== stage 057 (ideas from Classroomscreen, ClassDojo, Pear Deck, Whiteboard.fi): class management ===== */
+.gl-bar-top .gl-class-fly{display:inline-block;position:relative}
+.gl-bar-top .gl-class-fly .gl-fly-btn{flex-direction:row;gap:4px;min-height:36px;width:auto;font-size:13px}
+.gl-bar-top .gl-class-fly .gl-fly-btn>b{position:static}
+.gl-bar-top .gl-class-fly .gl-fly-btn.is-on{background:#fff3cd;border-color:#e0a800}
+.gl-class-menu{top:calc(100% + 6px);inset-inline-start:0;grid-template-columns:repeat(2,minmax(120px,1fr));min-width:270px}
+.gl-class-menu>#gl-pick,.gl-class-menu>#gl-attention{grid-column:1/-1;min-height:40px;font-weight:800}
+.gl-class-menu button{min-height:34px;font-size:13px}
+.gl-wrap #gl-attention[aria-pressed=true]{background:#b71c1c;color:#fff;border-color:#b71c1c}
+.gl-attention{position:fixed;inset:0;z-index:1150;display:grid;place-content:center;justify-items:center;gap:8px;background:#0b1f2ae6;color:#fff;text-align:center}
+.gl-attention span{font-size:110px;line-height:1;animation:gl-hand-pulse 1.6s infinite}
+.gl-attention b{font-size:30px}
+.gl-pick-pop{position:fixed;inset:0;z-index:1180;display:grid;place-content:center;justify-items:center;pointer-events:none}
+.gl-pick-pop span{font-size:90px;animation:gl-star .8s both}
+.gl-pick-pop b{font-size:32px;background:#17312a;color:#fff;border-radius:16px;padding:8px 22px;margin-top:6px;box-shadow:0 10px 26px #0005}
+.gl-pick-pop.is-me b{background:#e0a800;color:#3a2800}
+.gl-work{position:fixed;top:8px;left:50%;transform:translateX(-50%);z-index:1100;background:#fffbea;border:2px solid #e0a800;color:#5a3d00;font-weight:800;border-radius:999px;padding:4px 16px;font-size:16px;box-shadow:0 6px 14px #0002}
+@media (max-width:760px){.gl-class-menu{position:fixed!important;top:64px!important;left:8px!important;right:8px!important;inset-inline-start:auto;min-width:0;z-index:60}}
+@media (min-width:761px){.gl-bar-top .gl-class-fly .gl-fly-label{display:none}.gl-bar-top .gl-class-fly .gl-fly-btn{padding:2px 8px}}

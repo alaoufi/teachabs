@@ -1,5 +1,5 @@
 // Pure state machine for a live group lesson. The teacher controls sequence, visibility and what is shown to everyone.
-import {publicStep, RATING} from './public/group-plan.js';
+import {publicStep, RATING, WORK_MODES} from './public/group-plan.js';
 import {activityOf, cleanValues} from './public/activities.js';
 import {UserError} from './store.mjs';
 import {TOOLS, TEXT_SIZES, LIMITS as INK, colorAllowed, clampCamera} from './public/group-ink.js';
@@ -161,6 +161,13 @@ export function teacherCommand(state, plan, cmd) {
     case 'publish-evaluation': need(typeof cmd.on === 'boolean', 'قيمة غير صالحة.'); s.evaluationPublished = cmd.on; return s;
     case 'live': need(typeof cmd.on === 'boolean', 'قيمة غير صالحة.'); s.live = cmd.on; return s;
     case 'speaker': need(['male', 'female'].includes(cmd.speaker), 'صوت غير معروف.'); s.speaker = cmd.speaker; return s; // the narrator's voice: man or woman
+    case 'pick': { // 🎲 a student picked at random by the teacher's screen; nobody twice until everyone had a turn
+      need(typeof cmd.student === 'string' && cmd.student.length <= 64 && typeof cmd.name === 'string' && cmd.name.length <= 40, 'طالب غير معروف.');
+      s.picked = [...(s.picked || []).filter(x => x !== cmd.student), cmd.student]; s.pick = {student: cmd.student, name: cmd.name, seq: s.seq}; return s;
+    }
+    case 'pick-reset': s.picked = []; s.pick = null; return s;
+    case 'attention': need(typeof cmd.on === 'boolean', 'قيمة غير صالحة.'); s.attention = cmd.on; return s; // 👀 students' screens locked on the teacher
+    case 'work-mode': need(Object.hasOwn(WORK_MODES, cmd.mode), 'وضع غير معروف.'); s.workMode = cmd.mode === 'none' ? null : cmd.mode; return s; // 🚦
     case 'timer': { // ⏱ a countdown everyone sees; seconds from 10 s to an hour, or stop
       if (cmd.stop === true) { s.timer = null; return s; }
       need(Number.isInteger(cmd.seconds) && cmd.seconds >= 10 && cmd.seconds <= 3600, 'مدة غير صالحة.');
@@ -265,7 +272,7 @@ export function teacherView(state, plan, students, responses) {
 export function publicView(state, plan, student, responses, studentNames = {}) {
   const step = current(state, plan), shown = state.live && state.shown;
   const view = {role: student ? 'student' : 'display', live: state.live, title: plan.title, index: state.index, total: plan.steps.length, shown, seq: state.seq, voice: voiceOf(state), speaker: speakerOf(state)};
-  if (student) { view.hand = Boolean(state.hands?.[student]); view.stars = state.stars?.[student] || 0; if (state.lastStar?.student === student) view.starSeq = state.lastStar.seq; }
+  if (student) { view.me = student; view.hand = Boolean(state.hands?.[student]); view.stars = state.stars?.[student] || 0; if (state.lastStar?.student === student) view.starSeq = state.lastStar.seq; }
   if (shown) {
     const revealed = state.revealed[step.id] || [];
     view.step = {id: step.id, type: step.type, title: step.title, key: `${step.id}:${revealed.join(',')}${step.type === 'page' ? ':p' + (state.pageVer || 0) : ''}`};
@@ -347,6 +354,9 @@ export const speakerOf = state => state.speaker === 'female' ? 'female' : 'male'
 /** What every screen shows of the timer and the curtain right now. */
 export function classExtras(state, plan) {
   const step = current(state, plan), out = {};
+  if (state.pick) out.pick = {name: state.pick.name, student: state.pick.student, seq: state.pick.seq};
+  if (state.attention) out.attention = true;
+  if (state.workMode) out.workMode = state.workMode;
   if (state.timer) out.timer = {remaining: Math.max(0, state.timer.ends - Date.now()), total: state.timer.total, ends: state.timer.ends};
   const c = state.curtain?.[step.id]; if (c) out.curtain = c;
   return out;

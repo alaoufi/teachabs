@@ -1,6 +1,6 @@
 // HTML scaffolds for the group lesson. Dynamic parts are filled by same-origin modules.
 import {e} from './views.mjs';
-import {STEP_TYPES, STEP_ORDER, LESSON_TEMPLATES} from './public/group-plan.js';
+import {STEP_TYPES, STEP_ORDER, LESSON_TEMPLATES, WORK_MODES} from './public/group-plan.js';
 import {COLORS, SIZE_NAMES} from './public/group-ink.js';
 import {CURRICULUM_G4_T1, CURRICULUM_SOURCE, curriculumLessons} from './public/curriculum-g4.js';
 
@@ -84,7 +84,11 @@ export function teacherPage(code, title, base) {
   return `${css}<section class="gl-wrap gl-teacher gl-present" dir="rtl" id="gl-app" data-code="${e(code)}" data-role="teacher">
   <header class="gl-bar gl-bar-top">
    <div class="gl-bar-title"><h1>${e(title)}</h1><button type="button" class="gl-code-chip" id="gl-code" data-join="${e(join)}" title="انسخ رابط الطلاب: ${e(join)}">الرمز <b class="gl-code">${e(code)}</b></button><span id="gl-status" class="gl-status-dot" role="status" aria-live="polite">جارٍ الاتصال…</span></div>
-   <div class="gl-bar-actions"><a class="outline gl-mini" href="/teach/live/${e(code)}/display" target="_blank" rel="noopener" title="افتح على السبورة الذكية أو جهاز العرض">🖥 شاشة العرض</a><button type="button" class="gl-mini gl-hands" id="gl-hands" hidden title="طلاب رفعوا أيديهم">✋ <b id="gl-hands-n"></b></button><button type="button" class="outline gl-mini" id="gl-drawer-btn" aria-expanded="false" aria-controls="gl-drawer">👥 الطلاب والنتائج <span id="gl-count"></span></button><a class="quiet gl-mini" href="/guide" target="_blank" rel="noopener">الدليل</a><button type="button" class="quiet gl-mini" id="gl-live">إنهاء العرض</button></div>
+   <div class="gl-bar-actions"><a class="outline gl-mini" href="/teach/live/${e(code)}/display" target="_blank" rel="noopener" title="افتح على السبورة الذكية أو جهاز العرض">🖥 شاشة العرض</a><div class="gl-fly gl-class-fly" data-fly="class"><button type="button" class="gl-fly-btn gl-mini" aria-expanded="false" aria-haspopup="true" title="إدارة الفصل: اختيار طالب، الانتباه، وضع العمل"><span class="gl-fly-icon" aria-hidden="true">🧭</span><span class="gl-fly-label">إدارة الفصل</span><b aria-hidden="true">▾</b></button><div class="gl-fly-menu gl-class-menu" role="group" aria-label="إدارة الفصل" hidden>
+     <button type="button" id="gl-pick" class="btn">🎲 اختر طالبًا</button><button type="button" id="gl-pick-reset" class="quiet">↺ ابدأ الدور من جديد</button>
+     <button type="button" id="gl-attention" aria-pressed="false">👀 انتباه: اقفل شاشات الطلاب</button>
+     <b class="gl-fly-head">🚦 وضع العمل يراه الطلاب</b>${Object.entries(WORK_MODES).map(([k, v]) => `<button type="button" class="gl-work-btn" data-mode="${k}" aria-pressed="${k === 'none'}">${k === 'none' ? '✖ إلغاء' : v}</button>`).join('')}
+    </div></div><button type="button" class="gl-mini gl-hands" id="gl-hands" hidden title="طلاب رفعوا أيديهم">✋ <b id="gl-hands-n"></b></button><button type="button" class="outline gl-mini" id="gl-drawer-btn" aria-expanded="false" aria-controls="gl-drawer">👥 الطلاب <span id="gl-count"></span></button><a class="quiet gl-mini" href="/guide" target="_blank" rel="noopener">الدليل</a><button type="button" class="quiet gl-mini" id="gl-live">إنهاء العرض</button></div>
   </header>
   <nav class="gl-bar gl-bar-steps" aria-label="تسلسل الدرس">
    <button type="button" id="gl-prev" class="gl-mini" title="السابق (PageUp)">→</button>
@@ -147,6 +151,9 @@ export function studentPage(code, name, title) {
    <section class="gl-answer" id="gl-answer" hidden aria-label="أجب عن الأسئلة"></section>
    <section class="gl-homework" id="gl-hw" hidden aria-label="الواجب"></section>
    <section class="gl-myeval" id="gl-eval" hidden aria-label="تقييمي"></section></section>
+  <div class="gl-attention" id="gl-attention-cover" hidden role="alertdialog" aria-label="انتباه"><span>👀</span><b>انظروا إلى المعلم</b></div>
+  <div class="gl-pick-pop" id="gl-pick-pop" hidden aria-live="assertive"></div>
+  <div class="gl-work" id="gl-work" hidden></div>
   <div class="gl-star-pop" id="gl-star-pop" hidden aria-live="assertive"><span>⭐</span><b>أحسنت!</b></div>
   <div class="gl-ended" id="gl-ended" hidden role="alertdialog" aria-modal="true" aria-labelledby="gl-ended-title"><div class="gl-start-card"><h2 id="gl-ended-title">انتهت الحصة</h2><p id="gl-ended-text">شكرًا لك!</p>
    <button type="button" class="btn" id="gl-ended-close">إغلاق</button></div></div>

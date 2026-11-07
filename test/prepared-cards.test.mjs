@@ -91,3 +91,16 @@ test('⏱ timer, 🎭 curtain and 📏📐 measuring tools', () => {
   assert.deepEqual(s.strokes[plan.steps[s.index].id][0], {id, kind: 'stamp', name: 'ruler', x: 150, y: 180});
   assert.throws(() => teacherCommand(s, plan, {op: 'stamp', name: 'compass', x: 1, y: 1}), /أداة غير معروفة/);
 });
+
+test('🧭 class management: random pick without repeats, attention lock, work mode', () => {
+  const plan = validatePlan(LESSON_TEMPLATES.cells.plan());
+  let s = teacherCommand(initialState(plan), plan, {op: 'pick', student: 'a', name: 'سارة'});
+  assert.deepEqual(classExtras(s, plan).pick.name, 'سارة'); assert.deepEqual(s.picked, ['a']);
+  s = teacherCommand(s, plan, {op: 'pick', student: 'b', name: 'نورة'}); assert.deepEqual(s.picked, ['a', 'b']);
+  s = teacherCommand(s, plan, {op: 'pick-reset'}); assert.deepEqual(s.picked, []); assert.equal(classExtras(s, plan).pick, undefined);
+  s = teacherCommand(s, plan, {op: 'attention', on: true}); assert.equal(classExtras(s, plan).attention, true);
+  assert.equal(publicView(s, plan, 'a', []).me, 'a');
+  s = teacherCommand(s, plan, {op: 'work-mode', mode: 'pairs'}); assert.equal(classExtras(s, plan).workMode, 'pairs');
+  s = teacherCommand(s, plan, {op: 'work-mode', mode: 'none'}); assert.equal(classExtras(s, plan).workMode, undefined);
+  assert.throws(() => teacherCommand(s, plan, {op: 'work-mode', mode: 'party'}), /وضع غير معروف/);
+});
