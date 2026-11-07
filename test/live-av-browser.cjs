@@ -19,7 +19,8 @@ const assert = require('node:assert/strict'), fs = require('node:fs'), path = re
   const until = async (p, fn, arg, ms = 20000) => { const end = Date.now() + ms; for (;;) { const v = await p.evaluate(fn, arg); if (v) return v; if (Date.now() > end) throw new Error('timed out: ' + fn); await p.waitForTimeout(250); } };
   try {
     const tc = await browser.newContext({viewport: {width: 1366, height: 768}, permissions: ['microphone', 'camera']}); tc.setDefaultTimeout(30000);
-    await jitter(tc); const t = await tc.newPage(); watch(t); t.on('dialog', d => d.accept().catch(() => {}));
+    await jitter(tc); const t = await tc.newPage(); watch(t);
+    await t.addInitScript(() => { window.__spoken = []; window.speechSynthesis && (speechSynthesis.speak = u => { window.__spoken.push(u.text); setTimeout(() => u.onend?.(), 10); }); }); t.on('dialog', d => d.accept().catch(() => {}));
     await t.goto(base + '/start/teacher');
     await t.locator('.gl-cur-subject[data-subject=science] li.is-ready button').click(); await t.waitForSelector('#pl-steps li');
     await t.getByRole('button', {name: 'بدء الحصة بهذا الترتيب'}).click(); await t.waitForURL(/\/teach\/live\/[A-Z0-9]{6}$/);
@@ -58,8 +59,16 @@ const assert = require('node:assert/strict'), fs = require('node:fs'), path = re
     // ---- the lesson follows the teacher live: page explanation, interactive explanation ----
     await t.locator('#gl-quick').getByRole('button', {name: '▶ على أجهزة الطلاب'}).click();
     await s.waitForFunction(() => window.__spoken.some(x => x.includes('درسنا اليوم')));
-    results.push('🔊 the prepared explanation of the curriculum page played on the student\'s phone');
+    await t.waitForFunction(() => window.__spoken.some(x => x.includes('درسنا اليوم')), null, {timeout: 5000}); // the teacher hears it with the class
+    results.push('🔊 the prepared explanation of the curriculum page played on the student\'s phone and on the teacher\'s device');
     await t.locator('#gl-steps li[data-type=interactive] button').click(); await s.waitForSelector('#gl-content .cells-scene');
+    // the prepared explanation of the activity starts by itself, and the teacher hears it too
+    await s.waitForFunction(() => document.querySelector('.gl-narrator .gl-caption')?.textContent.length > 10);
+    const first = await s.locator('.gl-narrator .gl-caption').textContent();
+    await t.waitForFunction(x => window.__spoken.includes(x), first);
+    await s.waitForFunction(x => window.__spoken.includes(x), first);
+    results.push('🔊 opening the interactive step started its explanation by itself: heard on the teacher\'s and the student\'s device');
+    await t.locator('#gl-quick [data-narr=stop]').click(); await s.waitForFunction(() => !document.querySelector('.gl-narrator .gl-caption'));
     for (let i = 0; i < 3; i++) await t.locator('#gl-quick').getByRole('button', {name: /تكبير/}).click();
     await s.waitForFunction(() => document.querySelector('#gl-content .cells-scene .c-crumb.is-on text')?.textContent === 'الخلية');
     await t.locator('#gl-quick select[aria-label="الجزء المظلل"]').selectOption('nucleus');

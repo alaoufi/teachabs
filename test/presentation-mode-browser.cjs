@@ -13,7 +13,7 @@ const assert = require('node:assert/strict'), fs = require('node:fs'), path = re
   const results = [], errors = [];
   const watch = p => { p.on('pageerror', e => errors.push(e.message)); p.on('console', m => { if (m.type() === 'error') errors.push(m.text()); }); };
   try {
-    const tc = await browser.newContext({viewport: {width: 1366, height: 768}}); tc.setDefaultTimeout(15000);
+    const tc = await browser.newContext({viewport: {width: 1366, height: 768}}); await tc.addInitScript(() => localStorage.setItem('gl-autostart', '0')); // this test leads the explanation by hand tc.setDefaultTimeout(15000);
     await tc.addCookies([{name: 'ks', value: store.session(store.tour().teacher), url: base}]);
     const t = await tc.newPage(); watch(t); t.on('dialog', d => d.accept().catch(() => {}));
     await t.goto(base + '/teach/plans');

@@ -17,7 +17,7 @@ const current = (state, plan) => plan.steps[state.index];
 /** Live voice settings; older sessions without them start with the teacher silent and student mics allowed. */
 export const voiceOf = state => ({teacher: false, mics: true, camera: false, ...(state.voice || {})});
 
-export const initialNarrator = () => ({visible: true, muted: false, segment: -1, target: 'screen', seq: 0});
+export const initialNarrator = () => ({visible: true, muted: false, segment: -1, target: 'both', seq: 0}); // heard on the students' devices and the display screen
 
 /** Move the shared scene to a narrated segment so everyone sees the sun where the narrator is talking about it. */
 function goSegment(s, step, index) {

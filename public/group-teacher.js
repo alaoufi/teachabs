@@ -13,7 +13,12 @@ const app = document.getElementById('gl-app'), code = app.dataset.code, base = '
 const $ = x => document.getElementById(x);
 const status = (text, bad = false) => { $('gl-status').textContent = text; $('gl-status').classList.toggle('is-error', bad); };
 let plan = null, view = null, busy = false, lastStep = null, contentKey = '';
-let autoAdvance = false, listenHere = false, lastSegmentSeq = 0, advanceTimer = 0, speakTimer = 0;
+// The explanation of the interactive step plays by itself, segment after segment, and the teacher hears it too.
+const remember = (k, d) => { try { const v = localStorage.getItem('gl-' + k); return v === null ? d : v === '1'; } catch { return d; } };
+const keep = (k, v) => { try { localStorage.setItem('gl-' + k, v ? '1' : '0'); } catch {} };
+let autoAdvance = remember('auto', true), listenHere = remember('here', true), lastSegmentSeq = 0, advanceTimer = 0, speakTimer = 0;
+const autoStart = remember('autostart', true), autoStarted = new Set();
+let lastStepId = null; // interactive steps whose explanation already started by itself in this class
 const INKABLE = ['page', 'board', 'interactive', 'questions'];
 
 async function command(body) {
@@ -77,7 +82,7 @@ function renderQuick(s) {
     if (s.narration.mode === 'live') parts.push(el('span', {class: 'gl-live-voice', text: '🎙 اشرح بصوتك'}));
     else parts.push(el('span', {class: 'gl-quick-out', text: s.narration.mode === 'recorded' ? '🔊 شرح الدرس (تسجيلك):' : '🔊 شرح الدرس الصوتي:'}),
       el('button', {type: 'button', class: 'gl-mini', onclick: () => command({op: 'narrate', target: 'screen'})}, '▶ شاشة العرض'),
-      el('button', {type: 'button', class: 'gl-mini', onclick: () => command({op: 'narrate', target: 'students'})}, '▶ على أجهزة الطلاب'),
+      el('button', {type: 'button', class: 'gl-mini', title: 'يُسمع على أجهزة الطلاب وعلى جهازك معهم', onclick: () => { command({op: 'narrate', target: 'students'}); if (listenHere) playNarration(s.narration).catch(() => {}); }}, '▶ على أجهزة الطلاب'),
       el('button', {type: 'button', class: 'gl-mini', onclick: async () => { if (!await playNarration(s.narration)) status('تعذّر تشغيل الشرح هنا.', true); }}, '▶ هنا'),
       el('button', {type: 'button', class: 'quiet gl-mini', onclick: stopNarration}, '■'));
   }
@@ -136,14 +141,14 @@ function renderTeacherNarrator(s) {
   const duration = speakingMs(g.text) + 1600;
   if (listenHere && !n.muted) { stopNarration(); setSpeaking($('gl-board'), true); playNarration(g.audio ? {mode: 'recorded', audio: g.audio} : {mode: 'speech', text: g.text}, {onEnd: () => setSpeaking($('gl-board'), false)}); }
   else if (info) { setSpeaking($('gl-board'), true); speakTimer = setTimeout(() => setSpeaking($('gl-board'), false), duration - 1600); }
-  if (autoAdvance && n.segment < s.narrator.segments.length - 1) advanceTimer = setTimeout(() => command({op: 'narrator', action: 'next'}), duration + 800);
+  if (autoAdvance && n.segment < s.narrator.segments.length - 1) advanceTimer = setTimeout(() => { if (step()?.id === s.id && view.state.narrator.segment === n.segment) command({op: 'narrator', action: 'next'}); }, duration + 800);
 }
 
 function narratorPanel(s) {
   const n = view.state.narrator, segs = s.narrator.segments, on = n.segment >= 0;
   const act = (action, extra = {}) => command({op: 'narrator', action, ...extra});
   return el('section', {class: 'gl-narr-panel', 'aria-label': 'المتحدث'},
-    el('h3', {text: '🎙 المتحدث: جولة مشروحة'}),
+    el('h3', {text: '🔊 الشرح الصوتي للنشاط'}),
     el('div', {class: 'gl-row'},
       el('button', {type: 'button', class: on ? '' : 'btn', onclick: () => act(on ? 'replay' : 'start')}, on ? '↻ أعد المقطع' : '▶ ابدأ الجولة'),
       el('button', {type: 'button', disabled: !on || n.segment === 0, onclick: () => act('prev')}, 'السابق'),
@@ -155,8 +160,8 @@ function narratorPanel(s) {
       el('label', {class: 'gl-field gl-inline'}, 'يُسمع على', el('select', {onchange: e => act('target', {to: e.target.value})},
         [['screen', 'شاشة العرض'], ['students', 'أجهزة الطلاب'], ['both', 'الاثنين']].map(([v, t]) => el('option', {value: v, selected: n.target === v}, t))))),
     el('div', {class: 'gl-row'},
-      el('label', {class: 'gl-check'}, el('input', {type: 'checkbox', checked: autoAdvance, onchange: e => { autoAdvance = e.target.checked; clearTimeout(advanceTimer); }}), 'انتقال تلقائي بعد كل مقطع'),
-      el('label', {class: 'gl-check'}, el('input', {type: 'checkbox', checked: listenHere, onchange: e => { listenHere = e.target.checked; if (!listenHere) stopNarration(); }}), 'أسمعه على جهازي أيضًا')),
+      el('label', {class: 'gl-check'}, el('input', {type: 'checkbox', checked: autoAdvance, onchange: e => { autoAdvance = e.target.checked; keep('auto', autoAdvance); clearTimeout(advanceTimer); }}), 'انتقال تلقائي بعد كل مقطع'),
+      el('label', {class: 'gl-check'}, el('input', {type: 'checkbox', checked: listenHere, onchange: e => { listenHere = e.target.checked; keep('here', listenHere); if (!listenHere) stopNarration(); }}), 'أسمعه على جهازي أيضًا')),
     el('ol', {class: 'gl-segs'}, segs.map((g, i) => el('li', {class: i === n.segment ? 'is-current' : ''},
       el('button', {type: 'button', onclick: () => act('goto', {segment: i})}, el('small', {text: (g.audio ? '🎤 ' : '') + segmentLabel(s.activity, g.values)}), el('span', {text: g.text}))))),
     el('p', {class: 'gl-hint', text: 'يظهر كلام المتحدث مكتوبًا دائمًا. الصوت من تسجيلك إن سجلته، وإلا من صوت الجهاز العربي إن وُجد. يمكنك الشرح بصوتك بدلًا منه بكتم صوته.'}));
@@ -166,11 +171,13 @@ function narratorQuick(s) {
   const n = view.state.narrator, segs = s.narrator.segments, on = n.segment >= 0;
   const act = (action, extra = {}) => command({op: 'narrator', action, ...extra});
   return el('div', {class: 'gl-narr-quick', role: 'group', 'aria-label': 'تحكم سريع بالمتحدث'},
-    el('span', {class: 'gl-narr-label', text: on ? `🎙 المتحدث ${formatNumber(n.segment + 1)}/${formatNumber(segs.length)}` : '🎙 المتحدث'}),
-    el('button', {type: 'button', class: on ? '' : 'btn', 'data-narr': on ? 'replay' : 'start', onclick: () => act(on ? 'replay' : 'start')}, on ? '↻ أعد' : '▶ شغّل الجولة'),
-    on ? el('button', {type: 'button', 'data-narr': 'next', class: 'btn', disabled: n.segment === segs.length - 1, onclick: () => act('next')}, 'المقطع التالي') : null,
+    el('span', {class: 'gl-narr-label', text: on ? `🔊 الشرح ${formatNumber(n.segment + 1)}/${formatNumber(segs.length)}` : '🔊 الشرح'}),
+    el('button', {type: 'button', class: on ? '' : 'btn', 'data-narr': on ? 'replay' : 'start', onclick: () => act(on ? 'replay' : 'start')}, on ? '↻ أعد' : '▶ شغّل الشرح'),
+    on ? el('button', {type: 'button', 'data-narr': 'next', class: 'btn', disabled: n.segment === segs.length - 1, onclick: () => act('next')}, 'التالي') : null,
     el('button', {type: 'button', 'data-narr': 'mute', 'aria-pressed': String(n.muted), onclick: () => { if (!n.muted) stopNarration(); act('mute', {on: !n.muted}); }}, n.muted ? '🔇 مكتوم' : '🔊 كتم'),
     el('button', {type: 'button', 'data-narr': 'visible', 'aria-pressed': String(!n.visible), onclick: () => act('visible', {on: !n.visible})}, n.visible ? 'إخفاء' : 'إظهار'),
+    el('button', {type: 'button', 'data-narr': 'here', 'aria-pressed': String(listenHere), title: 'يُسمع الشرح على جهازك أيضًا', onclick: () => { listenHere = !listenHere; keep('here', listenHere); if (!listenHere) stopNarration(); renderQuick(step()); }}, listenHere ? '🎧 أسمعه هنا' : '🎧 لا أسمعه هنا'),
+    el('button', {type: 'button', 'data-narr': 'auto', 'aria-pressed': String(autoAdvance), title: 'ينتقل من مقطع إلى التالي وحده', onclick: () => { autoAdvance = !autoAdvance; keep('auto', autoAdvance); clearTimeout(advanceTimer); renderQuick(step()); }}, autoAdvance ? '⏩ تلقائي' : '⏸ يدوي'),
     on ? el('button', {type: 'button', class: 'quiet', 'data-narr': 'stop', onclick: () => { clearTimeout(advanceTimer); stopNarration(); act('stop'); }}, '■ إنهاء') : null);
 }
 
@@ -297,6 +304,11 @@ function renderSide() {
 
 function render() {
   if (!plan || !view) return;
+  const cur = step(); // opening an interactive step starts its prepared explanation once
+  if (cur?.id !== lastStepId) { if (lastStepId) { clearTimeout(advanceTimer); clearTimeout(speakTimer); stopNarration(); } lastStepId = cur?.id; } // leaving a step ends its explanation here
+  if (cur?.type === 'interactive' && cur.narrator?.segments.length && view.state.narrator?.segment === -1 && view.state.live && autoStart && !autoStarted.has(cur.id)) {
+    autoStarted.add(cur.id); command({op: 'narrator', action: 'start'});
+  }
   renderSequence(); renderBoard(); renderQuick(step());
   // Re-render the step tools but keep keyboard focus on the same control.
   const active = $('gl-panel').contains(document.activeElement) ? document.activeElement : null;

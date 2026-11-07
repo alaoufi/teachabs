@@ -199,8 +199,9 @@ test('narrator tour: teacher leads segments, moves the scene, mutes and hides; s
   s = run(s, {op: 'shadow', command: {op: 'reveal', show: false}}, {op: 'explore', on: true}, {op: 'narrator', action: 'start'});
   let v = publicView(s, plan, 'a', []);
   assert.equal(v.narrator.segment, 0); assert.equal(v.explore, false); assert.equal(v.activity.reveal, true);
-  assert.equal(v.narrator.speak, false, 'default voice is on the display screen');
+  assert.equal(v.narrator.speak, true, 'by default the explanation is heard on the students\' devices and the display screen');
   assert.equal(publicView(s, plan, null, []).narrator.speak, true);
+  assert.equal(publicView(run(s, {op: 'narrator', action: 'target', to: 'screen'}), plan, 'a', []).narrator.speak, false, 'display screen only');
   s = run(s, {op: 'narrator', action: 'goto', segment: 3});
   assert.equal(publicView(s, plan, 'a', []).activity.values.hour, 12);
   s = run(s, {op: 'narrator', action: 'target', to: 'both'}, {op: 'narrator', action: 'mute', on: true});

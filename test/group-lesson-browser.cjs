@@ -146,6 +146,7 @@ const assert = require('node:assert/strict'), fs = require('node:fs'), path = re
     }
     await shot(t, 'group-teacher-820');
     for (const p of [t, display, ...students]) assert.equal(await p.locator('#gl-status.is-error').count(), 0, 'error status shown: ' + await p.locator('#gl-status').textContent());
+    if (errors.length) console.error('ERRORS', JSON.stringify(errors));
     assert.deepEqual(errors, []);
     console.log(JSON.stringify({ok: true, code, results}, null, 1));
   } finally { await browser.close(); app.closeAllConnections(); await new Promise(r => app.close(r)); store.close(); }
