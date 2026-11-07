@@ -1,8 +1,8 @@
 // Shared rendering for the group lesson board (teacher console, display screen and student seat).
-import {renderOriginalPage} from './group-plan.js';
+import {renderOriginalPage, boardLayout} from './group-plan.js';
 import {formatNumber} from './science-shadow-model.js';
 import {activityOf, tweenValues} from './activities.js';
-import {TOOLS, TEXT_SIZES, smoothPath, cameraTransform, wrapText} from './group-ink.js';
+import {TOOLS, TEXT_SIZES, smoothPath, straightPath, cameraTransform, wrapText} from './group-ink.js';
 
 export const el = (tag, attrs = {}, ...children) => {
   const node = document.createElement(tag);
@@ -73,7 +73,7 @@ export function inkNode(item) {
     return t;
   }
   const tool = TOOLS[item.tool] || TOOLS.pen, path = document.createElementNS(SVG, 'path');
-  path.setAttribute('d', smoothPath(item.points)); path.setAttribute('stroke', item.color);
+  path.setAttribute('d', item.tool === 'rect' ? straightPath(item.points) : smoothPath(item.points)); path.setAttribute('stroke', item.color);
   path.setAttribute('stroke-width', tool.widths[item.size] || tool.widths.m); path.setAttribute('stroke-opacity', tool.opacity);
   path.setAttribute('class', 'gl-stroke gl-' + (item.tool || 'pen'));
   if (item.id) path.dataset.id = item.id;
@@ -117,20 +117,23 @@ export function renderStep(container, content, {teacher = false, revealed = null
     return;
   }
   if (content.type === 'board') {
-    const grid = el('div', {class: 'gl-items'});
-    for (const item of content.items) {
+    // Every card sits in its planned place (or the teacher's live drag); hidden ones appear there, one after another.
+    const layout = boardLayout(content.items);
+    container.append(title);
+    content.items.forEach((item, i) => {
       const hidden = teacher && revealed && !revealed.includes(item.id);
       const card = item.kind === 'image'
         ? el('figure', {class: 'gl-item gl-item-image'}, el('img', {src: item.image, alt: item.caption || 'صورة مجهزة'}), item.caption ? el('figcaption', {text: item.caption}) : null)
         : el('div', {class: 'gl-item gl-item-text', text: item.text});
-      if (hidden) { card.classList.add('is-hidden'); card.append(el('span', {class: 'gl-badge', text: 'مخفي عن الطلاب'})); }
+      if (hidden) { card.classList.add('is-hidden'); card.append(el('span', {class: 'gl-badge', text: 'لم يظهر بعد'})); }
       card.dataset.item = item.id;
-      const at = places?.[item.id];
-      if (at) { card.classList.add('is-placed'); card.style.left = at.x / 10 + '%'; card.style.top = at.y / 6 + '%'; container.append(card); }
-      else grid.append(card);
-    }
-    if (!content.items.length) grid.append(el('p', {class: 'gl-wait-inline', text: 'سيعرض المعلم العناصر هنا.'}));
-    container.append(title, grid);
+      if (teacher) card.prepend(el('b', {class: 'gl-card-num', text: formatNumber(i + 1), 'aria-hidden': 'true'})); // the order the teacher prepared
+      const at = {...(item.place || layout[item.id]), ...(places?.[item.id] || {})};
+      card.classList.add('is-placed', at.w === 'full' ? 'is-full' : 'is-half');
+      card.style.left = at.x / 10 + '%'; card.style.top = at.y / 6 + '%';
+      container.append(card);
+    });
+    if (!content.items.length) container.append(el('p', {class: 'gl-wait-inline', text: 'سيعرض المعلم النصوص هنا.'}));
     return;
   }
   if (content.type === 'questions') {

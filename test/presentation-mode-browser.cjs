@@ -57,8 +57,8 @@ const assert = require('node:assert/strict'), fs = require('node:fs'), path = re
 
     // board step quick buttons, then the questions step and the drawer
     await t.locator('#gl-steps li[data-type=board] button').click();
-    await t.locator('#gl-quick').getByRole('button', {name: /إظهار التالي/}).click();
-    await t.waitForFunction(() => [...document.querySelectorAll('#gl-quick button')].some(b => b.textContent.includes('إظهار التالي (٢/')));
+    await t.locator('#gl-quick').getByRole('button', {name: /النص التالي/}).click();
+    await t.waitForFunction(() => [...document.querySelectorAll('#gl-quick button')].some(b => b.textContent.includes('النص التالي (٢/')));
     onScreen(await layout(), 800);
     await t.locator('#gl-steps li').nth(3).locator('button').click();
     await t.locator('#gl-drawer-btn').click(); await t.locator('#gl-drawer').waitFor();

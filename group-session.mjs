@@ -53,7 +53,8 @@ export function teacherCommand(state, plan, cmd) {
     case 'reveal': {
       need(step.type === 'board', 'هذه الخطوة ليست سبورة مجهزة.');
       const ids = step.items.map(i => i.id), list = new Set(s.revealed[step.id] || []);
-      if (cmd.all === true) ids.forEach(id => list.add(id));
+      if (cmd.next === true) { const id = ids.find(x => !list.has(x)); need(id, 'ظهرت كل النصوص.'); list.add(id); } // the next card, in the prepared order
+      else if (cmd.all === true) ids.forEach(id => list.add(id));
       else if (cmd.all === false) list.clear();
       else { need(ids.includes(cmd.item) && typeof cmd.show === 'boolean', 'عنصر غير موجود.'); cmd.show ? list.add(cmd.item) : list.delete(cmd.item); }
       s.revealed[step.id] = ids.filter(id => list.has(id)); return s;

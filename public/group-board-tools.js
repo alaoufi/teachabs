@@ -1,6 +1,6 @@
 // Board interaction: drawing tools, typed text, eraser, moving text, and smooth zoom/pan (pinch, wheel, hand, buttons).
 // mode 'teacher' sends ink and camera to the class; mode 'viewer' only zooms locally (students) or follows (display).
-import {TOOLS, TEXT_SIZES, BOARD, clampCamera, zoomAround, LIMITS} from './group-ink.js';
+import {TOOLS, TEXT_SIZES, BOARD, clampCamera, zoomAround, LIMITS, shapePoints} from './group-ink.js';
 import {inkNode, applyCamera} from './group-view.js';
 
 export function attachBoardTools({mode, send = () => {}, items = () => [], canInk = () => false, onStatus = () => {}, onNext, onPrev, onUndo}) {
@@ -183,6 +183,11 @@ export function attachBoardTools({mode, send = () => {}, items = () => [], canIn
       e.preventDefault();
       const live = inkNode({kind: 'stroke', tool, size: state.size, color: state.color, points: [point]});
       live.classList.add('is-live'); ink.append(live); gesture = {type: 'draw', tool, points: [point], live};
+    } else if ((tool === 'rect' || tool === 'ellipse') && inking) {
+      // Drag from one corner to the other: a rectangle or a circle around what needs attention.
+      e.preventDefault();
+      const live = inkNode({kind: 'stroke', tool, size: state.size, color: state.color, points: [point, point]});
+      live.classList.add('is-live'); ink.append(live); gesture = {type: 'shape', tool, start: point, points: [point, point], live};
     } else if (tool === 'text' && inking) {
       e.preventDefault();
       if (state.pendingText) { placeText(state.pendingText, point); state.pendingText = null; onStatus('وُضع النص الجاهز.'); }
@@ -216,6 +221,10 @@ export function attachBoardTools({mode, send = () => {}, items = () => [], canIn
       const next = inkNode({kind: 'stroke', tool: gesture.tool, size: state.size, color: state.color, points: gesture.points}); next.classList.add('is-live');
       if (gesture.live.isConnected) gesture.live.replaceWith(next); else ink.append(next);
       gesture.live = next;
+    } else if (gesture.type === 'shape') {
+      gesture.points = shapePoints(gesture.tool, gesture.start, toBoard(e));
+      const next = inkNode({kind: 'stroke', tool: gesture.tool, size: state.size, color: state.color, points: gesture.points}); next.classList.add('is-live');
+      gesture.live.replaceWith(next); gesture.live = next;
     } else if (gesture.type === 'erase') eraseAt(toBoard(e));
     else if (gesture.type === 'move') {
       const p = toBoard(e); gesture.d = [p[0] - gesture.start[0], p[1] - gesture.start[1]];
@@ -237,6 +246,7 @@ export function attachBoardTools({mode, send = () => {}, items = () => [], canIn
     const g = gesture; gesture = null; board.classList.remove('is-panning');
     if (!g) return;
     if (g.type === 'draw') { g.live.classList.remove('is-live'); if (g.points.length >= 2) { g.live.classList.add('is-pending'); send({op: 'stroke', tool: g.tool, size: state.size, color: state.color, points: g.points}); } else g.live.remove(); }
+    if (g.type === 'shape') { g.live.classList.remove('is-live'); const [a, b] = [g.start, g.points[2] || g.start]; if (Math.abs(b[0] - a[0]) > 6 || Math.abs(b[1] - a[1]) > 6) { g.live.classList.add('is-pending'); send({op: 'stroke', tool: g.tool, size: state.size, color: state.color, points: g.points}); } else g.live.remove(); }
     if (g.type === 'move') { g.node?.classList.remove('is-moving'); if (g.d && Math.hypot(...g.d) > 0.5) send({op: 'move', id: g.it.id, dx: Math.round(g.d[0] * 10) / 10, dy: Math.round(g.d[1] * 10) / 10}); }
     if (g.type === 'card') { g.card.classList.remove('is-dragging'); if (g.to) send({op: 'place', item: g.card.dataset.item, x: g.to[0], y: g.to[1]}); }
   }
@@ -265,7 +275,7 @@ export function attachBoardTools({mode, send = () => {}, items = () => [], canIn
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') { e.preventDefault(); onUndo?.(); return; }
       if (e.ctrlKey || e.metaKey || e.altKey) return;
       const key = e.key.toLowerCase();
-      const tools = {v: 'select', h: 'hand', p: 'pen', b: 'brush', m: 'marker', t: 'text', e: 'eraser'};
+      const tools = {v: 'select', h: 'hand', p: 'pen', b: 'brush', m: 'marker', r: 'rect', o: 'ellipse', t: 'text', e: 'eraser'};
       if (tools[key]) { setTool(tools[key]); return; }
       if (key === '+' || key === '=') zoomBy(1.4); else if (key === '-') zoomBy(1 / 1.4); else if (key === '0') setCamera({z: 1, x: 0, y: 0}, {animate: true});
       else if (e.key === 'PageDown' || e.key === 'ArrowLeft') { e.preventDefault(); onNext?.(); }

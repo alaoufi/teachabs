@@ -133,8 +133,8 @@ export function validatePlan(raw) {
         need(item && ID.test(item.id) && !itemIds.has(item.id), 'معرّف عنصر غير صالح.'); itemIds.add(item.id);
         if (item.kind === 'image') { need(validImage(item.image), `الصورة ${j + 1} يجب أن تكون PNG أو JPEG أو WebP صغيرة.`); return {id: item.id, kind: 'image', image: item.image, caption: text(item.caption, 100, 'وصف الصورة', {required: false})}; }
         need(item.kind === 'text', 'نوع عنصر غير معروف.');
-        return {id: item.id, kind: 'text', text: text(item.text, 300, `نص العنصر ${j + 1}`)};
-      });
+        return {id: item.id, kind: 'text', text: text(item.text, 300, `نص العنصر ${j + 1}`), ...placeOf(item.at)};
+      }).map((it, j) => it.kind === 'image' ? {...it, ...placeOf(s.items[j].at)} : it);
     } else if (s.type === 'questions') {
       step.questions = questionList(s.questions, 'أسئلة الحصة');
     } else if (s.type === 'homework') {
@@ -151,12 +151,39 @@ export function validatePlan(raw) {
   return plan;
 }
 
+/** A prepared card's planned place on the board (logical 1000×600): its top-left corner and width. */
+function placeOf(at) {
+  if (at === undefined || at === null) return {};
+  need(typeof at === 'object' && Number.isFinite(at.x) && Number.isFinite(at.y) && at.x >= 0 && at.x <= 1000 && at.y >= 0 && at.y <= 600 && ['half', 'full'].includes(at.w ?? 'half'), 'مكان بطاقة غير صالح.');
+  return {at: {x: Math.round(at.x), y: Math.round(at.y), w: at.w ?? 'half'}};
+}
+export const CARD = {top: 96, gap: 16, side: 20, half: 465, full: 960, font: 26, line: 36, pad: 34, perLine: {half: 30, full: 64}, image: 330};
+/** Rough height of a card, so cards placed automatically never sit on each other. */
+export function cardHeight(item, w = 'half') {
+  if (item.kind === 'image') return CARD.image;
+  const lines = String(item.text || '').split('\n').reduce((n, l) => n + Math.max(1, Math.ceil(l.length / CARD.perLine[w])), 0);
+  return CARD.pad + lines * CARD.line;
+}
+/**
+ * Where every prepared card sits on the board. Cards the teacher placed keep their place; the others fill two
+ * columns from the top right, each under the previous one, so nothing overlaps. Same result on every device.
+ */
+export function boardLayout(items) {
+  const cols = [{x: 1000 - CARD.side - CARD.half, y: CARD.top}, {x: CARD.side, y: CARD.top}], out = {};
+  for (const it of items) {
+    if (it.at) { out[it.id] = {...it.at, h: cardHeight(it, it.at.w)}; continue; }
+    const c = cols[0].y <= cols[1].y ? cols[0] : cols[1], h = cardHeight(it);
+    out[it.id] = {x: c.x, y: c.y, w: 'half', h, auto: true}; c.y += h + CARD.gap;
+  }
+  return out;
+}
+
 /** What a student may receive for a step: no answer keys, only revealed board items. */
 export function publicStep(step, revealed = []) {
   const base = {id: step.id, type: step.type, title: step.title};
   if (step.type === 'page') return {...base, source: step.source, page: step.page, image: step.source === 'upload' ? step.image : undefined};
   if (step.type === 'interactive') return {...base, activity: step.activity};
-  if (step.type === 'board') return {...base, items: step.items.filter(i => revealed.includes(i.id))};
+  if (step.type === 'board') { const at = boardLayout(step.items); return {...base, items: step.items.filter(i => revealed.includes(i.id)).map(i => ({...i, place: at[i.id]}))}; } // each card with its place among all cards
   if (step.type === 'questions' || step.type === 'homework') return {...base, instructions: step.instructions, questions: step.questions.map(({answer, ...q}) => q)};
   return {...base, criteria: step.criteria};
 }

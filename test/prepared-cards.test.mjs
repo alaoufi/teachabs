@@ -1,0 +1,48 @@
+// Stage 050: prepared texts have a place on the board; they appear one after another and never overlap.
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {LESSON_TEMPLATES, validatePlan, boardLayout, publicStep} from '../public/group-plan.js';
+import {initialState, teacherCommand, publicView} from '../group-session.mjs';
+import {shapePoints, TOOLS} from '../public/group-ink.js';
+
+const overlap = (a, b) => a.x < b.x + (b.w === 'full' ? 960 : 465) && b.x < a.x + (a.w === 'full' ? 960 : 465) && a.y < b.y + b.h && b.y < a.y + a.h;
+
+test('automatic places: every lesson template fits its cards on the board without overlap', () => {
+  for (const [name, t] of Object.entries(LESSON_TEMPLATES)) {
+    const plan = validatePlan(t.plan());
+    for (const step of plan.steps.filter(s => s.type === 'board')) {
+      const at = Object.values(boardLayout(step.items));
+      at.forEach((a, i) => at.forEach((b, j) => { if (j > i) assert.ok(!overlap(a, b), `${name}: cards ${i + 1} and ${j + 1} overlap`); }));
+      assert.ok(at.every(a => a.y + a.h <= 600), `${name}: a card leaves the board`);
+    }
+  }
+});
+
+test('planned places are kept and validated; students get each revealed card with its place among all cards', () => {
+  const raw = LESSON_TEMPLATES.cells.plan(), b = raw.steps.find(s => s.type === 'board');
+  b.items[1].at = {x: 30, y: 400, w: 'full'};
+  const plan = validatePlan(raw), step = plan.steps.find(s => s.type === 'board');
+  assert.deepEqual(step.items[1].at, {x: 30, y: 400, w: 'full'});
+  assert.throws(() => validatePlan({...raw, steps: raw.steps.map(s => s.type === 'board' ? {...s, items: [{...s.items[0], at: {x: 5000, y: 1}}]} : s)}), /مكان بطاقة غير صالح/);
+  const all = boardLayout(step.items), pub = publicStep(step, [step.items[2].id]);
+  assert.equal(pub.items.length, 1);
+  assert.deepEqual(pub.items[0].place, all[step.items[2].id], 'same place as on the teacher board, though the earlier cards are still hidden');
+});
+
+test('«النص التالي» shows the cards in the prepared order, then says all are shown', () => {
+  const plan = validatePlan(LESSON_TEMPLATES.cells.plan()), i = plan.steps.findIndex(s => s.type === 'board'), ids = plan.steps[i].items.map(x => x.id);
+  let s = teacherCommand(initialState(plan), plan, {op: 'go', index: i});
+  for (let n = 1; n <= ids.length; n++) { s = teacherCommand(s, plan, {op: 'reveal', next: true}); assert.deepEqual(publicView(s, plan, 'a', []).content?.items?.map(x => x.id) ?? s.revealed[plan.steps[i].id], ids.slice(0, n)); }
+  assert.throws(() => teacherCommand(s, plan, {op: 'reveal', next: true}), /ظهرت كل النصوص/);
+});
+
+test('rectangle and circle tools: outlines made of points, accepted as ink', () => {
+  assert.ok(TOOLS.rect && TOOLS.ellipse);
+  assert.deepEqual(shapePoints('rect', [10, 20], [110, 70]), [[10, 20], [110, 20], [110, 70], [10, 70], [10, 20]]);
+  const o = shapePoints('ellipse', [0, 0], [100, 50]);
+  assert.equal(o.length, 49); assert.deepEqual(o[0], [100, 25]);
+  const plan = validatePlan(LESSON_TEMPLATES.cells.plan()), i = plan.steps.findIndex(s => s.type === 'board');
+  let s = teacherCommand(initialState(plan), plan, {op: 'go', index: i});
+  s = teacherCommand(s, plan, {op: 'stroke', tool: 'ellipse', size: 'm', color: '#173e34', points: o});
+  assert.equal(s.strokes[plan.steps[i].id][0].tool, 'ellipse');
+});

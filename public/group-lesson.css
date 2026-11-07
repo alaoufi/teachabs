@@ -633,3 +633,20 @@ body:has(#planner) .demo{margin-bottom:8px;padding:6px 10px}
  .gl-solo .gl-stage:has(> .gl-narrator) .gl-board{width:min(100cqw - 8px,(100cqh - 130px) * 1.6667)!important}
  .gl-solo .gl-narrator{width:min(100cqw - 8px,(100cqh - 130px) * 1.6667)!important}
 }
+
+/* ===== stage 050: prepared texts in their planned places, one after another; never on top of each other ===== */
+.gl-content .gl-item.is-placed{position:absolute;margin:0;inline-size:465px;font-size:26px;line-height:1.38;padding:14px 18px;box-sizing:border-box;border-width:3px;z-index:1;box-shadow:0 6px 14px #0b1f2a22}
+.gl-content .gl-item.is-placed.is-full{inline-size:960px}
+.gl-content .gl-item.is-placed img{max-height:260px}
+.gl-content .gl-item.is-hidden{opacity:.35;border-style:dashed;box-shadow:none}
+.gl-card-num{position:absolute;top:-14px;inset-inline-start:-12px;inline-size:30px;block-size:30px;border-radius:50%;background:var(--forest,#1f5b4a);color:#fff;font-size:17px;display:grid;place-items:center;font-weight:800}
+.gl-content .gl-item .gl-badge{font-size:15px;top:-12px;inset-inline-end:10px}
+/* planner: a small copy of the board to place the prepared texts */
+.pl-layout{margin-top:8px;border:1px solid var(--line,#d6e5df);border-radius:12px;padding:8px;background:#f7faf8}
+.pl-layout-board{position:relative;inline-size:100%;aspect-ratio:1000/600;background:#fffdf5;border:3px solid #8baa9c;border-radius:12px;overflow:hidden}
+.pl-layout-board .gl-content{position:absolute;inset:auto;left:0;top:0;width:1000px;height:600px;transform-origin:0 0;transform:scale(var(--k,1));padding:22px 26px;display:block}
+.pl-layout-board .gl-step-title{font-size:38px;margin:0}
+.pl-layout-board .gl-item{cursor:grab;touch-action:none;user-select:none}
+.pl-layout-board .gl-item.is-dragging{cursor:grabbing;outline:3px dashed #e8890c;z-index:3}
+.pl-layout-warn{color:#9a3412;font-weight:700}
+.pl-place-row{align-items:center;gap:8px}

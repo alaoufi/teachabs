@@ -1,5 +1,5 @@
 // Planner: the teacher orders the lesson steps before class and prepares content, questions and narration.
-import {STEP_TYPES, NARRATION, SUBJECTS, ORIGINAL_PAGES, LIMITS, renderOriginalPage, validatePlan} from './group-plan.js';
+import {STEP_TYPES, NARRATION, SUBJECTS, ORIGINAL_PAGES, LIMITS, renderOriginalPage, validatePlan, boardLayout} from './group-plan.js';
 import {el} from './group-view.js';
 import {openTextPicker, downloadJSON, safeName} from './text-library.js';
 import {ACTIVITIES, activityOf, segmentLabel} from './activities.js';
@@ -157,13 +157,18 @@ function stepEditor(step) {
       const card = el('div', {class: 'pl-item'}, el('div', {class: 'pl-q-head'}, el('b', {text: `عنصر ${i + 1} · ${item.kind === 'image' ? 'صورة' : 'نص'}`}), smallButtons(step.items, i, `العنصر ${i + 1}`)));
       if (item.kind === 'image') card.append(el('img', {class: 'pl-thumb', src: item.image, alt: ''}), field('وصف قصير (اختياري)', textInput(item.caption, 100, v => { item.caption = v; })));
       else card.append(field('النص', area(item.text, 300, v => { item.text = v; })));
+      card.append(el('div', {class: 'pl-row pl-place-row'},
+        el('label', {class: 'gl-field gl-inline'}, 'العرض', el('select', {'aria-label': `عرض البطاقة ${i + 1}`, onchange: e => { item.at = {...(item.at || pick(boardLayout(step.items)[item.id])), w: e.target.value}; touch(); render(); }},
+          el('option', {value: 'half', selected: (item.at?.w || 'half') === 'half'}, 'نصف السبورة'), el('option', {value: 'full', selected: item.at?.w === 'full'}, 'السبورة كلها'))),
+        item.at ? el('button', {type: 'button', class: 'quiet', onclick: () => { delete item.at; touch(); render(); }}, 'مكان تلقائي') : el('small', {class: 'pl-hint', text: 'مكانها تلقائي — اسحبها في المعاينة لتغييره'})));
       box.append(card);
     });
+    box.append(layoutEditor(step));
     if (step.items.length < LIMITS.items) box.append(el('div', {class: 'pl-row'},
       el('button', {type: 'button', class: 'outline', onclick: () => { step.items.push({id: uid('i'), kind: 'text', text: ''}); touch(); render(); }}, '+ نص مجهز'),
       libraryButton('نص من المكتبة', t => step.items.push({id: uid('i'), kind: 'text', text: t.slice(0, 300)})),
       imagePicker('+ صورة مجهزة', data => { step.items.push({id: uid('i'), kind: 'image', image: data, caption: ''}); })));
-    box.append(el('p', {class: 'pl-hint', text: 'تبدأ العناصر مخفية في الحصة، وتظهرها واحدًا واحدًا أثناء الشرح.'}));
+    box.append(el('p', {class: 'pl-hint', text: 'تبدأ النصوص مخفية في الحصة. بضغطة «النص التالي» يظهر كل نص في مكانه بالترتيب الذي رتبته هنا، ثم تعلّق عليه بالقلم أو الفرشاة أو المستطيل أو الدائرة.'}));
   } else if (step.type === 'questions') {
     box.append(questionsEditor(step), el('p', {class: 'pl-hint', text: 'في الحصة تفتح الإجابة، وترى النتائج وحدك، ثم تختار ما تعرضه للجميع.'}));
   } else if (step.type === 'homework') {
@@ -286,3 +291,43 @@ fetch(location.pathname + '.json').then(r => { if (!r.ok) throw new Error(); ret
     if (draft?.plan) { plan = draft.plan; render(); status('تعذّر الوصول للخادم. فُتحت آخر مسودة من هذا الجهاز؛ نزّلها كملف للاحتفاظ بها.', true); }
     else status('تعذّر تحميل الدرس.', true);
   });
+
+
+// ---- where each prepared text sits on the board: a small copy of the board where the cards are dragged ----
+const pick = p => ({x: p.x, y: p.y, w: p.w});
+function layoutEditor(step) {
+  const layout = boardLayout(step.items);
+  const content = el('div', {class: 'gl-content pl-layout-content'}, el('h2', {class: 'gl-step-title', text: step.title || 'على السبورة'}));
+  step.items.forEach((item, i) => {
+    const at = layout[item.id];
+    const card = item.kind === 'image'
+      ? el('figure', {class: 'gl-item gl-item-image'}, el('img', {src: item.image, alt: ''}))
+      : el('div', {class: 'gl-item gl-item-text', text: item.text || '…'});
+    card.prepend(el('b', {class: 'gl-card-num', text: String(i + 1)}));
+    card.classList.add('is-placed', at.w === 'full' ? 'is-full' : 'is-half');
+    card.style.left = at.x / 10 + '%'; card.style.top = at.y / 6 + '%';
+    card.dataset.item = item.id; card.title = 'اسحب البطاقة إلى مكانها على السبورة';
+    card.addEventListener('pointerdown', e => {
+      e.preventDefault(); card.setPointerCapture(e.pointerId); card.classList.add('is-dragging');
+      const k = board.clientWidth / 1000, start = [e.clientX, e.clientY], from = [at.x, at.y]; let to = from;
+      const move = ev => { to = [Math.max(0, Math.min(1000 - 120, from[0] + (ev.clientX - start[0]) / k)), Math.max(0, Math.min(600 - 40, from[1] + (ev.clientY - start[1]) / k))]; card.style.left = to[0] / 10 + '%'; card.style.top = to[1] / 6 + '%'; };
+      const up = () => { card.removeEventListener('pointermove', move); card.removeEventListener('pointerup', up); card.classList.remove('is-dragging');
+        if (to !== from) { item.at = {x: Math.round(to[0]), y: Math.round(to[1]), w: at.w}; touch(); render(); } };
+      card.addEventListener('pointermove', move); card.addEventListener('pointerup', up);
+    });
+    content.append(card);
+  });
+  const board = el('div', {class: 'pl-layout-board'}, content), warn = el('p', {class: 'pl-hint pl-layout-warn', hidden: true});
+  // The copy has the board's real size, scaled to fit; a warning appears when cards touch or leave the board.
+  new ResizeObserver(() => {
+    board.style.setProperty('--k', board.clientWidth / 1000);
+    const cards = [...content.querySelectorAll('.gl-item')].map(c => ({x: c.offsetLeft, y: c.offsetTop, r: c.offsetLeft + c.offsetWidth, b: c.offsetTop + c.offsetHeight}));
+    const over = cards.some((a, i) => cards.some((b, j) => j > i && a.x < b.r && b.x < a.r && a.y < b.b && b.y < a.b)), out = cards.some(c => c.b > 600 || c.r > 1000);
+    warn.hidden = !(over || out);
+    warn.textContent = over ? '⚠ بطاقتان فوق بعضهما — اسحب إحداهما.' : out ? '⚠ بطاقة تخرج من السبورة — اسحبها أو قصّر نصها أو اجعلها «نصف السبورة».' : '';
+  }).observe(board);
+  return el('section', {class: 'pl-layout', 'aria-label': 'مكان النصوص على السبورة'},
+    el('div', {class: 'pl-row'}, el('b', {text: 'مكان النصوص على السبورة'}),
+      el('button', {type: 'button', class: 'quiet', onclick: () => { step.items.forEach(it => delete it.at); touch(); render(); }}, 'ترتيب تلقائي للكل')),
+    el('p', {class: 'pl-hint', text: 'هكذا تظهر في الحصة. اسحب كل بطاقة إلى مكانها؛ الرقم ترتيب ظهورها.'}), board, warn);
+}

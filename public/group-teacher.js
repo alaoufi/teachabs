@@ -57,7 +57,7 @@ function renderQuick(s) {
     if (s.narrator) parts.push(narratorQuick(s));
   } else if (s.type === 'board') {
     const revealed = view.state.revealed[s.id] || [], next = s.items.find(i => !revealed.includes(i.id));
-    parts.push(el('button', {type: 'button', class: 'btn gl-mini', disabled: !next, onclick: () => command({op: 'reveal', item: next.id, show: true})}, next ? `إظهار التالي (${formatNumber(revealed.length + 1)}/${formatNumber(s.items.length)})` : 'ظهرت كل العناصر'),
+    parts.push(el('button', {type: 'button', class: 'btn gl-mini', disabled: !next, onclick: () => command({op: 'reveal', next: true})}, next ? `▶ النص التالي (${formatNumber(revealed.length + 1)}/${formatNumber(s.items.length)})` : 'ظهرت كل النصوص'),
       el('button', {type: 'button', class: 'gl-mini', onclick: () => command({op: 'reveal', all: true})}, 'الكل'),
       el('button', {type: 'button', class: 'quiet gl-mini', onclick: () => command({op: 'reveal', all: false})}, 'إخفاء الكل'),
       // one tap per card: shown to everyone or hidden again

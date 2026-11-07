@@ -9,8 +9,19 @@ export const COLORS = [
 export const TOOLS = {
   pen: {name: 'قلم', key: 'p', widths: {s: 2.5, m: 4, l: 6}, opacity: 1},
   brush: {name: 'فرشاة', key: 'b', widths: {s: 7, m: 11, l: 16}, opacity: 0.92},
-  marker: {name: 'قلم تظليل', key: 'm', widths: {s: 14, m: 22, l: 32}, opacity: 0.35}
+  marker: {name: 'قلم تظليل', key: 'm', widths: {s: 14, m: 22, l: 32}, opacity: 0.35},
+  rect: {name: 'مستطيل', key: 'r', widths: {s: 3, m: 5, l: 8}, opacity: 1, shape: true},
+  ellipse: {name: 'دائرة', key: 'o', widths: {s: 3, m: 5, l: 8}, opacity: 1, shape: true}
 };
+/** A rectangle or an ellipse dragged from one corner to the other, as the points of its outline. */
+export function shapePoints(tool, [x0, y0], [x1, y1]) {
+  const r = v => Math.round(v * 10) / 10;
+  if (tool === 'rect') return [[x0, y0], [x1, y0], [x1, y1], [x0, y1], [x0, y0]].map(([x, y]) => [r(x), r(y)]);
+  const cx = (x0 + x1) / 2, cy = (y0 + y1) / 2, rx = Math.abs(x1 - x0) / 2, ry = Math.abs(y1 - y0) / 2, n = 48;
+  return Array.from({length: n + 1}, (_, i) => [r(cx + rx * Math.cos(2 * Math.PI * i / n)), r(cy + ry * Math.sin(2 * Math.PI * i / n))]);
+}
+/** Straight segments (for rectangles). */
+export function straightPath(points) { return points.map((p, i) => `${i ? 'L' : 'M'}${p[0]} ${p[1]}`).join(' '); }
 export const TEXT_SIZES = {s: 22, m: 32, l: 46};
 export const SIZE_NAMES = {s: 'صغير', m: 'متوسط', l: 'كبير'};
 export const LIMITS = {items: 300, points: 500, text: 600, zoom: 4};
