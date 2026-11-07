@@ -56,17 +56,27 @@ export function plannerPage(id, title) {
 
 const zoomBar = (follow = false) => `<div class="gl-zoom" role="group" aria-label="تكبير السبورة"><button type="button" data-zoom="in" aria-label="تكبير" title="تكبير (+)">＋</button><button type="button" data-zoom="out" aria-label="تصغير" title="تصغير (−)">－</button><button type="button" data-zoom="fit" title="ملاءمة (0)">ملاءمة</button>${follow ? '<button type="button" data-zoom="follow" hidden>اتبع المعلم</button><button type="button" data-zoom="max" aria-pressed="false" title="السبورة بملء الشاشة">⛶</button>' : ''}</div>`;
 // Students get the zoom controls under the board so they never cover the lesson on a small phone.
-const boardShell = (extra = '', follow = false) => `<div class="gl-stage"><div class="gl-board" id="gl-board" aria-live="polite"><div class="gl-camera" id="gl-camera"><div class="gl-content" id="gl-content"></div><svg class="gl-ink" id="gl-ink" viewBox="0 0 1000 600" preserveAspectRatio="none" aria-hidden="true"></svg></div>${follow ? '' : zoomBar(false)}</div>${follow ? zoomBar(true) : ''}${extra}</div>`;
+const boardShell = (extra = '', follow = false) => `<div class="gl-stage"><div class="gl-board" id="gl-board" aria-live="polite"><div class="gl-camera" id="gl-camera"><div class="gl-content" id="gl-content"></div><svg class="gl-ink" id="gl-ink" viewBox="0 0 1000 600" preserveAspectRatio="none" aria-hidden="true"></svg></div></div>${zoomBar(follow)}${extra}</div>`; // zoom sits under the board, never on it
 
 export function teacherPage(code, title, base) {
   // Presentation mode: one screen, no page scroll. The raised board fills the middle; lesson controls sit above it,
   // drawing tools below it, and students, results, homework and evaluation open in a side drawer.
   const join = `${base}/join?code=${code}`;
+  // Tools grouped like a drawing app: one button per family that opens its family (pens, shapes, colour, size, more),
+  // so the board keeps the space. Everything here is the teacher's alone; students never see these menus.
+  const toolBtn = ([tool, icon, label, key]) => `<button type="button" class="gl-tool" data-tool="${tool}" aria-pressed="${tool === 'select' ? 'true' : 'false'}" title="${label} (${key})"><span aria-hidden="true">${icon}</span><span>${label}</span></button>`;
+  const byTool = Object.fromEntries(TOOL_BUTTONS.map(b => [b[0], b]));
+  const fly = (id, icon, label, inner, cls = '') => `<div class="gl-fly ${cls}" data-fly="${id}"><button type="button" class="gl-fly-btn" aria-expanded="false" aria-haspopup="true" title="${label}"><span class="gl-fly-icon" aria-hidden="true">${icon}</span><span class="gl-fly-label">${label}</span><b aria-hidden="true">▾</b></button><div class="gl-fly-menu" role="group" aria-label="${label}" hidden>${inner}</div></div>`;
   const tools = `<div class="gl-tools" role="toolbar" aria-label="أدوات السبورة">
-     <div class="gl-toolgroup" role="group" aria-label="الأداة">${TOOL_BUTTONS.map(([tool, icon, label, key]) => `<button type="button" class="gl-tool" data-tool="${tool}" aria-pressed="${tool === 'select' ? 'true' : 'false'}" title="${label} (${key})"><span aria-hidden="true">${icon}</span><span>${label}</span></button>`).join('')}</div>
-     <div class="gl-toolgroup gl-colors" role="group" aria-label="اللون">${COLORS.map((c, i) => `<button type="button" class="gl-color" data-color="${c.value}" aria-label="${c.name}" title="${c.name}" aria-pressed="${i ? 'false' : 'true'}"><i data-swatch="${i}"></i></button>`).join('')}</div>
-     <div class="gl-toolgroup" role="group" aria-label="الحجم">${Object.entries(SIZE_NAMES).map(([k, n]) => `<button type="button" class="gl-size" data-size="${k}" aria-pressed="${k === 'm' ? 'true' : 'false'}" title="حجم ${n}"><i data-dot="${k}"></i><span>${n}</span></button>`).join('')}</div>
-     <div class="gl-toolgroup" role="group" aria-label="إجراءات"><button type="button" id="gl-library" title="اختر نصًا توضيحيًا وعدّله ثم ضعه على السبورة">📚 نصوص</button><button type="button" id="gl-undo" title="تراجع (Ctrl+Z)">↶ تراجع</button><button type="button" id="gl-clear" title="مسح كتابة الخطوة">🗑 مسح</button></div>
+     <div class="gl-toolgroup gl-main-tools" role="group" aria-label="الأداة">${['select', 'hand'].map(t => toolBtn(byTool[t])).join('')}
+      ${fly('pens', '✎', 'أقلام', ['pen', 'brush', 'marker', 'text'].map(t => toolBtn(byTool[t])).join(''))}
+      ${fly('shapes', '◯', 'أشكال', ['rect', 'ellipse', 'line', 'arrow'].map(t => toolBtn(byTool[t])).join(''))}
+      ${['laser', 'eraser'].map(t => toolBtn(byTool[t])).join('')}</div>
+     <div class="gl-toolgroup gl-look" role="group" aria-label="اللون والحجم">
+      ${fly('colors', '<i class="gl-current-color"></i>', 'اللون', COLORS.map((c, i) => `<button type="button" class="gl-color" data-color="${c.value}" aria-label="${c.name}" title="${c.name}" aria-pressed="${i ? 'false' : 'true'}"><i data-swatch="${i}"></i></button>`).join(''), 'gl-colors')}
+      ${fly('sizes', '<i class="gl-current-size" data-dot="m"></i>', 'الحجم', Object.entries(SIZE_NAMES).map(([k, n]) => `<button type="button" class="gl-size" data-size="${k}" aria-pressed="${k === 'm' ? 'true' : 'false'}" title="حجم ${n}"><i data-dot="${k}"></i><span>${n}</span></button>`).join(''))}</div>
+     <div class="gl-toolgroup" role="group" aria-label="إجراءات"><button type="button" id="gl-undo" title="تراجع (Ctrl+Z)">↶ تراجع</button>
+      ${fly('more', '⋯', 'المزيد', '<button type="button" id="gl-library" title="اختر نصًا توضيحيًا وعدّله ثم ضعه على السبورة">📚 نصوص</button><button type="button" id="gl-clear" title="مسح كتابة الخطوة">🗑 مسح</button>')}</div>
     </div>`;
   return `${css}<section class="gl-wrap gl-teacher gl-present" dir="rtl" id="gl-app" data-code="${e(code)}" data-role="teacher">
   <header class="gl-bar gl-bar-top">

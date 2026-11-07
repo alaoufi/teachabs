@@ -2,6 +2,7 @@
 // aloud by the app (window.App.speak, the phone's Arabic voice). Simulated here: the teacher and the student hear the
 // interactive explanation and the curriculum page explanation through the app.
 const {chromium} = require(process.env.PLAYWRIGHT_MODULE || 'playwright');
+const {pick, openStepMenus} = require('./ui-helpers.cjs');
 const assert = require('node:assert/strict');
 (async () => {
   const {openStore} = await import('../store.mjs'), {createApp} = await import('../server.mjs');
@@ -14,7 +15,7 @@ const assert = require('node:assert/strict');
   const appBridge = () => { window.__said = []; delete window.speechSynthesis;
     window.App = {voice: () => 'ar', stopSpeaking() {}, speak(text, id) { window.__said.push(text); setTimeout(() => window.__appSpeechDone?.(id), 20); return true; }}; };
   try {
-    const tc = await browser.newContext({viewport: {width: 1366, height: 768}}); tc.setDefaultTimeout(15000); await tc.addInitScript(appBridge);
+    const tc = await browser.newContext({viewport: {width: 1366, height: 768}}); await openStepMenus(tc); tc.setDefaultTimeout(15000); await tc.addInitScript(appBridge);
     const t = await tc.newPage(); t.on('pageerror', e => errors.push(e.message)); t.on('dialog', d => d.accept().catch(() => {}));
     await t.goto(base + '/start/teacher'); await t.locator('.gl-cur-subject[data-subject=science] li.is-ready button').click(); await t.waitForSelector('#pl-steps li');
     await t.getByRole('button', {name: 'بدء الحصة بهذا الترتيب'}).click(); await t.waitForURL(/\/teach\/live\/[A-Z0-9]{6}$/);
@@ -32,7 +33,7 @@ const assert = require('node:assert/strict');
     await t.waitForFunction(() => document.querySelector('#gl-quick .gl-narr-label')?.textContent.includes('٢'), null, {timeout: 20000});
     results.push('interactive step: the narrator spoke through the app on both phones and moved on to the next segment by itself');
     // a phone without an Arabic voice: «اختبار الصوت» explains why it is silent and what to do
-    const nc = await browser.newContext({viewport: {width: 412, height: 860}, isMobile: true, hasTouch: true}); await nc.addCookies(await tc.cookies());
+    const nc = await browser.newContext({viewport: {width: 412, height: 860}, isMobile: true, hasTouch: true}); await openStepMenus(nc); await nc.addCookies(await tc.cookies());
     await nc.addInitScript(() => { delete window.speechSynthesis; window.App = {voice: () => 'none', stopSpeaking() {}, speak: () => false}; });
     const n = await nc.newPage(); n.on('pageerror', e => errors.push(e.message)); await n.goto(t.url()); await n.waitForSelector('#gl-steps li.is-current');
     await n.locator('#gl-test-voice').click(); await n.waitForSelector('#gl-voice-help:not([hidden])');

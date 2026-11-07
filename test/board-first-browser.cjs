@@ -2,6 +2,7 @@
 // «كتابة» and ✕ (asks first); live voice between teacher and student (fake microphones); the teacher decides who is
 // heard; the teacher's board stays fixed on a phone.
 const {chromium} = require(process.env.PLAYWRIGHT_MODULE || 'playwright');
+const {pick, openStepMenus} = require('./ui-helpers.cjs');
 const assert = require('node:assert/strict'), fs = require('node:fs'), path = require('node:path');
 (async () => {
   const {openStore} = await import('../store.mjs'), {createApp} = await import('../server.mjs');
@@ -15,7 +16,7 @@ const assert = require('node:assert/strict'), fs = require('node:fs'), path = re
   const watch = p => { p.on('pageerror', e => errors.push(e.message)); p.on('console', m => { if (m.type() === 'error' && !/Failed to load resource/.test(m.text())) errors.push(m.text()); }); };
   const until = async (p, fn, arg, ms = 15000) => { const end = Date.now() + ms; for (;;) { const v = await p.evaluate(fn, arg); if (v) return v; if (Date.now() > end) throw new Error('timed out: ' + fn); await p.waitForTimeout(250); } };
   try {
-    const tc = await browser.newContext({viewport: {width: 1366, height: 768}, permissions: ['microphone']}); tc.setDefaultTimeout(15000);
+    const tc = await browser.newContext({viewport: {width: 1366, height: 768}, permissions: ['microphone']}); await openStepMenus(tc); tc.setDefaultTimeout(15000);
     await tc.addCookies([{name: 'ks', value: store.session(store.tour().teacher), url: base}]);
     const t = await tc.newPage(); watch(t); t.on('dialog', d => d.accept().catch(() => {}));
     await t.goto(base + '/teach/plans');
@@ -81,7 +82,7 @@ const assert = require('node:assert/strict'), fs = require('node:fs'), path = re
 
     // ---- teacher on a phone: the board stays put ----
     await t.locator('#gl-live').click();
-    const pc = await browser.newContext({viewport: {width: 390, height: 844}, isMobile: true, hasTouch: true}); pc.setDefaultTimeout(15000);
+    const pc = await browser.newContext({viewport: {width: 390, height: 844}, isMobile: true, hasTouch: true}); await openStepMenus(pc); pc.setDefaultTimeout(15000);
     await pc.addCookies(await tc.cookies()); // the same teacher who owns the class
     const tp = await pc.newPage(); watch(tp); await tp.goto(base + `/teach/live/${code}`); await tp.waitForSelector('#gl-steps li.is-current', {state: 'attached'}).catch(async e => { await tp.screenshot({path: path.join(out, 'phone-debug.png')}); throw new Error('phone: ' + JSON.stringify(errors) + ' ' + await tp.locator('#gl-status').textContent()); });
     await tp.waitForTimeout(500); if (process.env.DEBUG_PHONE) console.log('errors', errors);

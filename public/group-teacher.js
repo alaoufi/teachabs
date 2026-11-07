@@ -51,44 +51,58 @@ function renderSequence() {
 }
 
 /** The most-used buttons of the current step sit in the bar above the board, so the teacher never scrolls. */
+/** A step's controls fold into menus the teacher opens when needed (students never see them); open stays open. */
+const qOpen = id => { try { return localStorage.getItem('gl-qopen') === 'all' || localStorage.getItem('gl-q-' + id) === '1'; } catch { return false; } };
+function qMenu(id, label, children) {
+  const items = children.filter(Boolean); if (!items.length) return null;
+  const open = qOpen(id), menu = el('span', {class: 'gl-qmenu', role: 'group', 'aria-label': label, hidden: !open}, ...items);
+  const btn = el('button', {type: 'button', class: 'gl-mini gl-qbtn', 'aria-expanded': String(open), 'data-q': id, onclick: () => {
+    const now = menu.hidden; menu.hidden = !now; btn.setAttribute('aria-expanded', String(now)); try { localStorage.setItem('gl-q-' + id, now ? '1' : '0'); } catch {}
+  }}, label + ' ▾');
+  return el('span', {class: 'gl-qfly' + (open ? ' is-open' : '')}, btn, menu);
+}
 function renderQuick(s) {
   const q = $('gl-quick'), parts = [];
   if (s.type === 'interactive') {
     const a = activityOf(s.activity), act = view.act, v = act.values;
     const set = values => command({op: 'activity', action: 'set', values});
-    for (const p of quickParams(a)) parts.push(...paramControl(p, v, set, true));
-    parts.push(el('button', {type: 'button', class: 'gl-mini' + (act.reveal ? '' : ' is-warn'), 'aria-pressed': String(!act.reveal), onclick: () => command({op: 'activity', action: 'reveal', show: !act.reveal})}, act.reveal ? '🙈 ' + a.hideLabel.replace(/ ل\S+ الطلاب$/, '') : '👁 ' + a.revealLabel));
+    const controls = [];
+    for (const p of quickParams(a)) controls.push(...paramControl(p, v, set, true));
+    controls.push(el('button', {type: 'button', class: 'gl-mini' + (act.reveal ? '' : ' is-warn'), 'aria-pressed': String(!act.reveal), onclick: () => command({op: 'activity', action: 'reveal', show: !act.reveal})}, act.reveal ? '🙈 ' + a.hideLabel.replace(/ ل\S+ الطلاب$/, '') : '👁 ' + a.revealLabel));
+    parts.push(qMenu('activity', '🔬 تحكم النشاط', controls));
     if (s.narrator) parts.push(narratorQuick(s));
   } else if (s.type === 'board') {
     const revealed = view.state.revealed[s.id] || [], next = s.items.find(i => !revealed.includes(i.id));
     parts.push(el('button', {type: 'button', class: 'btn gl-mini', disabled: !next, onclick: () => command({op: 'reveal', next: true})}, next ? `▶ النص التالي (${formatNumber(revealed.length + 1)}/${formatNumber(s.items.length)})` : 'ظهرت كل النصوص'),
-      el('button', {type: 'button', class: 'gl-mini', onclick: () => command({op: 'reveal', all: true})}, 'الكل'),
-      el('button', {type: 'button', class: 'quiet gl-mini', onclick: () => command({op: 'reveal', all: false})}, 'إخفاء الكل'),
-      // one tap per card: shown to everyone or hidden again
-      el('span', {class: 'gl-seg-group gl-card-chips', role: 'group', 'aria-label': 'البطاقات'}, ...s.items.map((it, i) => el('button', {type: 'button', class: 'gl-mini gl-card-chip', 'aria-pressed': String(revealed.includes(it.id)),
-        title: (it.text || it.caption || 'صورة').slice(0, 80), onclick: () => command({op: 'reveal', item: it.id, show: !revealed.includes(it.id)})}, formatNumber(i + 1)))));
+      qMenu('cards', '🗂 البطاقات', [
+        el('button', {type: 'button', class: 'gl-mini', onclick: () => command({op: 'reveal', all: true})}, 'الكل'),
+        el('button', {type: 'button', class: 'quiet gl-mini', onclick: () => command({op: 'reveal', all: false})}, 'إخفاء الكل'),
+        // one tap per card: shown to everyone or hidden again
+        el('span', {class: 'gl-seg-group gl-card-chips', role: 'group', 'aria-label': 'البطاقات'}, ...s.items.map((it, i) => el('button', {type: 'button', class: 'gl-mini gl-card-chip', 'aria-pressed': String(revealed.includes(it.id)),
+          title: (it.text || it.caption || 'صورة').slice(0, 80), onclick: () => command({op: 'reveal', item: it.id, show: !revealed.includes(it.id)})}, formatNumber(i + 1))))]));
   } else if (s.type === 'questions') {
     const open = Boolean(view.state.open[s.id]), answered = Object.keys(view.results[s.id].answers).length, d = view.state.display[s.id];
     const firstChoice = s.questions.find(x => x.kind === 'choice');
     parts.push(el('button', {type: 'button', class: (open ? 'is-warn' : 'btn') + ' gl-mini', onclick: () => command({op: 'open', open: !open})}, open ? '⏹ إيقاف الإجابة' : '▶ افتح الإجابة'),
       el('span', {class: 'gl-quick-out', text: `أجاب ${formatNumber(answered)} من ${formatNumber(view.students.length)}`}),
-      firstChoice ? el('button', {type: 'button', class: 'gl-mini', 'aria-pressed': String(d?.mode === 'summary'), onclick: () => command({op: 'display', mode: 'summary', question: (d?.question && s.questions.find(x => x.id === d.question && x.kind === 'choice') ? d.question : firstChoice.id)})}, '📊 اعرض النتائج') : null,
-      d ? el('button', {type: 'button', class: 'quiet gl-mini', onclick: () => command({op: 'display', mode: 'none'})}, 'إخفاء العرض') : null,
-      el('button', {type: 'button', class: 'gl-mini', onclick: () => openDrawer(true)}, 'كل الإجابات'));
+      qMenu('results', '📊 النتائج', [
+        firstChoice ? el('button', {type: 'button', class: 'gl-mini', 'aria-pressed': String(d?.mode === 'summary'), onclick: () => command({op: 'display', mode: 'summary', question: (d?.question && s.questions.find(x => x.id === d.question && x.kind === 'choice') ? d.question : firstChoice.id)})}, '📊 اعرض النتائج') : null,
+        d ? el('button', {type: 'button', class: 'quiet gl-mini', onclick: () => command({op: 'display', mode: 'none'})}, 'إخفاء العرض') : null,
+        el('button', {type: 'button', class: 'gl-mini', onclick: () => openDrawer(true)}, 'كل الإجابات')]));
   } else if (s.type === 'homework') {
     parts.push(homeworkButtons());
   } else if (s.type === 'evaluation') {
-    parts.push(el('button', {type: 'button', class: 'gl-mini', onclick: () => openDrawer(true)}, 'قيّم الطلاب'),
-      el('button', {type: 'button', class: (view.state.evaluationPublished ? 'is-warn' : 'btn') + ' gl-mini', onclick: () => command({op: 'publish-evaluation', on: !view.state.evaluationPublished})}, view.state.evaluationPublished ? 'إخفاء التقييم' : 'نشر التقييم'));
+    parts.push(qMenu('evaluation', '✅ التقييم', [el('button', {type: 'button', class: 'gl-mini', onclick: () => openDrawer(true)}, 'قيّم الطلاب'),
+      el('button', {type: 'button', class: (view.state.evaluationPublished ? 'is-warn' : 'btn') + ' gl-mini', onclick: () => command({op: 'publish-evaluation', on: !view.state.evaluationPublished})}, view.state.evaluationPublished ? 'إخفاء التقييم' : 'نشر التقييم')]));
   }
   if (s.type === 'page') parts.push(el('button', {type: 'button', class: 'btn gl-mini', title: 'صوّر صفحة الكتاب أو اختر صورتها فتظهر على السبورة للجميع', onclick: () => $('gl-page-file').click()}, '📷 صفحة الكتاب'));
   if (s.type !== 'interactive' || !s.narrator) {
     if (s.narration.mode === 'live') parts.push(el('span', {class: 'gl-live-voice', text: '🎙 اشرح بصوتك'}));
-    else parts.push(el('span', {class: 'gl-quick-out', text: s.narration.mode === 'recorded' ? '🔊 شرح الدرس (تسجيلك):' : '🔊 شرح الدرس الصوتي:'}),
+    else parts.push(qMenu('narration', s.narration.mode === 'recorded' ? '🔊 الشرح (تسجيلك)' : '🔊 الشرح الصوتي', [
       el('button', {type: 'button', class: 'gl-mini', onclick: () => command({op: 'narrate', target: 'screen'})}, '▶ شاشة العرض'),
       el('button', {type: 'button', class: 'gl-mini', title: 'يُسمع على أجهزة الطلاب وعلى جهازك معهم', onclick: () => { command({op: 'narrate', target: 'students'}); if (listenHere) playNarration(spoken(s)).catch(() => {}); }}, '▶ على أجهزة الطلاب'),
       el('button', {type: 'button', class: 'gl-mini', onclick: async () => { if (!await playNarration(spoken(s))) status('تعذّر تشغيل الشرح هنا.', true); }}, '▶ هنا'),
-      el('button', {type: 'button', class: 'quiet gl-mini', onclick: stopNarration}, '■'), s.narration.mode === 'speech' ? speakerButton() : null);
+      el('button', {type: 'button', class: 'quiet gl-mini', onclick: stopNarration}, '■'), s.narration.mode === 'speech' ? speakerButton() : null]));
   }
   // Keep the focused button focused across live updates.
   const active = q.contains(document.activeElement) ? document.activeElement.textContent : null;
@@ -179,11 +193,12 @@ function narratorQuick(s) {
     el('button', {type: 'button', class: on ? '' : 'btn', 'data-narr': on ? 'replay' : 'start', onclick: () => act(on ? 'replay' : 'start')}, on ? '↻ أعد' : '▶ شغّل الشرح'),
     on ? el('button', {type: 'button', 'data-narr': 'next', class: 'btn', disabled: n.segment === segs.length - 1, onclick: () => act('next')}, 'التالي') : null,
     el('button', {type: 'button', 'data-narr': 'mute', 'aria-pressed': String(n.muted), onclick: () => { if (!n.muted) stopNarration(); act('mute', {on: !n.muted}); }}, n.muted ? '🔇 مكتوم' : '🔊 كتم'),
+    qMenu('narrator', '⚙️', [
     el('button', {type: 'button', 'data-narr': 'visible', 'aria-pressed': String(!n.visible), onclick: () => act('visible', {on: !n.visible})}, n.visible ? 'إخفاء' : 'إظهار'),
     speakerButton(),
     el('button', {type: 'button', 'data-narr': 'here', 'aria-pressed': String(listenHere), title: 'يُسمع الشرح على جهازك أيضًا', onclick: () => { listenHere = !listenHere; keep('here', listenHere); if (!listenHere) stopNarration(); renderQuick(step()); }}, listenHere ? '🎧 أسمعه هنا' : '🎧 لا أسمعه هنا'),
     el('button', {type: 'button', 'data-narr': 'auto', 'aria-pressed': String(autoAdvance), title: 'ينتقل من مقطع إلى التالي وحده', onclick: () => { autoAdvance = !autoAdvance; keep('auto', autoAdvance); clearTimeout(advanceTimer); renderQuick(step()); }}, autoAdvance ? '⏩ تلقائي' : '⏸ يدوي'),
-    on ? el('button', {type: 'button', class: 'quiet', 'data-narr': 'stop', onclick: () => { clearTimeout(advanceTimer); stopNarration(); act('stop'); }}, '■ إنهاء') : null);
+    on ? el('button', {type: 'button', class: 'quiet', 'data-narr': 'stop', onclick: () => { clearTimeout(advanceTimer); stopNarration(); act('stop'); }}, '■ إنهاء') : null]));
 }
 
 
@@ -474,3 +489,24 @@ $('gl-test-voice').addEventListener('click', async () => {
   voiceHelp(problem);
 });
 $('gl-voice-help-close').addEventListener('click', () => { $('gl-voice-help').hidden = true; });
+
+// ---- tool families (pens, shapes, colour, size, more): one button each opens its family; picking closes it ----
+function closeFlies(except) { for (const f of document.querySelectorAll('.gl-fly')) if (f !== except) { f.querySelector('.gl-fly-menu').hidden = true; f.querySelector('.gl-fly-btn').setAttribute('aria-expanded', 'false'); f.classList.remove('is-open'); } }
+for (const f of document.querySelectorAll('.gl-fly')) {
+  const btn = f.querySelector('.gl-fly-btn'), menu = f.querySelector('.gl-fly-menu');
+  btn.addEventListener('click', e => { e.stopPropagation(); const open = menu.hidden; closeFlies(f); menu.hidden = !open; btn.setAttribute('aria-expanded', String(open)); f.classList.toggle('is-open', open); });
+  menu.addEventListener('click', e => { if (e.target.closest('button')) closeFlies(); }); // the tool's own click has already run
+}
+document.addEventListener('pointerdown', e => { if (!e.target.closest('.gl-fly')) closeFlies(); });
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeFlies(); });
+/** The family button shows what is chosen inside it: the pen or shape in use, the colour, the size. */
+function syncFlies() {
+  for (const f of document.querySelectorAll('.gl-fly[data-fly=pens], .gl-fly[data-fly=shapes]')) {
+    const on = f.querySelector('.gl-tool[aria-pressed=true]'), b = f.querySelector('.gl-fly-btn'); if (b.getAttribute('aria-pressed') !== String(Boolean(on))) b.setAttribute('aria-pressed', String(Boolean(on))); // only on change: the watcher below sees this too
+    if (on) { f.querySelector('.gl-fly-icon').textContent = on.firstElementChild.textContent; f.querySelector('.gl-fly-label').textContent = on.lastElementChild.textContent; }
+  }
+  const c = document.querySelector('.gl-color[aria-pressed=true]'); if (c) document.querySelector('.gl-current-color').style.background = c.dataset.color;
+  const z = document.querySelector('.gl-size[aria-pressed=true]'); if (z) document.querySelector('.gl-current-size').dataset.dot = z.dataset.size;
+}
+new MutationObserver(syncFlies).observe(document.querySelector('.gl-tools'), {subtree: true, attributes: true, attributeFilter: ['aria-pressed']});
+syncFlies();

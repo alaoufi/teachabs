@@ -2,6 +2,7 @@
 // of the board); in class «النص التالي» shows them one by one in their places, never on top of each other, and the
 // teacher circles or frames them; the student sees the same.
 const {chromium} = require(process.env.PLAYWRIGHT_MODULE || 'playwright');
+const {pick, openStepMenus} = require('./ui-helpers.cjs');
 const assert = require('node:assert/strict'), fs = require('node:fs'), path = require('node:path');
 (async () => {
   const {openStore} = await import('../store.mjs'), {createApp} = await import('../server.mjs');
@@ -15,7 +16,7 @@ const assert = require('node:assert/strict'), fs = require('node:fs'), path = re
   const rects = p => p.evaluate(() => [...document.querySelectorAll('#gl-content .gl-item')].map(c => { const r = c.getBoundingClientRect(); return {id: c.dataset.item, x: r.left, y: r.top, r: r.right, b: r.bottom}; }));
   const overlaps = list => list.some((a, i) => list.some((b, j) => j > i && a.x < b.r - 1 && b.x < a.r - 1 && a.y < b.b - 1 && b.y < a.b - 1));
   try {
-    const tc = await browser.newContext({viewport: {width: 1366, height: 768}}); tc.setDefaultTimeout(15000);
+    const tc = await browser.newContext({viewport: {width: 1366, height: 768}}); await openStepMenus(tc); tc.setDefaultTimeout(15000);
     await tc.addInitScript(() => localStorage.setItem('gl-autostart', '0'));
     const t = await tc.newPage(); watch(t); t.on('dialog', d => d.accept().catch(() => {}));
     await t.goto(base + '/start/teacher');
@@ -50,7 +51,7 @@ const assert = require('node:assert/strict'), fs = require('node:fs'), path = re
     results.push('«النص التالي» showed the four texts one after another in their places; none on top of another (teacher and student)');
 
     for (const [tool, n] of [['ellipse', 0], ['rect', 3]]) {
-      await t.locator(`.gl-tool[data-tool=${tool}]`).click();
+      await pick(t, `.gl-tool[data-tool=${tool}]`);
       const b = await t.locator('#gl-content .gl-item').nth(n).boundingBox();
       await t.mouse.move(b.x - 6, b.y - 6); await t.mouse.down(); await t.mouse.move(b.x + b.width + 6, b.y + b.height + 6, {steps: 6}); await t.mouse.up();
     }

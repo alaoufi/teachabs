@@ -1,6 +1,7 @@
 // Optional browser verification of the group board tools: prepared texts, keyboard text, pen/brush/marker,
 // sizes and colours, moving text, eraser, undo, smooth zoom/pan that students follow, and keyboard shortcuts.
 const {chromium} = require(process.env.PLAYWRIGHT_MODULE || 'playwright');
+const {pick, openStepMenus} = require('./ui-helpers.cjs');
 const assert = require('node:assert/strict'), fs = require('node:fs'), path = require('node:path');
 (async () => {
   const {openStore} = await import('../store.mjs'), {createApp} = await import('../server.mjs');
@@ -12,7 +13,7 @@ const assert = require('node:assert/strict'), fs = require('node:fs'), path = re
   const results = [], errors = [];
   const watch = p => { p.on('pageerror', e => errors.push(e.message)); p.on('console', m => { if (m.type() === 'error') errors.push(m.text()); }); };
   try {
-    const tc = await browser.newContext({viewport: {width: 1700, height: 1000}}); await tc.addInitScript(() => localStorage.setItem('gl-autostart', '0')); // this test leads the explanation by hand tc.setDefaultTimeout(15000);
+    const tc = await browser.newContext({viewport: {width: 1700, height: 1000}}); await openStepMenus(tc); await tc.addInitScript(() => localStorage.setItem('gl-autostart', '0')); // this test leads the explanation by hand tc.setDefaultTimeout(15000);
     const tour = store.tour();
     await tc.addCookies([{name: 'ks', value: store.session(tour.teacher), url: base}]);
     const t = await tc.newPage(); watch(t); t.on('dialog', d => d.accept().catch(() => {}));
@@ -54,14 +55,14 @@ const assert = require('node:assert/strict'), fs = require('node:fs'), path = re
     results.push('prepared text placed with one tap; typed text with keyboard (T, Enter)');
 
     // Brush in red, marker in yellow over the text, large pen.
-    await t.locator('body').press('b'); await t.locator('.gl-color[title="أحمر"]').click(); await t.locator('body').press('b');
+    await t.locator('body').press('b'); await pick(t, '.gl-color[title="أحمر"]'); await t.locator('body').press('b');
     await drag(at(0.2, 0.5), at(0.45, 0.62));
     await studentInk('path.gl-brush[stroke="#c0392b"]');
-    await t.locator('body').press('m'); await t.locator('.gl-color[title="أصفر"]').click(); await t.locator('body').press('m');
+    await t.locator('body').press('m'); await pick(t, '.gl-color[title="أصفر"]'); await t.locator('body').press('m');
     await drag(at(0.3, 0.27), at(0.65, 0.27));
     await studentInk('.gl-markers path.gl-marker[stroke="#f4d03f"]');
     assert.equal(await s.locator('.gl-markers path').first().getAttribute('stroke-opacity'), '0.35');
-    await t.locator('body').press('p'); await t.locator('.gl-color[title="أزرق"]').click(); await t.locator('.gl-size[data-size=l]').click(); await t.locator('body').press('p');
+    await t.locator('body').press('p'); await pick(t, '.gl-color[title="أزرق"]'); await pick(t, '.gl-size[data-size=l]'); await t.locator('body').press('p');
     await drag(at(0.1, 0.8), at(0.3, 0.75));
     await studentInk('path.gl-pen[stroke-width="6"]');
     results.push('brush (red), highlighter (yellow, transparent, under the text) and large blue pen reach the student');

@@ -3,6 +3,7 @@
 // student (even when connection messages arrive late and out of order), the student's voice reaches the teacher, the clear control panel works including «⛔ إيقاف الكل», and the
 // lesson itself (curriculum page with its audio explanation, the interactive explanation) follows the teacher live.
 const {chromium} = require(process.env.PLAYWRIGHT_MODULE || 'playwright');
+const {pick, openStepMenus} = require('./ui-helpers.cjs');
 const assert = require('node:assert/strict'), fs = require('node:fs'), path = require('node:path');
 (async () => {
   const {openStore} = await import('../store.mjs'), {createApp} = await import('../server.mjs');
@@ -18,7 +19,7 @@ const assert = require('node:assert/strict'), fs = require('node:fs'), path = re
   const jitter = async ctx => { if (!process.env.LIVE_BASE) await ctx.route(/\/(rtc|command)$/, async route => { await new Promise(r => setTimeout(r, Math.random() * 1200)); route.continue(); }); };
   const until = async (p, fn, arg, ms = 20000) => { const end = Date.now() + ms; for (;;) { const v = await p.evaluate(fn, arg); if (v) return v; if (Date.now() > end) throw new Error('timed out: ' + fn); await p.waitForTimeout(250); } };
   try {
-    const tc = await browser.newContext({viewport: {width: 1366, height: 768}, permissions: ['microphone', 'camera']}); tc.setDefaultTimeout(30000);
+    const tc = await browser.newContext({viewport: {width: 1366, height: 768}, permissions: ['microphone', 'camera']}); await openStepMenus(tc); tc.setDefaultTimeout(30000);
     await jitter(tc); const t = await tc.newPage(); watch(t);
     await t.addInitScript(() => { window.__spoken = []; window.speechSynthesis && (speechSynthesis.speak = u => { window.__spoken.push(u.text); setTimeout(() => u.onend?.(), 10); }); }); t.on('dialog', d => d.accept().catch(() => {}));
     await t.goto(base + '/start/teacher');

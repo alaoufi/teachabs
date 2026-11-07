@@ -1,6 +1,7 @@
 // Optional browser verification of the group lesson: plan → live sequence with a display screen and three students.
 // Uses Chromium's synthetic microphone for the recorded narration; this is not a test of a real voice.
 const {chromium} = require(process.env.PLAYWRIGHT_MODULE || 'playwright');
+const {pick, openStepMenus} = require('./ui-helpers.cjs');
 const assert = require('node:assert/strict'), fs = require('node:fs'), path = require('node:path');
 (async () => {
   const {openStore} = await import('../store.mjs'), {createApp} = await import('../server.mjs');
@@ -13,7 +14,7 @@ const assert = require('node:assert/strict'), fs = require('node:fs'), path = re
   const watch = p => { p.on('pageerror', e => errors.push(e.message)); p.on('console', m => { if (m.type() === 'error' && !/favicon/.test(m.text())) errors.push(m.text()); }); };
   const shot = (p, name) => p.screenshot({path: path.join(out, name + '.png')});
   try {
-    const tc = await browser.newContext({viewport: {width: 1700, height: 1000}, permissions: ['microphone']}); tc.setDefaultTimeout(15000);
+    const tc = await browser.newContext({viewport: {width: 1700, height: 1000}, permissions: ['microphone']}); await openStepMenus(tc); tc.setDefaultTimeout(15000);
     const t = await tc.newPage(); watch(t); t.on('dialog', d => d.accept().catch(() => {}));
     await t.goto(base + '/demo'); await t.locator('#group form button').click(); await t.waitForURL(/\/teach\/plans/);
     await t.goto(base + '/teach/plans'); await t.locator('.gl-templates button', {hasText: 'الضوء والظل'}).click(); await t.waitForURL(/\/teach\/plans\/[0-9a-f-]{36}$/);
@@ -52,7 +53,7 @@ const assert = require('node:assert/strict'), fs = require('node:fs'), path = re
 
     // 1) Curriculum page with ink and recorded narration on student devices.
     for (const p of students) await p.waitForSelector('#gl-content .gl-page svg');
-    await t.locator('.gl-tool[data-tool=pen]').click();
+    await pick(t, '.gl-tool[data-tool=pen]');
     const board = await t.locator('#gl-ink').boundingBox();
     await t.mouse.move(board.x + 100, board.y + 100); await t.mouse.down(); await t.mouse.move(board.x + 400, board.y + 160, {steps: 10}); await t.mouse.up();
     await students[0].waitForFunction(() => document.querySelectorAll('#gl-ink path.gl-pen').length === 1);

@@ -1,6 +1,7 @@
 // Optional browser verification for stage 053: explanations try the natural server voice first (man or woman, chosen by
 // the teacher) and fall back to the device voice when there is none. The server voice is simulated here.
 const {chromium} = require(process.env.PLAYWRIGHT_MODULE || 'playwright');
+const {pick, openStepMenus} = require('./ui-helpers.cjs');
 const assert = require('node:assert/strict');
 (async () => {
   const {openStore} = await import('../store.mjs'), {createApp} = await import('../server.mjs');
@@ -17,7 +18,7 @@ const assert = require('node:assert/strict');
   let natural = true;
   const fakeVoice = async route => natural ? route.fulfill({status: 200, contentType: 'audio/mpeg', body: Buffer.from([0xff, 0xf3, 0x44, 0xc4])}) : route.fulfill({status: 404, contentType: 'application/json', body: '{"error":"x"}'});
   try {
-    const tc = await browser.newContext({viewport: {width: 1366, height: 768}}); tc.setDefaultTimeout(15000); await tc.addInitScript(spy); await tc.route(/\/speech\?/, fakeVoice);
+    const tc = await browser.newContext({viewport: {width: 1366, height: 768}}); await openStepMenus(tc); tc.setDefaultTimeout(15000); await tc.addInitScript(spy); await tc.route(/\/speech\?/, fakeVoice);
     const t = await tc.newPage(); t.on('pageerror', e => errors.push(e.message)); t.on('dialog', d => d.accept().catch(() => {}));
     await t.goto(base + '/start/teacher'); await t.locator('.gl-cur-subject[data-subject=science] li.is-ready button').click(); await t.waitForSelector('#pl-steps li');
     await t.locator('select[aria-label="صوت المتحدث"]').selectOption('female');

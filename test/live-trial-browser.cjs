@@ -3,6 +3,7 @@
 // the teacher photographs the book page during the class and everyone sees it; the prepared audio explanation of the
 // curriculum page plays on the student's device; a vanished class shows a clear message; script errors are reported.
 const {chromium} = require(process.env.PLAYWRIGHT_MODULE || 'playwright');
+const {pick, openStepMenus} = require('./ui-helpers.cjs');
 const assert = require('node:assert/strict'), fs = require('node:fs'), path = require('node:path'), zlib = require('node:zlib');
 function png(w, h) { // a plain test picture standing in for a photo of a book page
   const crc = b => { let c, t = []; for (let n = 0; n < 256; n++) { c = n; for (let k = 0; k < 8; k++) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1; t[n] = c >>> 0; } let x = 0xffffffff; for (const v of b) x = t[(x ^ v) & 255] ^ (x >>> 8); return (x ^ 0xffffffff) >>> 0; };
@@ -26,7 +27,7 @@ function png(w, h) { // a plain test picture standing in for a photo of a book p
     assert.match(await none.locator('.gl-status').first().textContent(), /لا توجد حصة تجريبية جارية/);
     results.push('«أنا الطالب» with no running class explains what to do');
 
-    const tc = await browser.newContext({viewport: {width: 412, height: 860}, isMobile: true, hasTouch: true}); tc.setDefaultTimeout(15000);
+    const tc = await browser.newContext({viewport: {width: 412, height: 860}, isMobile: true, hasTouch: true}); await openStepMenus(tc); tc.setDefaultTimeout(15000);
     const t = await tc.newPage(); watch(t); t.on('dialog', d => d.accept().catch(() => {}));
     await t.goto(base + '/start/teacher'); assert.match(t.url(), /\/teach\/plans$/);
     await t.locator('.gl-cur-subject[data-subject=science] li.is-ready button').click(); await t.waitForSelector('#pl-steps li');
@@ -51,7 +52,7 @@ function png(w, h) { // a plain test picture standing in for a photo of a book p
     assert.ok(tidy.n >= 4 && !tidy.onEachOther && !tidy.onLesson && tidy.rows < tidy.n, JSON.stringify(tidy));
     await t.screenshot({path: path.join(out, 'live-trial-snippets.png')});
     results.push(`«نصوص جاهزة»: ${tidy.n} texts placed with one tap each, in tidy rows, never on each other nor on the lesson text`);
-    await t.locator('#gl-clear').click(); await t.waitForFunction(() => !document.querySelector('#gl-ink text'));
+    await pick(t, '#gl-clear'); await t.waitForFunction(() => !document.querySelector('#gl-ink text'));
 
     // the book page, photographed during the class
     await t.locator('#gl-page-file').setInputFiles({name: 'page.png', mimeType: 'image/png', buffer: png(600, 800)});
