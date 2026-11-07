@@ -31,7 +31,7 @@ const assert = require('node:assert/strict'), fs = require('node:fs'), path = re
     const display = await tc.newPage(); watch(display); await display.goto(base + `/teach/live/${code}/display`);
     const sc = await browser.newContext({viewport: {width: 390, height: 844}, isMobile: true, hasTouch: true}); sc.setDefaultTimeout(15000);
     const s = await sc.newPage(); watch(s);
-    await s.goto(base + '/join?code=' + code); await s.getByLabel('اسمك الأول').fill('سارة'); await s.getByRole('button', {name: 'دخول الحصة'}).click(); await s.waitForFunction(() => window.__voice); await s.locator('#gl-enter').click(); // the entry card opens the board
+    await s.goto(base + '/join?code=' + code); await s.getByLabel('اسم الطالب الأول').fill('سارة'); await s.getByRole('button', {name: 'دخول الحصة'}).click(); await s.waitForFunction(() => window.__voice); await s.locator('#gl-enter').click(); // the entry card opens the board
     await s.waitForSelector('#gl-content .gl-page svg');
     results.push('prepared texts edited before class; lesson started; student joined');
 

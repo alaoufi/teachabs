@@ -76,7 +76,7 @@ const assert = require('node:assert/strict'), fs = require('node:fs'), path = re
     const sc = await browser.newContext({viewport: {width: 390, height: 844}, isMobile: true, hasTouch: true}); sc.setDefaultTimeout(15000);
     const s = await sc.newPage(); watch(s);
     await s.addInitScript(() => { window.__played = 0; const play = HTMLMediaElement.prototype.play; HTMLMediaElement.prototype.play = function () { window.__played++; return play.call(this); }; });
-    await s.goto(base + '/join?code=' + code); await s.getByLabel('اسمك الأول').fill('ليان'); await s.getByRole('button', {name: 'دخول الحصة'}).click();
+    await s.goto(base + '/join?code=' + code); await s.getByLabel('اسم الطالب الأول').fill('ليان'); await s.getByRole('button', {name: 'دخول الحصة'}).click();
     await s.waitForSelector('#gl-content .gl-page svg');
     await t.locator('#gl-steps li[data-type=interactive] button').click(); await s.waitForSelector('#gl-content .gl-scene svg');
     await t.locator('.gl-narr-panel select').selectOption('students');

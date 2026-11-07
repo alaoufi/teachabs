@@ -843,3 +843,9 @@ body:has(#planner) .demo{margin-bottom:8px;padding:6px 10px}
 .aid-term{border:1px solid #d6e5df;border-radius:14px;background:#fff;padding:8px 12px;margin-bottom:10px}.aid-term summary{font-weight:800;cursor:pointer}
 .aid-lesson-list{margin:6px 0;padding-inline-start:22px}.aid-lesson-list li{padding:6px 0;border-bottom:1px solid #eef1f5;display:flex;flex-wrap:wrap;gap:6px;align-items:center}
 .aid-chips{display:flex;flex-wrap:wrap;gap:4px;flex:1}
+/* stage 062: a parent's account chooses which child enters */
+.gl-kids h2{font-size:18px;margin:0}.gl-kid-list{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:10px}
+.gl-kid{display:grid;justify-items:center;gap:4px;padding:14px 8px;border:2px solid #d6e5df;border-radius:16px;background:#fff;cursor:pointer;font:inherit}
+.gl-kid:hover,.gl-kid:focus-visible{border-color:#155c4d;background:#f2f9f5}
+.gl-kid-avatar{width:48px;height:48px;border-radius:50%;background:#155c4d;color:#fff;display:grid;place-items:center;font-size:22px;font-weight:800}
+.gl-kid small{color:#50645a}.gl-or{text-align:center;color:#50645a;margin:14px 0}.gl-or span{background:#fff;padding:0 10px}

@@ -30,6 +30,7 @@ export function groupService(store) {
   const send = (res, data, status = 200) => { res.writeHead(status, {'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store'}); res.end(JSON.stringify(data)); };
   const page = (res, html, title, body, mic = false, cam = false) => { res.setHeader('Content-Security-Policy', PAGE_CSP); res.setHeader('Permissions-Policy', `camera=(${cam ? 'self' : ''}), microphone=(${mic ? 'self' : ''}), display-capture=(), geolocation=()`); return html(title, body); };
 
+  const firstName = n => String(n).trim().split(/\s+/)[0].slice(0, 30); // only the first name is shown in class
   function teacherOnly(u) { need(u, 'سجّل الدخول بحساب معلم.', 401); need(u.role === 'teacher', 'هذه الصفحة للمعلم.', 403); return u; }
   function ownSession(u, code) {
     need(CODE.test(code), 'رمز الحصة غير صالح.', 404);
@@ -115,14 +116,18 @@ export function groupService(store) {
 
       // ---------- students ----------
       if (path === '/join') {
-        if (method === 'GET') return page(res, html, 'الانضمام إلى الحصة', v.joinPage(String(url.searchParams.get('code') || '').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 6), url.searchParams.has('none')));
+        // two ways in: a parent's account shows their children to choose from; anyone can enter with the student's name
+        const kids = u?.role === 'parent' ? store.children(u.id).map(c => ({id: c.id, name: firstName(c.name), grade: c.grade})) : [];
+        if (method === 'GET') return page(res, html, 'الانضمام إلى الحصة', v.joinPage(String(url.searchParams.get('code') || '').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 6), url.searchParams.has('none'), kids));
         need(method === 'POST', 'إجراء غير متاح.', 405);
         joinLimit(req);
-        const data = await fields(req), code = String(data.code || '').toUpperCase().trim(), name = String(data.name || '').trim().replace(/\s+/g, ' ');
+        const data = await fields(req), code = String(data.code || '').toUpperCase().trim();
+        let name = String(data.name || '').trim().replace(/\s+/g, ' '), child = null;
+        if (data.child) { need(u?.role === 'parent', 'سجّل الدخول بحساب ولي الأمر لتختار أحد أبنائك.', 403); const c = store.ownedChild(u.id, String(data.child)); child = c.id; name = firstName(c.name); }
         need(CODE.test(code), 'تأكد من رمز الحصة المكوّن من ستة أحرف وأرقام.');
         need(name.length >= 2 && name.length <= 30, 'اكتب اسمك الأول (من حرفين إلى ٣٠ حرفًا).');
         const s = g.session(code); need(s && (s.state.live || s.state.homework === 'open'), 'الحصة غير متاحة أو انتهت.', 404);
-        const joined = g.join(code, name, MAX_STUDENTS); need(joined, 'اكتمل عدد الطلاب في هذه الحصة.', 409);
+        const joined = g.join(code, name, MAX_STUDENTS, child); need(joined, 'اكتمل عدد الطلاب في هذه الحصة.', 409);
         res.setHeader('Set-Cookie', `gl_${code}=${joined.token}; Path=/class/${code}; Max-Age=1209600; HttpOnly; SameSite=Lax${base.startsWith('https:') ? '; Secure' : ''}`);
         broadcast(code); return redirect('/class/' + code);
       }
@@ -131,6 +136,7 @@ export function groupService(store) {
         const code = g.latestTrialLive(Date.now() - 6 * 3600_000);
         if (!code) return redirect('/join?none=1');
         if (g.student(code, studentToken(req, code))) return redirect('/class/' + code);
+        if (u?.role === 'parent' && store.children(u.id).length) return redirect('/join?code=' + code); // the parent chooses which child
         joinLimit(req);
         const joined = g.join(code, 'طالب ' + (g.students(code).length + 1), MAX_STUDENTS); need(joined, 'اكتمل عدد الطلاب في هذه الحصة.', 409);
         res.setHeader('Set-Cookie', `gl_${code}=${joined.token}; Path=/class/${code}; Max-Age=1209600; HttpOnly; SameSite=Lax${base.startsWith('https:') ? '; Secure' : ''}`);

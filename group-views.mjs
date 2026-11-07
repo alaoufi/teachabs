@@ -225,10 +225,15 @@ export function studentPage(code, name, title) {
  </section><script type="module" src="/group-student.js?v=3"></script>`;
 }
 
-export function joinPage(code, none = false) {
+export function joinPage(code, none = false, kids = []) {
+  const codeField = `<label>رمز الحصة<input name="code" required minlength="6" maxlength="6" autocomplete="off" autocapitalize="characters" inputmode="text" value="${e(code)}" dir="ltr"></label>`;
+  // with a parent's account: their children to choose from (each a button), then the other way: by the student's name
+  const children = kids.length ? `<form method="post" action="/join" class="gl-form gl-kids" aria-labelledby="kids-title"><h2 id="kids-title">👪 من سيدخل الحصة؟</h2>${code ? `<input type="hidden" name="code" value="${e(code)}">` : codeField}
+  <div class="gl-kid-list">${kids.map(k => `<button class="gl-kid" name="child" value="${e(k.id)}"><span class="gl-kid-avatar" aria-hidden="true">${e(k.name[0] || '؟')}</span><b>${e(k.name)}</b><small>الصف ${e(GRADE_NAMES[k.grade] || k.grade)}</small></button>`).join('')}</div></form>
+  <p class="gl-or"><span>أو ادخل باسم الطالب</span></p>` : '';
   return `${css}<section class="gl-wrap gl-joinpage narrow panel" dir="rtl"><div class="eyebrow">الحصة الجماعية</div><h1>الانضمام إلى الحصة</h1>
-  ${none ? '<p class="gl-status">لا توجد حصة تجريبية جارية الآن. افتح «أنا المعلم» على جهاز آخر وابدأ حصة، ثم اضغط «أنا الطالب» من جديد، أو اكتب رمز الحصة هنا.</p>' : ''}<form method="post" action="/join" class="gl-form"><label>رمز الحصة<input name="code" required minlength="6" maxlength="6" autocomplete="off" autocapitalize="characters" inputmode="text" value="${e(code)}" dir="ltr"></label>
-  <label>اسمك الأول<input name="name" required minlength="2" maxlength="30" autocomplete="given-name"></label>
-  <button class="btn">دخول الحصة</button></form>
+  ${none ? '<p class="gl-status">لا توجد حصة تجريبية جارية الآن. افتح «أنا المعلم» على جهاز آخر وابدأ حصة، ثم اضغط «أنا الطالب» من جديد، أو اكتب رمز الحصة هنا.</p>' : ''}${children}<form method="post" action="/join" class="gl-form">${codeField}
+  <label>اسم الطالب الأول<input name="name" required minlength="2" maxlength="30" autocomplete="given-name"></label>
+  <button class="btn">دخول الحصة</button></form>${kids.length ? '' : '<p class="gl-note">لولي الأمر: سجّل الدخول بحسابك فتظهر أسماء أبنائك هنا لتختار منهم.</p>'}
   <p class="gl-note">اكتب اسمك الأول فقط. يرى المعلم إجاباتك، ولا يظهر اسمك للآخرين إلا إذا اختار المعلم عرضه.</p></section>`;
 }

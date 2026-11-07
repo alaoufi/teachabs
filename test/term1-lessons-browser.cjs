@@ -32,7 +32,7 @@ const assert = require('node:assert/strict'), fs = require('node:fs'), path = re
     const display = await tc.newPage(); watch(display); await display.goto(base + `/teach/live/${code}/display`);
     const sc = await browser.newContext({viewport: {width: 390, height: 844}, isMobile: true, hasTouch: true}); sc.setDefaultTimeout(15000);
     const s = await sc.newPage(); watch(s);
-    await s.goto(base + '/join?code=' + code); await s.getByLabel('اسمك الأول').fill('ريم'); await s.getByRole('button', {name: 'دخول الحصة'}).click();
+    await s.goto(base + '/join?code=' + code); await s.getByLabel('اسم الطالب الأول').fill('ريم'); await s.getByRole('button', {name: 'دخول الحصة'}).click();
     await s.waitForSelector('#gl-content .gl-page');
     await t.locator('#gl-steps li[data-type=interactive] button').click(); await s.waitForSelector('#gl-content .cells-scene');
     const quick = t.locator('#gl-quick');
@@ -72,7 +72,7 @@ const assert = require('node:assert/strict'), fs = require('node:fs'), path = re
     assert.equal(await inter.locator('.pl-seg').first().locator('input[type=number]').inputValue(), '7', 'large ranges use a number box, not a giant menu');
     await t.getByRole('button', {name: 'بدء الحصة بهذا الترتيب'}).click(); await t.waitForURL(/\/teach\/live\/[A-Z0-9]{6}$/);
     const code2 = t.url().split('/').pop();
-    await s.goto(base + '/join?code=' + code2); await s.getByLabel('اسمك الأول').fill('ريم'); await s.getByRole('button', {name: 'دخول الحصة'}).click();
+    await s.goto(base + '/join?code=' + code2); await s.getByLabel('اسم الطالب الأول').fill('ريم'); await s.getByRole('button', {name: 'دخول الحصة'}).click();
     await s.waitForSelector('#gl-content .gl-page');
     await t.locator('#gl-steps li[data-type=interactive] button').click(); await s.waitForSelector('#gl-content .pv-scene');
     assert.match(await s.locator('#gl-content .pv-scene').textContent(), /٤٠٬٠٠٠/);

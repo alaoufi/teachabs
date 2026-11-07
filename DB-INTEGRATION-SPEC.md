@@ -59,7 +59,7 @@ ALTER TABLE group_sessions ADD COLUMN timetable_id TEXT REFERENCES school_timeta
 ALTER TABLE group_sessions ADD COLUMN class_id     TEXT REFERENCES school_classes(id);
 ALTER TABLE group_sessions ADD COLUMN lesson       TEXT;   -- رمز الدرس من المنهج مثل 's1-1-1'
 
--- الطالب المسجّل يدخل بحسابه بدل كتابة اسمه
+-- الطالب المسجّل (عبر حساب ولي الأمر) — منفّذ في المرحلة 062
 ALTER TABLE group_students ADD COLUMN child TEXT REFERENCES children(id);
 
 -- الحضور لكل حصة
@@ -121,4 +121,4 @@ ALTER TABLE group_plans ADD COLUMN class_id TEXT REFERENCES school_classes(id);
 1. **موافقة** على الجداول في القسم ٣ (أو تعديلها).
 2. أن **يدمج قسم الإدارة** فروع `school-*` في main، أو يحدد الفرع المعتمد.
 3. أن **يضيف المالك** `DATABASE_URL` لمشروع Neon «teachabs-education» في إعدادات Render.
-4. **قرار:** هل يدخل الطالب بحساب ولي الأمر (الحالي)، أم يُنشأ للطالب حساب مستقل برمز دخول؟
+4. ~~قرار دخول الطالب~~ **حُسم (المرحلة 062):** الخياران معًا — بحساب ولي الأمر تظهر أسماء أبنائه فيختار منهم (يُربط الدخول بـ `group_students.child`، والعمود أُضيف فعلًا)، أو باسم الطالب الأول. بعد الربط بالجدول تقتصر قائمة الأبناء على من في فصل الحصة.
