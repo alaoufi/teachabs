@@ -293,6 +293,13 @@ test('activity engine: states of matter values, phases, hidden prediction and a 
   s = run2(plan2, s, {op: 'narrator', action: 'start'});
   assert.equal(publicView(s, plan2, 'a', []).activity.values.temp, -10, 'narrator segment moves the scene');
   assert.deepEqual(publicView(run2(plan2, s, {op: 'activity', action: 'set', values: {hour: 9}}), plan2, 'a', []).activity.values, {temp: -10}, 'keys of another activity are ignored');
+  // «a step forward» three times in a row, as quick taps: each counts from what the server holds; clamped at the ends
+  let q = run2(plan2, initialState(plan2), {op: 'go', index: i}, {op: 'activity', action: 'set', values: {temp: 0}});
+  q = run2(plan2, q, {op: 'activity', action: 'nudge', key: 'temp', by: 10}, {op: 'activity', action: 'nudge', key: 'temp', by: 10}, {op: 'activity', action: 'nudge', key: 'temp', by: 10});
+  assert.equal(publicView(q, plan2, 'a', []).activity.values.temp, 30);
+  q = run2(plan2, q, {op: 'activity', action: 'nudge', key: 'temp', by: 130});
+  assert.ok(publicView(q, plan2, 'a', []).activity.values.temp === 120, 'never past the end');
+  assert.throws(() => run2(plan2, q, {op: 'activity', action: 'nudge', key: 'nope', by: 1}), /قيمة غير صالحة/);
   // An old lesson saved before the engine (segment values on the segment itself) still loads.
   const old = structuredClone(defaultPlan()); old.steps[1].narrator = {segments: [{id: 'o1', hour: 9, height: 1.5, material: 'paper', text: 'مقطع قديم'}]};
   assert.deepEqual(validatePlan(old).steps[1].narrator.segments[0].values, {hour: 9, height: 1.5, material: 'paper'});

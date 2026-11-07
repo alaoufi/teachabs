@@ -182,8 +182,10 @@ function paramControl(p, v, set, compact) {
   if (p.kind === 'range') {
     const step = bigOf(p, v), out = el('output', {class: compact ? 'gl-quick-out' : '', text: compact ? p.format(v[p.key]) : `${p.label}: ${p.format(v[p.key])}`});
     if (!step) return [out];
-    return [el('button', {type: 'button', class: mini, onclick: () => set({[p.key]: Math.max(p.min, v[p.key] - step)})}, textOf(p.earlier, v, '−')), out,
-      el('button', {type: 'button', class: mini, onclick: () => set({[p.key]: Math.min(p.max, v[p.key] + step)})}, textOf(p.later, v, '+'))];
+    // «a step back / forward» is sent as a step, not as a target value, so quick taps on a slow network all count
+    const nudge = by => command({op: 'activity', action: 'nudge', key: p.key, by});
+    return [el('button', {type: 'button', class: mini, onclick: () => nudge(-step)}, textOf(p.earlier, v, '−')), out,
+      el('button', {type: 'button', class: mini, onclick: () => nudge(step)}, textOf(p.later, v, '+'))];
   }
   const entries = Object.entries(p.options);
   if (entries.length <= 3) return [el('span', {class: 'gl-seg-group', role: 'group', 'aria-label': p.label}, ...entries.map(([k, label]) => el('button', {type: 'button', class: mini, 'aria-pressed': String(v[p.key] === k), onclick: () => set({[p.key]: k})}, label)))];

@@ -125,6 +125,13 @@ export function teacherCommand(state, plan, cmd) {
         let values; try { values = cleanValues(step.activity, cmd.values, act.values); } catch (e) { throw new UserError(e.message); }
         s.acts[step.id] = {...act, values}; return s;
       }
+      if (cmd.action === 'nudge') { // one step up or down from the value the server holds now: quick taps never get lost
+        const p = activityOf(step.activity).params.find(x => x.key === cmd.key && x.kind === 'range');
+        need(p && Number.isFinite(cmd.by) && Math.abs(cmd.by) <= p.max - p.min, 'قيمة غير صالحة.');
+        const to = Math.min(p.max, Math.max(p.min, act.values[p.key] + cmd.by));
+        let values; try { values = cleanValues(step.activity, {[p.key]: to}, act.values); } catch (e) { throw new UserError(e.message); }
+        s.acts[step.id] = {...act, values}; return s;
+      }
       if (cmd.action === 'reveal') { need(typeof cmd.show === 'boolean', 'قيمة غير صالحة.'); s.acts[step.id] = {...act, reveal: cmd.show}; return s; }
       if (cmd.action === 'reset') { s.acts[step.id] = {values: activityOf(step.activity).initial(), reveal: true}; return s; }
       throw new UserError('أمر غير متاح في الحصة الجماعية.');

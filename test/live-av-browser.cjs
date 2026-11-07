@@ -14,8 +14,8 @@ const assert = require('node:assert/strict'), fs = require('node:fs'), path = re
     ...(process.env.CHROME_PATH ? {executablePath: process.env.CHROME_PATH} : {}), ...(process.env.LIVE_BASE && process.env.HTTPS_PROXY ? {proxy: {server: process.env.HTTPS_PROXY}} : {})});
   const results = [], errors = [];
   const watch = p => { p.on('pageerror', e => errors.push(e.message)); p.on('console', m => { if (m.type() === 'error' && !/Failed to load resource/.test(m.text())) errors.push(m.text()); }); };
-  // A real network: connection messages are delayed by different amounts, so they may arrive out of order.
-  const jitter = async ctx => { if (!process.env.LIVE_BASE) await ctx.route(/\/rtc$/, async route => { await new Promise(r => setTimeout(r, Math.random() * 1200)); route.continue(); }); };
+  // A real network: connection messages and the teacher's commands are delayed by different amounts, so they may arrive out of order.
+  const jitter = async ctx => { if (!process.env.LIVE_BASE) await ctx.route(/\/(rtc|command)$/, async route => { await new Promise(r => setTimeout(r, Math.random() * 1200)); route.continue(); }); };
   const until = async (p, fn, arg, ms = 20000) => { const end = Date.now() + ms; for (;;) { const v = await p.evaluate(fn, arg); if (v) return v; if (Date.now() > end) throw new Error('timed out: ' + fn); await p.waitForTimeout(250); } };
   try {
     const tc = await browser.newContext({viewport: {width: 1366, height: 768}, permissions: ['microphone', 'camera']}); tc.setDefaultTimeout(30000);
