@@ -13,7 +13,7 @@ test('every tool is complete: unique id, known subjects and grades, real lessons
     assert.ok(!ids.has(t.id), 'unique ' + t.id); ids.add(t.id);
     assert.ok(t.title && t.desc && t.icon, t.id);
     assert.ok(t.subjects.every(s => s === '*' || Object.hasOwn(SUBJECTS, s)), t.id);
-    assert.ok(t.grades.length && t.grades.every(g => g >= 1 && g <= 6), t.id);
+    assert.ok(t.grades.length && t.grades.every(g => g >= 1 && g <= 9), t.id);
     assert.ok(t.lessons.every(l => lessons.has(l)), 'lesson ids exist: ' + t.id);
     if (t.kind === 'stamp') assert.ok(STAMPS[t.id] && STAMPS[t.id].w <= 1000 && STAMPS[t.id].h <= 600, 'drawing fits the board: ' + t.id);
     if (t.kind === 'activity') assert.ok(ACTIVITIES[t.id], t.id);

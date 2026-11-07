@@ -27,9 +27,17 @@ const assert = require('node:assert/strict'), fs = require('node:fs'), path = re
     assert.ok(await t.locator('.tl-card[data-tool=solids]').count(), 'solids are in the math library');
     await t.locator('.tl-dialog select[aria-label="المادة"]').selectOption('science');
     await t.locator('.tl-card[data-tool=digestive] .tl-pin').click();
+    await t.locator('.tl-dialog select[aria-label="الصف"]').selectOption('8');
+    for (const id of ['atom', 'heart', 'circuit']) assert.ok(await t.locator(`.tl-card[data-tool=${id}]`).count(), id + ' is in grade 8 (second intermediate) science');
+    await t.locator('.tl-card[data-tool=atom] .tl-pin').click();
+    await t.locator('.tl-dialog select[aria-label="المادة"]').selectOption('math');
+    for (const id of ['linear', 'balance', 'angles']) assert.ok(await t.locator(`.tl-card[data-tool=${id}]`).count(), id + ' is in grade 8 math');
+    await t.locator('.tl-dialog select[aria-label="الصف"]').selectOption('1');
+    for (const id of ['numberline', 'solids']) assert.ok(await t.locator(`.tl-card[data-tool=${id}]`).count(), id + ' is in grade 1 math');
     await t.locator('.tl-dialog button[aria-label="إغلاق"]').click();
     assert.match(await t.locator('#pl-steps').textContent(), /الجهاز الهضمي/);
     await t.getByRole('button', {name: 'حفظ الدرس'}).click(); await t.waitForFunction(() => document.querySelector('#pl-status').textContent.includes('حُفظ'));
+    results.push('library: grade 8 shows the atom, heart, circuit, linear function, balance and angles; grade 1 shows the number line and solids');
     results.push('planner: «الجهاز الهضمي» pinned from the library; its interactive step was added and saved');
 
     await t.getByRole('button', {name: 'بدء الحصة بهذا الترتيب'}).click(); await t.waitForURL(/\/teach\/live\/[A-Z0-9]{6}$/);
@@ -42,6 +50,12 @@ const assert = require('node:assert/strict'), fs = require('node:fs'), path = re
     await t.locator('#gl-quick select[aria-label="العضو المظلل"]').selectOption('stomach');
     await s.waitForFunction(() => document.querySelector('#gl-content .digest-scene [data-part="stomach"]')?.classList.contains('c-hl'));
     await s.waitForTimeout(700); await s.screenshot({path: path.join(out, 'models-student.png')}); await t.screenshot({path: path.join(out, 'models-teacher.png')});
+    await t.locator('#gl-steps li[data-type=interactive] button[title*="تركيب الذرة"]').click();
+    await s.waitForSelector('#gl-content .atom-scene');
+    await t.locator('#gl-quick').getByRole('button', {name: /العنصر التالي/}).click();
+    await s.waitForFunction(() => document.querySelector('#gl-content .atom-scene')?.textContent.includes('الهيليوم'));
+    await s.waitForTimeout(500); await s.screenshot({path: path.join(out, 'models-student-atom.png')});
+    results.push('class: an intermediate tool (the atom) pinned from grade 8, opened, and «العنصر التالي» moved the student\'s board from hydrogen to helium');
     results.push('class: the teacher moved the food to the stomach and lit it; the student\'s phone followed live');
     assert.deepEqual(errors, []);
     console.log(JSON.stringify({ok: true, results}, null, 1));

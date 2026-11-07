@@ -53,4 +53,4 @@ export function stageChips(names, stage) {
 export const scene = (cls, label, body, caption, id = cls.split(' ').pop()) => `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 300" class="${cls}" direction="ltr" role="img" aria-label="${esc(label)}">
 <defs><radialGradient id="${id}-bg" cx="50%" cy="45%" r="70%"><stop offset="0" stop-color="#ffffff"/><stop offset="1" stop-color="#eef5f2"/></radialGradient></defs>
 <rect width="600" height="300" fill="url(#${id}-bg)"/>${body}
-<text x="300" y="292" class="c-caption" text-anchor="middle" font-size="14.5" font-weight="700" fill="#163d34">${esc(caption)}</text></svg>`;
+<text x="300" y="292" class="c-caption" text-anchor="middle" font-size="14.5" font-weight="700" fill="#163d34" stroke="#ffffff" stroke-width="4" stroke-opacity=".85" paint-order="stroke">${esc(caption)}</text></svg>`;

@@ -830,3 +830,6 @@ body:has(#planner) .demo{margin-bottom:8px;padding:6px 10px}
 .gl-send{display:inline-flex;gap:6px;align-items:center}
 .gl-send select{max-width:170px;padding:6px;border-radius:8px;border:1px solid #c9d3df;font:inherit}
 .gl-review-steps li{padding:8px 0;border-bottom:1px solid #eef1f5;list-style:none}
+/* stage 060: current flowing in a closed circuit */
+.ci-flow{animation:ci-flow .9s linear infinite}@keyframes ci-flow{to{stroke-dashoffset:-14}}
+@media(prefers-reduced-motion:reduce){.ci-flow{animation:none}}

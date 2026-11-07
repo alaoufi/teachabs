@@ -22,6 +22,9 @@ export const NARRATION = {
   speech: 'نص يقرؤه الجهاز بالعربية'
 };
 
+/** Grades 1–6 are elementary; 7–9 are the three intermediate grades. */
+export const GRADE_NAMES = ['', 'الأول', 'الثاني', 'الثالث', 'الرابع', 'الخامس', 'السادس', 'الأول المتوسط', 'الثاني المتوسط', 'الثالث المتوسط'];
+export const gradeName = g => 'الصف ' + (GRADE_NAMES[g] || g);
 export const SUBJECTS = {science: 'العلوم', math: 'الرياضيات', arabic: 'لغتي', english: 'الإنجليزية', islamic: 'الدراسات الإسلامية'};
 
 // Original practice pages drawn by the project. They are NOT official textbook pages.
@@ -111,7 +114,7 @@ export function validatePlan(raw) {
   need(Array.isArray(tools) && tools.length <= 40 && tools.every(t => typeof t === 'string' && LIBRARY.some(x => x.id === t)), 'أداة غير معروفة في مكتبة الأدوات.');
   plan.tools = [...new Set(tools)];
   need(Object.hasOwn(SUBJECTS, plan.subject), 'اختر المادة.');
-  need(Number.isInteger(plan.grade) && plan.grade >= 1 && plan.grade <= 6, 'اختر الصف من الأول إلى السادس.');
+  need(Number.isInteger(plan.grade) && plan.grade >= 1 && plan.grade <= 9, 'اختر الصف من الأول الابتدائي إلى الثالث المتوسط.');
   need(Array.isArray(raw.steps) && raw.steps.length >= 1 && raw.steps.length <= LIMITS.steps, `الدرس يحتاج من خطوة إلى ${LIMITS.steps} خطوة.`);
   const ids = new Set();
   plan.steps = raw.steps.map((s, i) => {

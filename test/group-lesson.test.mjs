@@ -12,7 +12,7 @@ const run = (state, ...cmds) => cmds.reduce((s, c) => teacherCommand(s, plan, c)
 test('default plan follows the requested sequence and validates', () => {
   assert.deepEqual(plan.steps.map(s => s.type), ['page', 'interactive', 'board', 'questions', 'homework', 'evaluation']);
   const bad = structuredClone(defaultPlan());
-  for (const mutate of [p => p.steps = [], p => p.grade = 9, p => p.steps[0].type = 'video', p => p.steps[3].questions[0].answer = 7,
+  for (const mutate of [p => p.steps = [], p => p.grade = 10, p => p.steps[0].type = 'video', p => p.steps[3].questions[0].answer = 7,
     p => Object.assign(p.steps[0], {source: 'upload', image: 'data:image/svg+xml;base64,AAAA', rights: true}),
     p => Object.assign(p.steps[0], {source: 'upload', image: 'data:image/png;base64,AAAA', rights: false}),
     p => p.steps[1].narration = {mode: 'recorded'}, p => p.steps[1].narration = {mode: 'speech', text: ''}, p => p.steps[2].items[0].kind = 'html']) {
@@ -304,6 +304,6 @@ test('activity engine: states of matter values, phases, hidden prediction and a 
   // An old lesson saved before the engine (segment values on the segment itself) still loads.
   const old = structuredClone(defaultPlan()); old.steps[1].narrator = {segments: [{id: 'o1', hour: 9, height: 1.5, material: 'paper', text: 'مقطع قديم'}]};
   assert.deepEqual(validatePlan(old).steps[1].narrator.segments[0].values, {hour: 9, height: 1.5, material: 'paper'});
-  assert.equal(Object.keys(ACTIVITIES).length, 8);
+  assert.equal(Object.keys(ACTIVITIES).length, 21);
 });
 function run2(p, state, ...cmds) { return cmds.reduce((s, c) => teacherCommand(s, p, c), state); }

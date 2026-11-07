@@ -6,7 +6,7 @@ import {unfold, SOLIDS} from '../public/solids-model.js';
 import {LIBRARY, toolsFor} from '../public/tool-library.js';
 import {validatePlan, defaultPlan} from '../public/group-plan.js';
 
-const ids = ['digestive', 'urinary', 'nervous', 'solids'];
+const ids = ['digestive', 'urinary', 'nervous', 'solids', 'fractions', 'numberline', 'angles', 'area', 'balance', 'linear', 'earth', 'moon', 'watercycle', 'circuit', 'atom', 'heart', 'plant'];
 
 test('each model renders every state, hides names on request and has a valid narrated tour', () => {
   for (const id of ids) {
@@ -21,7 +21,7 @@ test('each model renders every state, hides names on request and has a valid nar
     }
     for (const seg of a.narrator()) assert.deepEqual(cleanValues(id, seg.values), {...v, ...seg.values});
     const hidden = a.render({...v, part: Object.keys(a.params.find(p => p.key === 'part')?.options || {none: 1}).at(-1)}, {hidden: true});
-    if (id !== 'solids') assert.match(hidden, /١ ؟/);
+    if (['digestive', 'urinary', 'nervous', 'heart', 'plant'].includes(id)) assert.match(hidden, /١ ؟/);
   }
   // the chosen organ pulses and the others fade
   const svg = ACTIVITIES.digestive.render({stage: 3, part: 'stomach'}, {hidden: false});
@@ -51,4 +51,22 @@ test('the models are in the library, filtered by subject, grade and lesson, and 
   const plan = defaultPlan(); plan.steps[1].activity = 'nervous'; delete plan.steps[1].narrator; plan.tools = ['nervous', 'urinary'];
   const clean = validatePlan(plan);
   assert.equal(clean.steps[1].activity, 'nervous'); assert.equal(clean.steps[1].narrator.segments.length, 7); assert.deepEqual(clean.tools, ['nervous', 'urinary']);
+});
+
+test('elementary and intermediate: grades 1–9, every grade has science and math explanations, and the facts are right', async () => {
+  const {gradeName} = await import('../public/group-plan.js');
+  assert.equal(gradeName(7), 'الصف الأول المتوسط'); assert.equal(gradeName(9), 'الصف الثالث المتوسط');
+  const plan = defaultPlan(); plan.grade = 8; assert.equal(validatePlan(plan).grade, 8);
+  plan.grade = 10; assert.throws(() => validatePlan(plan));
+  for (let g = 1; g <= 9; g++) for (const subject of ['science', 'math']) {
+    const {forLesson, others} = toolsFor({subject, grade: g}), acts = [...forLesson, ...others].filter(t => t.kind === 'activity');
+    assert.ok(acts.length >= 2, `grade ${g} ${subject}: ${acts.map(t => t.id)}`);
+  }
+  for (const t of LIBRARY.filter(t => t.kind === 'activity')) assert.ok(ACTIVITIES[t.id], t.id + ' has an engine entry');
+  const {shells, phaseName} = await import('../public/science-models.js'), {angleType} = await import('../public/math-models.js');
+  assert.deepEqual(shells(11), [2, 8, 1]); assert.deepEqual(shells(20), [2, 8, 8, 2]);
+  assert.equal(phaseName(0), 'المحاق'); assert.equal(phaseName(15), 'البدر'); assert.equal(phaseName(7), 'التربيع الأول');
+  assert.deepEqual([45, 90, 120, 180, 270].map(angleType), ['حادة', 'قائمة', 'منفرجة', 'مستقيمة', 'منعكسة']);
+  assert.match(ACTIVITIES.balance.render({stage: 4, a: 2, b: 3, x: 4}, {}), /س = ٤/);
+  assert.match(ACTIVITIES.earth.render({hour: 12, month: 6}, {}), /الصيف/); assert.match(ACTIVITIES.earth.render({hour: 0, month: 12}, {}), /الشتاء · ليل/);
 });

@@ -1,5 +1,5 @@
 // Planner: the teacher orders the lesson steps before class and prepares content, questions and narration.
-import {STEP_TYPES, NARRATION, SUBJECTS, ORIGINAL_PAGES, LIMITS, renderOriginalPage, validatePlan, boardLayout} from './group-plan.js';
+import {STEP_TYPES, NARRATION, SUBJECTS, ORIGINAL_PAGES, LIMITS, renderOriginalPage, validatePlan, boardLayout, gradeName} from './group-plan.js';
 import {el} from './group-view.js';
 import {openTextPicker, downloadJSON, safeName} from './text-library.js';
 import {ACTIVITIES, activityOf, segmentLabel} from './activities.js';
@@ -226,7 +226,7 @@ function render() {
   $('pl-meta').replaceChildren(
     field('عنوان الدرس', textInput(plan.title, 80, v => { plan.title = v; $('pl-heading').textContent = v; })),
     field('المادة', el('select', {onchange: e => { plan.subject = e.target.value; touch(); }}, Object.entries(SUBJECTS).map(([k, v]) => el('option', {value: k, selected: k === plan.subject}, v)))),
-    field('الصف', el('select', {onchange: e => { plan.grade = Number(e.target.value); touch(); }}, [1, 2, 3, 4, 5, 6].map(g => el('option', {value: g, selected: g === plan.grade}, 'الصف ' + ['', 'الأول', 'الثاني', 'الثالث', 'الرابع', 'الخامس', 'السادس'][g])))),
+    field('الصف', el('select', {onchange: e => { plan.grade = Number(e.target.value); touch(); }}, [1, 2, 3, 4, 5, 6, 7, 8, 9].map(g => el('option', {value: g, selected: g === plan.grade}, gradeName(g))))),
     field('الدرس من المنهج', el('select', {'aria-label': 'الدرس من المنهج', onchange: e => { plan.lesson = e.target.value || undefined; touch(); render(); }}, el('option', {value: ''}, '— بلا —'),
       ...curriculumLessons().filter(l => l.subject === plan.subject).map(l => el('option', {value: l.id, selected: l.id === plan.lesson}, l.title)))),
     toolsField(),

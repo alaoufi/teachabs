@@ -6,7 +6,7 @@ import {toolsFor, STAMPS} from './tool-library.js';
 import {curriculumLessons} from './curriculum-g4.js';
 
 const KIND = {stamp: 'على السبورة', activity: 'شرح تفاعلي', class: 'أداة فصل'};
-const GRADES = ['', 'الأول', 'الثاني', 'الثالث', 'الرابع', 'الخامس', 'السادس'];
+const GRADES = ['', 'الأول', 'الثاني', 'الثالث', 'الرابع', 'الخامس', 'السادس', 'الأول المتوسط', 'الثاني المتوسط', 'الثالث المتوسط'];
 
 /** A small picture of a board tool, drawn with the same drawing as on the board. */
 function preview(id) {
@@ -35,7 +35,7 @@ export function openLibrary(opts) {
   const head = el('div', {class: 'tl-head'},
     el('h2', {text: '🧰 مكتبة الأدوات'}),
     el('select', {'aria-label': 'المادة', onchange: e => { state.subject = e.target.value; state.lesson = ''; fillLessons(); draw(); }}, el('option', {value: ''}, 'كل المواد'), ...Object.entries(SUBJECTS).map(([k, v]) => el('option', {value: k, selected: k === state.subject}, v))),
-    el('select', {'aria-label': 'الصف', onchange: e => { state.grade = e.target.value; fillLessons(); draw(); }}, el('option', {value: ''}, 'كل الصفوف'), ...[1, 2, 3, 4, 5, 6].map(g => el('option', {value: g, selected: String(g) === String(state.grade)}, 'الصف ' + GRADES[g]))),
+    el('select', {'aria-label': 'الصف', onchange: e => { state.grade = e.target.value; fillLessons(); draw(); }}, el('option', {value: ''}, 'كل الصفوف'), ...[1, 2, 3, 4, 5, 6, 7, 8, 9].map(g => el('option', {value: g, selected: String(g) === String(state.grade)}, 'الصف ' + GRADES[g]))),
     lessonSel,
     el('input', {type: 'search', placeholder: 'ابحث: كسور، ساعة، مقارنة…', 'aria-label': 'بحث في الأدوات', oninput: e => { state.query = e.target.value; draw(); }}),
     el('button', {type: 'button', class: 'quiet', 'aria-label': 'إغلاق', onclick: () => dlg.close()}, '✕'));

@@ -5,7 +5,7 @@
 // Ideas: Microsoft Whiteboard (ruler, protractor), Classroomscreen (timer, random name, work symbols), virtual
 // manipulatives of maths classrooms (number line, fraction bars, hundred chart, clock), and graphic organisers.
 
-const ALL = [1, 2, 3, 4, 5, 6];
+const ALL = [1, 2, 3, 4, 5, 6, 7, 8, 9];
 const ar = n => String(n).replace(/\d/g, d => '٠١٢٣٤٥٦٧٨٩'[d]);
 
 /** Each stamp: its size (for placing it in view) and how it is drawn. `add(tag, attrs, text)` appends to the stamp. */
@@ -150,7 +150,13 @@ function tchart(add, a, b) {
 export const LIBRARY = [
   // ---- mathematics ----
   {id: 'placevalue', kind: 'activity', icon: '🔢', title: 'لوحة المنازل التفاعلية', desc: 'يكتب المعلم عددًا فتظهر منازله وقيمها.', subjects: ['math'], grades: [3, 4, 5], lessons: ['m1-1', 'm1-2', 'm1-4', 'm1-5', 'm1-6']},
-  {id: 'solids', kind: 'activity', icon: '📦', title: 'المجسمات وشبكاتها', desc: 'مكعب ومنشور وهرم وأسطوانة ومخروط تُفتح إلى شبكاتها، وعدّ الأوجه والأحرف والرؤوس.', subjects: ['math'], grades: [2, 3, 4, 5, 6], lessons: []},
+  {id: 'solids', kind: 'activity', icon: '📦', title: 'المجسمات وشبكاتها', desc: 'مكعب ومنشور وهرم وأسطوانة ومخروط تُفتح إلى شبكاتها، وعدّ الأوجه والأحرف والرؤوس.', subjects: ['math'], grades: [1, 2, 3, 4, 5, 6, 7, 8], lessons: []},
+  {id: 'fractions', kind: 'activity', icon: '🍰', title: 'الكسور التفاعلية', desc: 'بسط ومقام بالشريط والدائرة، والكسور المتكافئة وغير الفعلية والمقارنة.', subjects: ['math'], grades: [2, 3, 4, 5, 6, 7], lessons: []},
+  {id: 'numberline', kind: 'activity', icon: '↔️', title: 'خط الأعداد والأعداد الصحيحة', desc: 'الجمع والطرح بالقفزات، والأعداد السالبة.', subjects: ['math'], grades: [1, 2, 3, 4, 5, 6, 7], lessons: ['m2-4', 'm2-5', 'm2-6']},
+  {id: 'angles', kind: 'activity', icon: '📐', title: 'الزوايا وأنواعها', desc: 'حادة وقائمة ومنفرجة ومستقيمة ومنعكسة، بالقياس على منقلة.', subjects: ['math'], grades: [4, 5, 6, 7, 8], lessons: []},
+  {id: 'area', kind: 'activity', icon: '⬛', title: 'المساحة والمحيط', desc: 'مستطيل على شبكة: نعدّ الوحدات المربعة ونحسب المحيط.', subjects: ['math'], grades: [3, 4, 5, 6, 7], lessons: []},
+  {id: 'balance', kind: 'activity', icon: '⚖️', title: 'حل المعادلات بالميزان', desc: 'المعادلة ميزان متوازن: نطرح من الطرفين ثم نقسم حتى نجد س.', subjects: ['math'], grades: [5, 6, 7, 8, 9], lessons: []},
+  {id: 'linear', kind: 'activity', icon: '📈', title: 'الدالة الخطية', desc: 'ص = م س + ب: جدول القيم والتمثيل البياني والميل والمقطع.', subjects: ['math'], grades: [7, 8, 9], lessons: []},
   {id: 'placechart', kind: 'stamp', icon: '🏷', title: 'جدول المنازل', desc: 'من الآحاد إلى الملايين لكتابة الأعداد.', subjects: ['math'], grades: [2, 3, 4, 5], lessons: ['m1-1', 'm1-2', 'm1-4', 'm1-5', 'm1-6']},
   {id: 'numberline10', kind: 'stamp', icon: '📏', title: 'خط الأعداد ٠–١٠', desc: 'للعد والجمع والطرح والمقارنة.', subjects: ['math'], grades: [1, 2, 3], lessons: ['m2-4', 'm2-5']},
   {id: 'numberline100', kind: 'stamp', icon: '📏', title: 'خط الأعداد ٠–١٠٠', desc: 'للتقريب والترتيب والتقدير.', subjects: ['math'], grades: [2, 3, 4, 5], lessons: ['m1-4', 'm1-5', 'm1-6', 'm2-2']},
@@ -172,9 +178,16 @@ export const LIBRARY = [
   {id: 'cells', kind: 'activity', icon: '🔬', title: 'رحلة التكبير إلى الخلية', desc: 'من المخلوق إلى العضو والنسيج والخلية، نباتية وحيوانية.', subjects: ['science'], grades: [4, 5], lessons: ['s1-1-1', 's1-1-2']},
   {id: 'matter', kind: 'activity', icon: '🧊', title: 'حالات المادة', desc: 'نسخّن الماء ونبرّده فيتغيّر من صلب إلى سائل إلى غاز.', subjects: ['science'], grades: [3, 4, 5], lessons: []},
   {id: 'shadows', kind: 'activity', icon: '☀️', title: 'الضوء والظل', desc: 'نحرّك الشمس فيتغيّر طول الظل واتجاهه.', subjects: ['science'], grades: [3, 4, 5], lessons: []},
-  {id: 'digestive', kind: 'activity', icon: '🍎', title: 'الجهاز الهضمي', desc: 'رحلة اللقمة من الفم إلى المستقيم، والكبد والبنكرياس.', subjects: ['science'], grades: [4, 5, 6], lessons: ['s3-5-2', 's3-5-1']},
-  {id: 'urinary', kind: 'activity', icon: '💧', title: 'الجهاز البولي', desc: 'من الدم إلى الكليتين والحالبين والمثانة.', subjects: ['science'], grades: [5, 6], lessons: ['s3-5-1']},
-  {id: 'nervous', kind: 'activity', icon: '🧠', title: 'الجهاز العصبي والدماغ', desc: 'الدماغ والحبل الشوكي والأعصاب، فصوص الدماغ، والخلية العصبية.', subjects: ['science'], grades: [4, 5, 6], lessons: ['s1-2-3']},
+  {id: 'digestive', kind: 'activity', icon: '🍎', title: 'الجهاز الهضمي', desc: 'رحلة اللقمة من الفم إلى المستقيم، والكبد والبنكرياس.', subjects: ['science'], grades: [4, 5, 6, 7, 8], lessons: ['s3-5-2', 's3-5-1']},
+  {id: 'urinary', kind: 'activity', icon: '💧', title: 'الجهاز البولي', desc: 'من الدم إلى الكليتين والحالبين والمثانة.', subjects: ['science'], grades: [5, 6, 7, 8], lessons: ['s3-5-1']},
+  {id: 'nervous', kind: 'activity', icon: '🧠', title: 'الجهاز العصبي والدماغ', desc: 'الدماغ والحبل الشوكي والأعصاب، فصوص الدماغ، والخلية العصبية.', subjects: ['science'], grades: [4, 5, 6, 7, 8, 9], lessons: ['s1-2-3']},
+  {id: 'plant', kind: 'activity', icon: '🌱', title: 'النبات والبناء الضوئي', desc: 'الجذر والساق والورقة والزهرة، وصنع الغذاء بضوء الشمس.', subjects: ['science'], grades: [1, 2, 3, 4, 5, 6, 7], lessons: ['s1-1-2']},
+  {id: 'watercycle', kind: 'activity', icon: '🌧', title: 'دورة الماء', desc: 'تبخر وتكاثف وهطول وتجمع.', subjects: ['science'], grades: [1, 2, 3, 4, 5, 6, 7], lessons: []},
+  {id: 'earth', kind: 'activity', icon: '🌍', title: 'الليل والنهار والفصول', desc: 'دوران الأرض حول نفسها وحول الشمس وميل محورها.', subjects: ['science'], grades: [1, 2, 3, 4, 5, 6, 7, 8], lessons: []},
+  {id: 'moon', kind: 'activity', icon: '🌙', title: 'أطوار القمر', desc: 'من المحاق إلى البدر، كما نراه من الأرض ومن الفضاء.', subjects: ['science'], grades: [4, 5, 6, 7, 8], lessons: []},
+  {id: 'circuit', kind: 'activity', icon: '💡', title: 'الدائرة الكهربائية', desc: 'المفتاح والمصابيح، والتوصيل على التوالي والتوازي.', subjects: ['science'], grades: [4, 5, 6, 7, 8, 9], lessons: []},
+  {id: 'heart', kind: 'activity', icon: '❤️', title: 'القلب والدورة الدموية', desc: 'حجرات القلب الأربع ورحلة الدم بين الجسم والرئتين.', subjects: ['science'], grades: [5, 6, 7, 8, 9], lessons: ['s3-5-1']},
+  {id: 'atom', kind: 'activity', icon: '⚛️', title: 'تركيب الذرة', desc: 'البروتونات والنيوترونات والإلكترونات لأول عشرين عنصرًا.', subjects: ['science'], grades: [7, 8, 9], lessons: []},
   {id: 'thermometer', kind: 'stamp', icon: '🌡', title: 'ميزان الحرارة', desc: 'بالدرجات السيليزية من ٠ إلى ١٠٠.', subjects: ['science', 'math'], grades: [2, 3, 4, 5, 6], lessons: []},
   {id: 'foodchain', kind: 'stamp', icon: '🔗', title: 'السلسلة الغذائية', desc: 'منتج ومستهلكون بأسهم انتقال الطاقة.', subjects: ['science'], grades: [3, 4, 5], lessons: ['s2-3-1', 's2-3-2', 's2-3-3']},
   {id: 'vertebrates', kind: 'stamp', icon: '🦴', title: 'فقاريات ولافقاريات', desc: 'جدول بعمودين لتصنيف الحيوانات.', subjects: ['science'], grades: [3, 4, 5], lessons: ['s1-1-2', 's1-2-1', 's1-2-2', 's1-2-3']},

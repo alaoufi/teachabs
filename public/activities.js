@@ -6,6 +6,7 @@ import {NARRATOR_SCRIPTS} from './narrator-scripts.js';
 import {renderCells, cellsFacts, formatLevel, KINDS, PARTS} from './cells-model.js';
 import {renderDigestive, digestiveFacts, DIGEST_PARTS, DIGEST_STAGES, renderUrinary, urinaryFacts, URINE_PARTS, URINE_STAGES, renderNervous, nervousFacts, NERVE_PARTS, formatNerveLevel} from './body-models.js';
 import {renderSolid, solidFacts, SOLIDS, MARKS, formatUnfold} from './solids-model.js';
+import {EXPLAINERS} from './explain-registry.js';
 import {renderPlaceValue, placeValueFacts, formatNumber as formatPV, PLACES, PV_MAX} from './placevalue-model.js';
 
 export const ACTIVITIES = {
@@ -165,6 +166,8 @@ export const ACTIVITIES = {
     ]
   }
 };
+
+Object.assign(ACTIVITIES, EXPLAINERS); // stage 060: elementary and intermediate science and mathematics
 
 export const activityOf = id => ACTIVITIES[id] || ACTIVITIES.shadows;
 
