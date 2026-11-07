@@ -1,6 +1,6 @@
 // Optional browser verification for stage 049: a real teacher and a real student in the same class at the same time.
 // Teacher on a computer, student on a phone (fake microphone and camera): the teacher's voice and picture reach the
-// student, the student's voice reaches the teacher, the clear control panel works including «⛔ إيقاف الكل», and the
+// student (even when connection messages arrive late and out of order), the student's voice reaches the teacher, the clear control panel works including «⛔ إيقاف الكل», and the
 // lesson itself (curriculum page with its audio explanation, the interactive explanation) follows the teacher live.
 const {chromium} = require(process.env.PLAYWRIGHT_MODULE || 'playwright');
 const assert = require('node:assert/strict'), fs = require('node:fs'), path = require('node:path');
@@ -14,17 +14,19 @@ const assert = require('node:assert/strict'), fs = require('node:fs'), path = re
     ...(process.env.CHROME_PATH ? {executablePath: process.env.CHROME_PATH} : {}), ...(process.env.LIVE_BASE && process.env.HTTPS_PROXY ? {proxy: {server: process.env.HTTPS_PROXY}} : {})});
   const results = [], errors = [];
   const watch = p => { p.on('pageerror', e => errors.push(e.message)); p.on('console', m => { if (m.type() === 'error' && !/Failed to load resource/.test(m.text())) errors.push(m.text()); }); };
+  // A real network: connection messages are delayed by different amounts, so they may arrive out of order.
+  const jitter = async ctx => { if (!process.env.LIVE_BASE) await ctx.route(/\/rtc$/, async route => { await new Promise(r => setTimeout(r, Math.random() * 600)); route.continue(); }); };
   const until = async (p, fn, arg, ms = 20000) => { const end = Date.now() + ms; for (;;) { const v = await p.evaluate(fn, arg); if (v) return v; if (Date.now() > end) throw new Error('timed out: ' + fn); await p.waitForTimeout(250); } };
   try {
     const tc = await browser.newContext({viewport: {width: 1366, height: 768}, permissions: ['microphone', 'camera']}); tc.setDefaultTimeout(30000);
-    const t = await tc.newPage(); watch(t); t.on('dialog', d => d.accept().catch(() => {}));
+    await jitter(tc); const t = await tc.newPage(); watch(t); t.on('dialog', d => d.accept().catch(() => {}));
     await t.goto(base + '/start/teacher');
     await t.locator('.gl-cur-subject[data-subject=science] li.is-ready button').click(); await t.waitForSelector('#pl-steps li');
     await t.getByRole('button', {name: 'بدء الحصة بهذا الترتيب'}).click(); await t.waitForURL(/\/teach\/live\/[A-Z0-9]{6}$/);
     await t.waitForSelector('#gl-steps li.is-current');
 
     const sc = await browser.newContext({viewport: {width: 390, height: 844}, isMobile: true, hasTouch: true, permissions: ['microphone']}); sc.setDefaultTimeout(30000);
-    const s = await sc.newPage(); watch(s);
+    await jitter(sc); const s = await sc.newPage(); watch(s);
     await s.addInitScript(() => { window.__spoken = []; window.speechSynthesis && (speechSynthesis.speak = u => { window.__spoken.push(u.text); setTimeout(() => u.onend?.(), 10); }); });
     await s.goto(base + '/start/student'); await s.waitForURL(/\/class\/[A-Z0-9]{6}$/);
     await s.waitForFunction(() => window.__voice); await s.locator('#gl-enter').click(); await s.waitForSelector('#gl-content .gl-page');
