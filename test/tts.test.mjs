@@ -37,3 +37,18 @@ test('the plan and the class choose the narrator voice; texts come from the plan
   assert.equal(speechText(plan, act.id, 0), act.narrator.segments[0].text);
   assert.equal(validatePlan(LESSON_TEMPLATES.cells.plan()).speaker, 'male', 'a man\'s voice by default');
 });
+
+test('Google voices with the Gmail account: most natural voice first, WaveNet when the account lacks it', async () => {
+  delete process.env.AZURE_SPEECH_KEY; process.env.GOOGLE_TTS_KEY = 'g-key';
+  const calls = [];
+  const fake = async (url, opt) => { const b = JSON.parse(opt.body); calls.push({url, b, key: opt.headers['X-Goog-Api-Key']});
+    return b.voice.name.includes('Chirp3') ? new Response('{}', {status: 400}) : new Response(JSON.stringify({audioContent: Buffer.from([7, 8]).toString('base64')}), {status: 200}); };
+  const a = await speech('صوت امرأة من غوغل', 'female', {fetchImpl: fake});
+  assert.deepEqual([...a], [7, 8]);
+  assert.equal(calls[0].url, 'https://texttospeech.googleapis.com/v1/text:synthesize'); assert.equal(calls[0].key, 'g-key');
+  assert.deepEqual(calls.map(c => c.b.voice.name), ['ar-XA-Chirp3-HD-Aoede', 'ar-XA-Wavenet-A']);
+  assert.equal(calls[0].b.voice.languageCode, 'ar-XA'); assert.equal(calls[0].b.input.text, 'صوت امرأة من غوغل');
+  await speech('صوت رجل من غوغل', 'male', {fetchImpl: fake}); assert.equal(calls[2].b.voice.name, 'ar-XA-Chirp3-HD-Charon');
+  await assert.rejects(speech('مفتاح خطأ', 'male', {fetchImpl: async () => new Response('', {status: 403})}), /403/);
+  delete process.env.GOOGLE_TTS_KEY;
+});
