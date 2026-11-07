@@ -76,7 +76,10 @@ export function teacherPage(code, title, base) {
       ${fly('colors', '<i class="gl-current-color"></i>', 'اللون', COLORS.map((c, i) => `<button type="button" class="gl-color" data-color="${c.value}" aria-label="${c.name}" title="${c.name}" aria-pressed="${i ? 'false' : 'true'}"><i data-swatch="${i}"></i></button>`).join(''), 'gl-colors')}
       ${fly('sizes', '<i class="gl-current-size" data-dot="m"></i>', 'الحجم', Object.entries(SIZE_NAMES).map(([k, n]) => `<button type="button" class="gl-size" data-size="${k}" aria-pressed="${k === 'm' ? 'true' : 'false'}" title="حجم ${n}"><i data-dot="${k}"></i><span>${n}</span></button>`).join(''))}</div>
      <div class="gl-toolgroup" role="group" aria-label="إجراءات"><button type="button" id="gl-undo" title="تراجع (Ctrl+Z)">↶ تراجع</button>
-      ${fly('more', '⋯', 'المزيد', '<button type="button" id="gl-library" title="اختر نصًا توضيحيًا وعدّله ثم ضعه على السبورة">📚 نصوص</button><button type="button" id="gl-clear" title="مسح كتابة الخطوة">🗑 مسح</button>')}</div>
+      ${fly('more', '⋯', 'المزيد', '<button type="button" id="gl-library" title="اختر نصًا توضيحيًا وعدّله ثم ضعه على السبورة">📚 نصوص</button><button type="button" id="gl-clear" title="مسح كتابة الخطوة">🗑 مسح</button>'
+        + '<b class="gl-fly-head">⏱ مؤقت يراه الطلاب</b><button type="button" class="gl-timer-btn" data-sec="60">١ د</button><button type="button" class="gl-timer-btn" data-sec="180">٣ د</button><button type="button" class="gl-timer-btn" data-sec="300">٥ د</button><button type="button" class="gl-timer-btn" data-sec="0">⏹ إيقاف</button>'
+        + '<b class="gl-fly-head">🎭 ستارة على السبورة</b><button type="button" class="gl-curtain-btn" data-level="100">إسدال</button><button type="button" class="gl-curtain-btn" data-level="-25">كشف ربع</button><button type="button" class="gl-curtain-btn" data-level="0">رفع</button>'
+        + '<b class="gl-fly-head">أدوات القياس</b><button type="button" class="gl-stamp-btn" data-stamp="ruler">📏 مسطرة</button><button type="button" class="gl-stamp-btn" data-stamp="protractor">📐 منقلة</button>')}</div>
     </div>`;
   return `${css}<section class="gl-wrap gl-teacher gl-present" dir="rtl" id="gl-app" data-code="${e(code)}" data-role="teacher">
   <header class="gl-bar gl-bar-top">

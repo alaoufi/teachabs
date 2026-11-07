@@ -1,6 +1,6 @@
 // Student seat and classroom display screen: shows only what the teacher has made visible.
 import {publicStep} from './group-plan.js';
-import {el, renderStep, renderInk, playNarration, stopNarration, renderNarrator, setSpeaking, speechUrl, laserTrail} from './group-view.js';
+import {el, renderStep, renderInk, playNarration, stopNarration, renderNarrator, setSpeaking, speechUrl, laserTrail, renderExtras} from './group-view.js';
 import {speakingMs} from './narrator-scripts.js';
 import {attachBoardTools} from './group-board-tools.js';
 import {formatNumber} from './science-shadow-model.js';
@@ -137,6 +137,7 @@ async function render() {
       if (view.step.id !== shownStep) { shownStep = view.step.id; const c = $('gl-content'); c.classList.remove('gl-enter'); void c.offsetWidth; c.classList.add('gl-enter'); tools.resetForStep(); }
     }
     renderInk($('gl-ink'), view.strokes || []);
+    renderExtras($('gl-board'), view);
     tools.remoteCamera(view.camera);
     await narrator(view.narrator);
   }

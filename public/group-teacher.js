@@ -1,6 +1,6 @@
 // Teacher console for the live group lesson: sequence, visibility, board ink, activity, results, homework, evaluation.
 import {STEP_TYPES, NARRATION, RATING, publicStep} from './group-plan.js';
-import {el, renderStep, renderInk, playNarration, stopNarration, renderDisplay, speechUrl} from './group-view.js';
+import {el, renderStep, renderInk, playNarration, stopNarration, renderDisplay, speechUrl, renderExtras} from './group-view.js';
 import {attachBoardTools} from './group-board-tools.js';
 import {renderNarrator, setSpeaking} from './group-view.js';
 import {openTextPicker} from './text-library.js';
@@ -337,7 +337,7 @@ function render() {
   if (cur?.type === 'interactive' && cur.narrator?.segments.length && view.state.narrator?.segment === -1 && view.state.live && autoStart && !autoStarted.has(cur.id)) {
     autoStarted.add(cur.id); command({op: 'narrator', action: 'start'});
   }
-  renderSequence(); renderBoard(); renderQuick(step());
+  renderSequence(); renderBoard(); renderQuick(step()); renderExtras($('gl-board'), view, {teacher: true});
   // Re-render the step tools but keep keyboard focus on the same control.
   const active = $('gl-panel').contains(document.activeElement) ? document.activeElement : null;
   const key = active && (active.getAttribute('aria-label') || active.textContent);
@@ -510,3 +510,16 @@ function syncFlies() {
 }
 new MutationObserver(syncFlies).observe(document.querySelector('.gl-tools'), {subtree: true, attributes: true, attributeFilter: ['aria-pressed']});
 syncFlies();
+
+// ---- ⏱ timer, 🎭 curtain, 📏📐 measuring tools (from «⋯ المزيد») ----
+for (const b of document.querySelectorAll('.gl-timer-btn')) b.addEventListener('click', () => command(Number(b.dataset.sec) ? {op: 'timer', seconds: Number(b.dataset.sec)} : {op: 'timer', stop: true}));
+for (const b of document.querySelectorAll('.gl-curtain-btn')) b.addEventListener('click', () => {
+  const now = view?.curtain || 0, v = Number(b.dataset.level);
+  command({op: 'curtain', level: v < 0 ? Math.max(0, (now || 100) + v) : v}); // «كشف ربع» lifts it a quarter each time
+});
+for (const b of document.querySelectorAll('.gl-stamp-btn')) b.addEventListener('click', () => {
+  const c = view?.state?.camera?.[step().id] || {z: 1, x: 0, y: 0}, z = c.z || 1; // in the middle of what the teacher sees
+  const below = b.dataset.stamp === 'protractor' ? 90 : -80; // the protractor a little lower, so the two never land on each other
+  command({op: 'stamp', name: b.dataset.stamp, x: Math.round(Math.min(800, c.x + 500 / z - 200)), y: Math.round(Math.max(0, Math.min(440, c.y + 300 / z + below)))});
+  status('وُضعت الأداة. حرّكها بأداة «تحريك»، وامسحها بالممحاة.');
+});

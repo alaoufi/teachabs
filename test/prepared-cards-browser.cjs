@@ -45,7 +45,7 @@ const assert = require('node:assert/strict'), fs = require('node:fs'), path = re
       await t.locator('#gl-quick').getByRole('button', {name: /النص التالي/}).click();
       await s.waitForFunction(n => document.querySelectorAll('#gl-content .gl-item').length === n, n);
     }
-    assert.match(await t.locator('#gl-quick').textContent(), /ظهرت كل النصوص/);
+    await t.waitForFunction(() => /ظهرت كل النصوص/.test(document.querySelector('#gl-quick').textContent)); // the teacher's bar updates a moment after the student's board
     const sr = await rects(s), tr = await rects(t);
     assert.ok(!overlaps(sr) && !overlaps(tr), 'texts never on top of each other');
     results.push('«النص التالي» showed the four texts one after another in their places; none on top of another (teacher and student)');

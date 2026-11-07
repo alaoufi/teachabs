@@ -61,6 +61,7 @@ export function renderInk(svg, items = []) {
   svg.replaceChildren(markers, ink, ...svg.querySelectorAll(':scope > .is-live, :scope > .gl-laser'));
 }
 export function inkNode(item) {
+  if (item.kind === 'stamp') return stampNode(item);
   if (item.kind === 'text') {
     const t = document.createElementNS(SVG, 'text');
     t.setAttribute('x', item.x); t.setAttribute('y', item.y); t.setAttribute('fill', item.color);
@@ -227,4 +228,51 @@ export function laserTrail(svg, points, start = false) {
   dot.setAttribute('class', 'gl-laser-dot'); dot.setAttribute('r', 9); dot.setAttribute('cx', g.__last[0]); dot.setAttribute('cy', g.__last[1]); g.append(dot);
   clearTimeout(g.__hide); g.__hide = setTimeout(() => dot.remove(), 1200);
   setTimeout(() => path.remove(), 1100);
+}
+
+/** 📏 a 10 cm ruler or 📐 a protractor, drawn in board units; moved and erased like ink. */
+function stampNode(item) {
+  const g = document.createElementNS(SVG, 'g'), add = (tag, attrs, text) => { const n = document.createElementNS(SVG, tag); for (const [k, v] of Object.entries(attrs)) n.setAttribute(k, v); if (text !== undefined) n.textContent = text; g.append(n); return n; };
+  g.setAttribute('class', 'gl-stamp gl-stamp-' + item.name); g.setAttribute('transform', `translate(${item.x} ${item.y})`);
+  if (item.id) g.dataset.id = item.id;
+  if (item.name === 'ruler') {
+    add('rect', {x: 0, y: 0, width: 420, height: 56, rx: 6, class: 'gl-stamp-body'});
+    for (let mm = 0; mm <= 100; mm++) { const x = 10 + mm * 4, h = mm % 10 ? (mm % 5 ? 10 : 16) : 24; add('line', {x1: x, y1: 0, x2: x, y2: h, class: 'gl-stamp-tick'}); if (!(mm % 10)) add('text', {x, y: 42, class: 'gl-stamp-num'}, String(mm / 10)); }
+    add('text', {x: 404, y: 52, class: 'gl-stamp-unit'}, 'سم');
+  } else {
+    const r = 160;
+    add('path', {d: `M0 0 L${2 * r} 0 A${r} ${r} 0 0 0 0 0 Z`, class: 'gl-stamp-body', transform: `translate(0 ${r})`});
+    for (let d = 0; d <= 180; d += 5) {
+      const a = Math.PI * d / 180, c = Math.cos(a), sn = Math.sin(a), len = d % 10 ? 8 : (d % 30 ? 14 : 22);
+      add('line', {x1: r - r * c, y1: r - r * sn, x2: r - (r - len) * c, y2: r - (r - len) * sn, class: 'gl-stamp-tick'});
+      if (!(d % 30)) add('text', {x: r - (r - 38) * c, y: r - (r - 38) * sn + 5, class: 'gl-stamp-num'}, String(d));
+    }
+    add('circle', {cx: r, cy: r, r: 4, class: 'gl-stamp-tick'});
+  }
+  return g;
+}
+
+/** ⏱ the timer chip and 🎭 the curtain, on every screen of the class. */
+let timerTick = 0;
+export function renderExtras(board, view, {teacher = false} = {}) {
+  if (!board) return;
+  const stage = board.parentElement;
+  let chip = stage.querySelector(':scope > .gl-timer');
+  clearInterval(timerTick);
+  if (view.timer) {
+    if (!chip) { chip = el('div', {class: 'gl-timer', role: 'timer', 'aria-live': 'off'}); stage.append(chip); }
+    const ends = Date.now() + view.timer.remaining;
+    const tick = () => {
+      const left = Math.max(0, Math.round((ends - Date.now()) / 1000));
+      chip.textContent = left ? `⏱ ${String(Math.floor(left / 60)).padStart(2, '0')}:${String(left % 60).padStart(2, '0')}` : '⏰ انتهى الوقت';
+      chip.classList.toggle('is-done', !left); chip.classList.toggle('is-low', left > 0 && left <= 10);
+      if (!left) clearInterval(timerTick);
+    };
+    tick(); timerTick = setInterval(tick, 500);
+  } else chip?.remove();
+  let cur = board.querySelector(':scope > .gl-curtain');
+  if (view.curtain) {
+    if (!cur) { cur = el('div', {class: 'gl-curtain', 'aria-label': 'ستارة'}, el('span', {text: '🎭'})); board.append(cur); }
+    cur.classList.toggle('is-teacher', teacher); cur.style.height = view.curtain + '%';
+  } else cur?.remove();
 }

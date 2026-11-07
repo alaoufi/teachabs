@@ -153,9 +153,10 @@ export function attachBoardTools({mode, send = () => {}, items = () => [], canIn
     const list = items();
     for (let i = list.length - 1; i >= 0; i--) {
       const it = list[i];
-      if (it.kind === 'text') {
+      if (it.kind === 'text' || it.kind === 'stamp') {
         const node = ink.querySelector(`[data-id="${it.id}"]`); if (!node) continue;
-        const b = node.getBBox(); if (point[0] >= b.x - tol && point[0] <= b.x + b.width + tol && point[1] >= b.y - tol && point[1] <= b.y + b.height + tol) return it;
+        const bb = node.getBBox(), b = it.kind === 'stamp' ? {x: bb.x + it.x, y: bb.y + it.y, width: bb.width, height: bb.height} : bb; // a stamp's box is in its own space
+        if (point[0] >= b.x - tol && point[0] <= b.x + b.width + tol && point[1] >= b.y - tol && point[1] <= b.y + b.height + tol) return it;
       } else {
         const w = ((TOOLS[it.tool] || TOOLS.pen).widths[it.size] || 4) / 2 + tol;
         for (let j = 0; j < it.points.length - 1; j++) if (segmentDistance(point, it.points[j], it.points[j + 1]) <= w) return it;
@@ -241,7 +242,8 @@ export function attachBoardTools({mode, send = () => {}, items = () => [], canIn
     } else if (gesture.type === 'erase') eraseAt(toBoard(e));
     else if (gesture.type === 'move') {
       const p = toBoard(e); gesture.d = [p[0] - gesture.start[0], p[1] - gesture.start[1]];
-      gesture.node?.setAttribute('transform', `translate(${gesture.d[0].toFixed(1)} ${gesture.d[1].toFixed(1)})`);
+      const base = gesture.it.kind === 'stamp' ? [gesture.it.x, gesture.it.y] : [0, 0];
+      gesture.node?.setAttribute('transform', `translate(${(base[0] + gesture.d[0]).toFixed(1)} ${(base[1] + gesture.d[1]).toFixed(1)})`);
     } else if (gesture.type === 'card') {
       const p = toBoard(e), c = gesture.card;
       gesture.to = [Math.max(0, Math.min(BOARD.width - 40, gesture.origin[0] + p[0] - gesture.start[0])), Math.max(0, Math.min(BOARD.height - 30, gesture.origin[1] + p[1] - gesture.start[1]))];

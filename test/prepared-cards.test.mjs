@@ -75,3 +75,19 @@ test('«next / previous» are steps from where the class is, so two quick presse
   assert.equal(first.index, 0, 'stays on the first step');
   assert.throws(() => teacherCommand(s, plan, {op: 'go', by: 3}), /خطوة غير موجودة/);
 });
+
+import {classExtras} from '../group-session.mjs';
+test('⏱ timer, 🎭 curtain and 📏📐 measuring tools', () => {
+  const plan = validatePlan(LESSON_TEMPLATES.placevalue.plan());
+  let s = teacherCommand(initialState(plan), plan, {op: 'timer', seconds: 180});
+  const t = classExtras(s, plan).timer; assert.equal(t.total, 180); assert.ok(t.remaining > 170000 && t.remaining <= 180000);
+  assert.throws(() => teacherCommand(s, plan, {op: 'timer', seconds: 5}), /مدة غير صالحة/);
+  s = teacherCommand(s, plan, {op: 'timer', stop: true}); assert.equal(classExtras(s, plan).timer, undefined);
+  s = teacherCommand(s, plan, {op: 'curtain', level: 75}); assert.equal(classExtras(s, plan).curtain, 75);
+  s = teacherCommand(s, plan, {op: 'go', by: 1}); assert.equal(classExtras(s, plan).curtain, undefined, 'each step has its own curtain');
+  s = teacherCommand(s, plan, {op: 'stamp', name: 'ruler', x: 100, y: 200});
+  const id = s.strokes[plan.steps[s.index].id][0].id;
+  s = teacherCommand(s, plan, {op: 'move', id, dx: 50, dy: -20});
+  assert.deepEqual(s.strokes[plan.steps[s.index].id][0], {id, kind: 'stamp', name: 'ruler', x: 150, y: 180});
+  assert.throws(() => teacherCommand(s, plan, {op: 'stamp', name: 'compass', x: 1, y: 1}), /أداة غير معروفة/);
+});

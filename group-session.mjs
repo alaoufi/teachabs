@@ -93,7 +93,7 @@ export function teacherCommand(state, plan, cmd) {
       const clampX = v => Math.round(Math.min(1000, Math.max(0, v)) * 10) / 10, clampY = v => Math.round(Math.min(600, Math.max(0, v)) * 10) / 10;
       if (Number.isFinite(cmd.dx) && Number.isFinite(cmd.dy)) {
         // Move any ink item by an offset, keeping it on the board.
-        if (item.kind === 'text') { item.x = clampX(item.x + cmd.dx); item.y = clampY(item.y + cmd.dy); }
+        if (item.kind === 'text' || item.kind === 'stamp') { item.x = clampX(item.x + cmd.dx); item.y = clampY(item.y + cmd.dy); }
         else {
           const xs = item.points.map(p => p[0]), ys = item.points.map(p => p[1]);
           const dx = Math.min(1000 - Math.max(...xs), Math.max(-Math.min(...xs), cmd.dx)), dy = Math.min(600 - Math.max(...ys), Math.max(-Math.min(...ys), cmd.dy));
@@ -161,6 +161,21 @@ export function teacherCommand(state, plan, cmd) {
     case 'publish-evaluation': need(typeof cmd.on === 'boolean', 'قيمة غير صالحة.'); s.evaluationPublished = cmd.on; return s;
     case 'live': need(typeof cmd.on === 'boolean', 'قيمة غير صالحة.'); s.live = cmd.on; return s;
     case 'speaker': need(['male', 'female'].includes(cmd.speaker), 'صوت غير معروف.'); s.speaker = cmd.speaker; return s; // the narrator's voice: man or woman
+    case 'timer': { // ⏱ a countdown everyone sees; seconds from 10 s to an hour, or stop
+      if (cmd.stop === true) { s.timer = null; return s; }
+      need(Number.isInteger(cmd.seconds) && cmd.seconds >= 10 && cmd.seconds <= 3600, 'مدة غير صالحة.');
+      s.timer = {ends: Date.now() + cmd.seconds * 1000, total: cmd.seconds}; return s;
+    }
+    case 'curtain': { // 🎭 covers the lower part of the board for students; 100 = all covered, 0 = lifted
+      need(Number.isInteger(cmd.level) && cmd.level >= 0 && cmd.level <= 100, 'قيمة غير صالحة.');
+      s.curtain = {...(s.curtain || {}), [step.id]: cmd.level}; return s;
+    }
+    case 'stamp': { // 📏 ruler or 📐 protractor laid on the board; moved and erased like ink
+      need(INKABLE.includes(step.type), 'الكتابة متاحة على المنهج والشرح والسبورة والأسئلة.');
+      need(['ruler', 'protractor'].includes(cmd.name), 'أداة غير معروفة.');
+      need(Number.isFinite(cmd.x) && Number.isFinite(cmd.y) && cmd.x >= 0 && cmd.x <= 1000 && cmd.y >= 0 && cmd.y <= 600, 'موضع غير صالح.');
+      return addInk(s, step, {kind: 'stamp', name: cmd.name, x: Math.round(cmd.x), y: Math.round(cmd.y)});
+    }
     case 'hand-down': { // the teacher answered the raised hand (one student, or everyone)
       s.hands = {...(s.hands || {})};
       if (cmd.all === true) s.hands = {}; else { need(typeof cmd.student === 'string', 'طالب غير معروف.'); delete s.hands[cmd.student]; }
@@ -328,3 +343,11 @@ export function speechText(plan, stepId, segment) {
   return step.narration?.mode === 'speech' ? step.narration.text : null;
 }
 export const speakerOf = state => state.speaker === 'female' ? 'female' : 'male';
+
+/** What every screen shows of the timer and the curtain right now. */
+export function classExtras(state, plan) {
+  const step = current(state, plan), out = {};
+  if (state.timer) out.timer = {remaining: Math.max(0, state.timer.ends - Date.now()), total: state.timer.total, ends: state.timer.ends};
+  const c = state.curtain?.[step.id]; if (c) out.curtain = c;
+  return out;
+}

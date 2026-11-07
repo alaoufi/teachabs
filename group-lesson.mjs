@@ -2,7 +2,7 @@
 import {validatePlan, defaultPlan, PlanError, LIMITS, LESSON_TEMPLATES} from './public/group-plan.js';
 import {validImage} from './public/group-plan.js';
 import {speech, ttsReady} from './tts.mjs';
-import {initialState, teacherCommand, teacherView, publicView, voiceOf, studentHand, speechText, speakerOf, checkAnswer, checkEvaluation, contentFor, narrationFor, segmentAudio, MAX_STUDENTS} from './group-session.mjs';
+import {initialState, teacherCommand, teacherView, publicView, voiceOf, studentHand, speechText, speakerOf, classExtras, checkAnswer, checkEvaluation, contentFor, narrationFor, segmentAudio, MAX_STUDENTS} from './group-session.mjs';
 import {UserError} from './store.mjs';
 import * as v from './group-views.mjs';
 
@@ -49,7 +49,7 @@ export function groupService(store) {
     const ids = new Set(d.students.map(x => x.id));
     for (const l of set) {
       if (l.kind === 'student' && !ids.has(l.id)) { l.res.write('event: removed\ndata: {}\n\n'); l.res.end(); set.delete(l); continue; }
-      const data = {...(l.kind === 'teacher' ? teacherView(d.s.state, d.s.plan, d.students, d.responses) : publicView(d.s.state, d.s.plan, l.kind === 'student' ? l.id : null, d.responses, d.names)), natural: ttsReady()}; // natural: the server has the man/woman voice
+      const data = {...(l.kind === 'teacher' ? teacherView(d.s.state, d.s.plan, d.students, d.responses) : publicView(d.s.state, d.s.plan, l.kind === 'student' ? l.id : null, d.responses, d.names)), ...(d.s.state.live ? classExtras(d.s.state, d.s.plan) : {}), natural: ttsReady()}; // natural: the server has the man/woman voice
       l.res.write('event: view\ndata: ' + JSON.stringify(data) + '\n\n');
     }
   }
@@ -60,7 +60,7 @@ export function groupService(store) {
     const timer = setInterval(() => res.write(': heartbeat\n\n'), 15000); timer.unref();
     res.on('close', () => { clearInterval(timer); listeners.get(code)?.delete(entry); });
     const d = views(code);
-    res.write('event: view\ndata: ' + JSON.stringify({...(kind === 'teacher' ? teacherView(d.s.state, d.s.plan, d.students, d.responses) : publicView(d.s.state, d.s.plan, kind === 'student' ? id : null, d.responses, d.names)), natural: ttsReady()}) + '\n\n');
+    res.write('event: view\ndata: ' + JSON.stringify({...(kind === 'teacher' ? teacherView(d.s.state, d.s.plan, d.students, d.responses) : publicView(d.s.state, d.s.plan, kind === 'student' ? id : null, d.responses, d.names)), ...(d.s.state.live ? classExtras(d.s.state, d.s.plan) : {}), natural: ttsReady()}) + '\n\n');
   }
 
   // ---- natural voice: the narrator's text as MP3 in the class's chosen voice (404 → the page uses the device's voice) ----
