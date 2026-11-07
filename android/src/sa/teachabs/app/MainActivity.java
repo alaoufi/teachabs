@@ -46,7 +46,7 @@ public class MainActivity extends Activity {
     static final String HOME = "https://abdulrahman-edu-trial.onrender.com/";
     static final String HOST = "abdulrahman-edu-trial.onrender.com";
     static final int FILE_REQUEST = 41, MIC_REQUEST = 42;
-    static final String VERSION = "0.9";
+    static final String VERSION = "1.0";
 
     WebView web;
     ProgressBar progress;
@@ -56,7 +56,7 @@ public class MainActivity extends Activity {
     final Handler ui = new Handler(Looper.getMainLooper());
     final Runnable showLoading = () -> loading.setVisibility(View.VISIBLE);
     ValueCallback<Uri[]> pendingFiles;
-    PermissionRequest pendingMic;
+    PermissionRequest pendingMic; String[] pendingWant;
 
     @Override
     protected void onCreate(Bundle saved) {
@@ -130,15 +130,18 @@ public class MainActivity extends Activity {
             @Override
             public void onPermissionRequest(PermissionRequest request) {
                 runOnUiThread(() -> {
-                    boolean wantsMic = false;
-                    for (String r : request.getResources()) if (PermissionRequest.RESOURCE_AUDIO_CAPTURE.equals(r)) wantsMic = true;
-                    if (!wantsMic || !HOST.equals(request.getOrigin().getHost())) { request.deny(); return; }
-                    if (checkSelfPermission(Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED) {
-                        request.grant(new String[]{PermissionRequest.RESOURCE_AUDIO_CAPTURE});
-                    } else {
-                        pendingMic = request;
-                        requestPermissions(new String[]{Manifest.permission.RECORD_AUDIO}, MIC_REQUEST);
+                    // Only our own site may use the microphone (voice) and the camera (the teacher's picture).
+                    java.util.List<String> want = new java.util.ArrayList<>(), android = new java.util.ArrayList<>();
+                    for (String r : request.getResources()) {
+                        if (PermissionRequest.RESOURCE_AUDIO_CAPTURE.equals(r)) { want.add(r); android.add(Manifest.permission.RECORD_AUDIO); }
+                        if (PermissionRequest.RESOURCE_VIDEO_CAPTURE.equals(r)) { want.add(r); android.add(Manifest.permission.CAMERA); }
                     }
+                    if (want.isEmpty() || !HOST.equals(request.getOrigin().getHost())) { request.deny(); return; }
+                    java.util.List<String> missing = new java.util.ArrayList<>();
+                    for (String a : android) if (checkSelfPermission(a) != PackageManager.PERMISSION_GRANTED) missing.add(a);
+                    if (missing.isEmpty()) { request.grant(want.toArray(new String[0])); return; }
+                    pendingMic = request; pendingWant = want.toArray(new String[0]);
+                    requestPermissions(missing.toArray(new String[0]), MIC_REQUEST);
                 });
             }
         });
@@ -181,9 +184,10 @@ public class MainActivity extends Activity {
     @Override
     public void onRequestPermissionsResult(int code, String[] perms, int[] results) {
         if (code == MIC_REQUEST && pendingMic != null) {
-            if (results.length > 0 && results[0] == PackageManager.PERMISSION_GRANTED) pendingMic.grant(new String[]{PermissionRequest.RESOURCE_AUDIO_CAPTURE});
-            else pendingMic.deny();
-            pendingMic = null;
+            boolean ok = results.length > 0;
+            for (int r : results) if (r != PackageManager.PERMISSION_GRANTED) ok = false;
+            if (ok) pendingMic.grant(pendingWant); else pendingMic.deny();
+            pendingMic = null; pendingWant = null;
         }
     }
 
