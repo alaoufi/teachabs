@@ -150,6 +150,7 @@ function tchart(add, a, b) {
 export const LIBRARY = [
   // ---- mathematics ----
   {id: 'placevalue', kind: 'activity', icon: '🔢', title: 'لوحة المنازل التفاعلية', desc: 'يكتب المعلم عددًا فتظهر منازله وقيمها.', subjects: ['math'], grades: [3, 4, 5], lessons: ['m1-1', 'm1-2', 'm1-4', 'm1-5', 'm1-6']},
+  {id: 'solids', kind: 'activity', icon: '📦', title: 'المجسمات وشبكاتها', desc: 'مكعب ومنشور وهرم وأسطوانة ومخروط تُفتح إلى شبكاتها، وعدّ الأوجه والأحرف والرؤوس.', subjects: ['math'], grades: [2, 3, 4, 5, 6], lessons: []},
   {id: 'placechart', kind: 'stamp', icon: '🏷', title: 'جدول المنازل', desc: 'من الآحاد إلى الملايين لكتابة الأعداد.', subjects: ['math'], grades: [2, 3, 4, 5], lessons: ['m1-1', 'm1-2', 'm1-4', 'm1-5', 'm1-6']},
   {id: 'numberline10', kind: 'stamp', icon: '📏', title: 'خط الأعداد ٠–١٠', desc: 'للعد والجمع والطرح والمقارنة.', subjects: ['math'], grades: [1, 2, 3], lessons: ['m2-4', 'm2-5']},
   {id: 'numberline100', kind: 'stamp', icon: '📏', title: 'خط الأعداد ٠–١٠٠', desc: 'للتقريب والترتيب والتقدير.', subjects: ['math'], grades: [2, 3, 4, 5], lessons: ['m1-4', 'm1-5', 'm1-6', 'm2-2']},
@@ -171,6 +172,9 @@ export const LIBRARY = [
   {id: 'cells', kind: 'activity', icon: '🔬', title: 'رحلة التكبير إلى الخلية', desc: 'من المخلوق إلى العضو والنسيج والخلية، نباتية وحيوانية.', subjects: ['science'], grades: [4, 5], lessons: ['s1-1-1', 's1-1-2']},
   {id: 'matter', kind: 'activity', icon: '🧊', title: 'حالات المادة', desc: 'نسخّن الماء ونبرّده فيتغيّر من صلب إلى سائل إلى غاز.', subjects: ['science'], grades: [3, 4, 5], lessons: []},
   {id: 'shadows', kind: 'activity', icon: '☀️', title: 'الضوء والظل', desc: 'نحرّك الشمس فيتغيّر طول الظل واتجاهه.', subjects: ['science'], grades: [3, 4, 5], lessons: []},
+  {id: 'digestive', kind: 'activity', icon: '🍎', title: 'الجهاز الهضمي', desc: 'رحلة اللقمة من الفم إلى المستقيم، والكبد والبنكرياس.', subjects: ['science'], grades: [4, 5, 6], lessons: ['s3-5-2', 's3-5-1']},
+  {id: 'urinary', kind: 'activity', icon: '💧', title: 'الجهاز البولي', desc: 'من الدم إلى الكليتين والحالبين والمثانة.', subjects: ['science'], grades: [5, 6], lessons: ['s3-5-1']},
+  {id: 'nervous', kind: 'activity', icon: '🧠', title: 'الجهاز العصبي والدماغ', desc: 'الدماغ والحبل الشوكي والأعصاب، فصوص الدماغ، والخلية العصبية.', subjects: ['science'], grades: [4, 5, 6], lessons: ['s1-2-3']},
   {id: 'thermometer', kind: 'stamp', icon: '🌡', title: 'ميزان الحرارة', desc: 'بالدرجات السيليزية من ٠ إلى ١٠٠.', subjects: ['science', 'math'], grades: [2, 3, 4, 5, 6], lessons: []},
   {id: 'foodchain', kind: 'stamp', icon: '🔗', title: 'السلسلة الغذائية', desc: 'منتج ومستهلكون بأسهم انتقال الطاقة.', subjects: ['science'], grades: [3, 4, 5], lessons: ['s2-3-1', 's2-3-2', 's2-3-3']},
   {id: 'vertebrates', kind: 'stamp', icon: '🦴', title: 'فقاريات ولافقاريات', desc: 'جدول بعمودين لتصنيف الحيوانات.', subjects: ['science'], grades: [3, 4, 5], lessons: ['s1-1-2', 's1-2-1', 's1-2-2', 's1-2-3']},

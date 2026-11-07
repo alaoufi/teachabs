@@ -4,6 +4,8 @@ import {renderScene, lessonState, formatHour, formatNumber, MATERIALS} from './s
 import {renderMatter, matterFacts, formatTemp, TEMP_MIN, TEMP_MAX} from './matter-model.js';
 import {NARRATOR_SCRIPTS} from './narrator-scripts.js';
 import {renderCells, cellsFacts, formatLevel, KINDS, PARTS} from './cells-model.js';
+import {renderDigestive, digestiveFacts, DIGEST_PARTS, DIGEST_STAGES, renderUrinary, urinaryFacts, URINE_PARTS, URINE_STAGES, renderNervous, nervousFacts, NERVE_PARTS, formatNerveLevel} from './body-models.js';
+import {renderSolid, solidFacts, SOLIDS, MARKS, formatUnfold} from './solids-model.js';
 import {renderPlaceValue, placeValueFacts, formatNumber as formatPV, PLACES, PV_MAX} from './placevalue-model.js';
 
 export const ACTIVITIES = {
@@ -81,6 +83,85 @@ export const ACTIVITIES = {
       {id: 'p5', values: {number: 345678, place: 'tenThousands'}, text: 'هذا العدد ثلاثمئة وخمسة وأربعون ألفًا وستمئة وثمانية وسبعون. الرقم أربعة في منزلة عشرات الألوف، فقيمته أربعون ألفًا.'},
       {id: 'p6', values: {number: 345678, place: 'hundredThousands'}, text: 'والرقم ثلاثة في منزلة مئات الألوف، فقيمته ثلاثمئة ألف. الصيغة التحليلية تكتب العدد مجموعًا لقيم أرقامه.'},
       {id: 'p7', values: {number: 305070, place: 'thousands'}, text: 'انتبهوا للصفر: يحفظ المنزلة الفارغة. في هذا العدد قيمة الرقم خمسة في منزلة آحاد الألوف خمسة آلاف، والأصفار تحفظ بقية المنازل.'}
+    ]
+  },
+  digestive: {
+    id: 'digestive', title: 'الجهاز الهضمي — رحلة اللقمة', lesson: 'science-body-digestive',
+    params: [
+      {key: 'stage', label: 'المرحلة', kind: 'range', min: 1, max: 6, step: 1, big: 1, format: v => DIGEST_STAGES[Math.round(v) - 1], earlier: '◀ المرحلة السابقة', later: 'المرحلة التالية ▶', quick: true},
+      {key: 'part', label: 'العضو المظلل', kind: 'choice', options: Object.fromEntries(Object.entries(DIGEST_PARTS).map(([k, p]) => [k, p.name])), quick: true}
+    ],
+    initial: () => ({stage: 1, part: 'none'}),
+    render: (v, {hidden}) => renderDigestive(v, {hidden}),
+    facts: (v, hidden) => digestiveFacts(v, hidden),
+    hideLabel: 'إخفاء الأسماء ليتوقع الطلاب', revealLabel: 'اكشف الأسماء', exploreKey: 'stage',
+    narrator: () => [
+      {id: 'd1', values: {stage: 1, part: 'mouth'}, text: 'تبدأ رحلة الطعام في الفم: الأسنان تقطع اللقمة وتطحنها، واللعاب يبلّلها ويبدأ هضمها.'},
+      {id: 'd2', values: {stage: 2, part: 'esophagus'}, text: 'نبلع اللقمة فتنزل في المريء، وهو أنبوب عضلي يدفعها إلى المعدة بانقباضات متتالية.'},
+      {id: 'd3', values: {stage: 3, part: 'stomach'}, text: 'في المعدة يُخلط الطعام بالعصارة الهاضمة ساعات حتى يصير كالعصيدة.'},
+      {id: 'd4', values: {stage: 4, part: 'smallint'}, text: 'ثم ينتقل إلى الأمعاء الدقيقة، وهي أطول جزء في القناة الهضمية. هنا يكتمل الهضم، ويُمتص الغذاء إلى الدم.'},
+      {id: 'd5', values: {stage: 4, part: 'liver'}, text: 'الكبد والبنكرياس لا يمر فيهما الطعام، لكنهما يرسلان عصارات تساعد الأمعاء الدقيقة على الهضم.'},
+      {id: 'd6', values: {stage: 5, part: 'largeint'}, text: 'ما تبقى ينتقل إلى الأمعاء الغليظة، فتمتص منه الماء وتتكوّن الفضلات.'},
+      {id: 'd7', values: {stage: 6, part: 'rectum'}, text: 'تُخزَّن الفضلات في المستقيم حتى تخرج من الجسم. والآن: من يعيد ترتيب الرحلة من الفم إلى المستقيم؟'}
+    ]
+  },
+  urinary: {
+    id: 'urinary', title: 'الجهاز البولي — من الدم إلى الخارج', lesson: 'science-body-urinary',
+    params: [
+      {key: 'stage', label: 'المرحلة', kind: 'range', min: 1, max: 5, step: 1, big: 1, format: v => URINE_STAGES[Math.round(v) - 1], earlier: '◀ المرحلة السابقة', later: 'المرحلة التالية ▶', quick: true},
+      {key: 'part', label: 'العضو المظلل', kind: 'choice', options: Object.fromEntries(Object.entries(URINE_PARTS).map(([k, p]) => [k, p.name])), quick: true}
+    ],
+    initial: () => ({stage: 1, part: 'none'}),
+    render: (v, {hidden}) => renderUrinary(v, {hidden}),
+    facts: (v, hidden) => urinaryFacts(v, hidden),
+    hideLabel: 'إخفاء الأسماء ليتوقع الطلاب', revealLabel: 'اكشف الأسماء', exploreKey: 'stage',
+    narrator: () => [
+      {id: 'u1', values: {stage: 1, part: 'vessels'}, text: 'الدم يجمع الفضلات من خلايا الجسم، ويحملها الشريان إلى الكليتين.'},
+      {id: 'u2', values: {stage: 2, part: 'kidney'}, text: 'الكليتان تنقّيان الدم من الفضلات والماء الزائد، فيتكوّن البول، ويعود الدم نظيفًا في الوريد.'},
+      {id: 'u3', values: {stage: 3, part: 'ureter'}, text: 'ينزل البول في الحالبين، وهما أنبوبان رفيعان، إلى المثانة.'},
+      {id: 'u4', values: {stage: 4, part: 'bladder'}, text: 'المثانة كيس عضلي مرن يخزّن البول ويتمدد كلما امتلأ.'},
+      {id: 'u5', values: {stage: 5, part: 'urethra'}, text: 'وعندما تمتلئ يخرج البول عبر قناة مجرى البول. لنحافظ على الكليتين: نشرب الماء الكافي ولا نؤخر قضاء الحاجة.'}
+    ]
+  },
+  nervous: {
+    id: 'nervous', title: 'الجهاز العصبي — من الجسم إلى الدماغ والخلية العصبية', lesson: 'science-body-nervous',
+    params: [
+      {key: 'level', label: 'التكبير', kind: 'range', min: 1, max: 3, step: 1, big: 1, format: formatNerveLevel, earlier: '🔍− تصغير', later: '🔍+ تكبير', quick: true},
+      {key: 'part', label: 'الجزء المظلل', kind: 'choice', options: Object.fromEntries(Object.entries(NERVE_PARTS).map(([k, p]) => [k, p.name])), quick: true}
+    ],
+    initial: () => ({level: 1, part: 'none'}),
+    render: (v, {hidden}) => renderNervous(v, {hidden}),
+    facts: (v, hidden) => nervousFacts(v, hidden),
+    hideLabel: 'إخفاء الأسماء ليتوقع الطلاب', revealLabel: 'اكشف الأسماء', exploreKey: 'level',
+    narrator: () => [
+      {id: 'n1', values: {level: 1, part: 'brain'}, text: 'الجهاز العصبي يتحكم في كل ما نفعله. مركزه الدماغ، يحميه عظم الجمجمة.'},
+      {id: 'n2', values: {level: 1, part: 'spinal'}, text: 'من الدماغ ينزل الحبل الشوكي داخل العمود الفقري، ينقل الرسائل بين الدماغ والجسم.'},
+      {id: 'n3', values: {level: 1, part: 'nerves'}, text: 'والأعصاب تتفرع إلى كل الجسم: تحمل الإحساس إلى الدماغ، وتحمل أوامر الحركة إلى العضلات.'},
+      {id: 'n4', values: {level: 2, part: 'frontal'}, text: 'نكبّر الدماغ. في المقدمة الفص الجبهي: به نفكر ونقرر ونتكلم ونحرك عضلاتنا.'},
+      {id: 'n5', values: {level: 2, part: 'occipital'}, text: 'وفي الخلف الفص القذالي: يفسّر ما تراه العين، فالرؤية تتم في الدماغ.'},
+      {id: 'n6', values: {level: 2, part: 'cerebellum'}, text: 'والمخيخ تحته يحفظ توازننا وينسّق حركتنا، وجذع الدماغ يتحكم في التنفس ونبض القلب.'},
+      {id: 'n7', values: {level: 3, part: 'neuron'}, text: 'والجهاز العصبي مبني من خلايا عصبية: تستقبل الإشارة بزوائدها، وتنقلها بسرعة كبيرة عبر محورها الطويل.'}
+    ]
+  },
+  solids: {
+    id: 'solids', title: 'المجسمات وشبكاتها', lesson: 'math-solids',
+    params: [
+      {key: 'unfold', label: 'فتح المجسم', kind: 'range', min: 0, max: 1, step: 0.25, big: 1, format: formatUnfold, earlier: '📦 أغلق', later: '🗺 افتح الشبكة', quick: true},
+      {key: 'shape', label: 'المجسم', kind: 'choice', options: Object.fromEntries(Object.entries(SOLIDS).map(([k, s]) => [k, s.name])), quick: true},
+      {key: 'mark', label: 'عُدّ', kind: 'choice', options: MARKS, quick: true}
+    ],
+    initial: () => ({unfold: 0, shape: 'cube', mark: 'none'}),
+    render: (v, {hidden}) => renderSolid(v, {hidden}),
+    facts: (v, hidden) => solidFacts(v, hidden),
+    hideLabel: 'إخفاء العدد ليعدّ الطلاب', revealLabel: 'اكشف العدد', exploreKey: 'unfold',
+    narrator: () => [
+      {id: 's1', values: {unfold: 0, shape: 'cube', mark: 'faces'}, text: 'هذا مكعب. له ستة أوجه مربعة متطابقة. عدّوها معي.'},
+      {id: 's2', values: {unfold: 0, shape: 'cube', mark: 'edges'}, text: 'الحرف هو الخط الذي يلتقي فيه وجهان. للمكعب اثنا عشر حرفًا.'},
+      {id: 's3', values: {unfold: 0, shape: 'cube', mark: 'vertices'}, text: 'والرأس نقطة تلتقي فيها الأحرف. للمكعب ثمانية رؤوس.'},
+      {id: 's4', values: {unfold: 1, shape: 'cube', mark: 'none'}, text: 'لنفتح المكعب ونفرده على السطح. هذه شبكة المكعب: ستة مربعات متصلة، إذا طويناها عاد مكعبًا.'},
+      {id: 's5', values: {unfold: 1, shape: 'pyramid', mark: 'none'}, text: 'وهذه شبكة الهرم الرباعي: قاعدة مربعة وأربعة مثلثات.'},
+      {id: 's6', values: {unfold: 1, shape: 'cylinder', mark: 'none'}, text: 'والأسطوانة: سطحها المنحني يُفرد مستطيلًا، ومعه دائرتان.'},
+      {id: 's7', values: {unfold: 1, shape: 'cone', mark: 'none'}, text: 'والمخروط: سطحه المنحني يُفرد قطاعًا من دائرة، ومعه قاعدة دائرية.'}
     ]
   }
 };

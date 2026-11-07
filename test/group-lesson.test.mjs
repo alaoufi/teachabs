@@ -304,6 +304,6 @@ test('activity engine: states of matter values, phases, hidden prediction and a 
   // An old lesson saved before the engine (segment values on the segment itself) still loads.
   const old = structuredClone(defaultPlan()); old.steps[1].narrator = {segments: [{id: 'o1', hour: 9, height: 1.5, material: 'paper', text: 'مقطع قديم'}]};
   assert.deepEqual(validatePlan(old).steps[1].narrator.segments[0].values, {hour: 9, height: 1.5, material: 'paper'});
-  assert.equal(Object.keys(ACTIVITIES).length, 4);
+  assert.equal(Object.keys(ACTIVITIES).length, 8);
 });
 function run2(p, state, ...cmds) { return cmds.reduce((s, c) => teacherCommand(s, p, c), state); }
