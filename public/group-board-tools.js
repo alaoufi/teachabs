@@ -3,7 +3,7 @@
 import {TOOLS, TEXT_SIZES, BOARD, clampCamera, zoomAround, LIMITS, shapePoints} from './group-ink.js';
 import {inkNode, applyCamera, laserTrail} from './group-view.js';
 
-export function attachBoardTools({mode, send = () => {}, items = () => [], canInk = () => false, onStatus = () => {}, onNext, onPrev, onUndo, onLaser = () => {}}) {
+export function attachBoardTools({mode, send = () => {}, items = () => [], canInk = () => false, onStatus = () => {}, onNext, onPrev, onUndo, onLaser = () => {}, onLiveInk = () => {}}) {
   const $ = id => document.getElementById(id);
   const board = $('gl-board'), camera = $('gl-camera'), ink = $('gl-ink'), teacher = mode === 'teacher';
   const state = {tool: 'select', color: '#173e34', size: 'm', camera: {z: 1, x: 0, y: 0}, remote: {z: 1, x: 0, y: 0}, following: true, lastLocal: 0, pendingText: null};
@@ -177,6 +177,27 @@ export function attachBoardTools({mode, send = () => {}, items = () => [], canIn
     const pts = g.buf.splice(0, 60).map(([x, y]) => [Math.round(Math.min(1000, Math.max(0, x))), Math.round(Math.min(600, Math.max(0, y)))]);
     onLaser(pts, g.start); g.start = false;
   }
+  // live writing: the new points of the line go out about 20 times a second, so students see it being written
+  let liveTimer = 0, liveSeq = 0;
+  function flushLive(end = false) {
+    clearTimeout(liveTimer); liveTimer = 0; const g = gesture?.type === 'draw' || gesture?.type === 'shape' ? gesture : end;
+    if (!g || !g.g) return;
+    const clip = ([x, y]) => [Math.min(1000, Math.max(0, x)), Math.min(600, Math.max(0, y))];
+    if (g.type === 'shape') { g.seq = (g.seq || 0) + 1; onLiveInk({ink: {g: g.g, tool: g.tool, size: state.size, color: state.color, replace: true, at: g.seq, end: end !== false}, p: g.points.slice(0, 120).map(clip)}); return; }
+    const at = g.sent, fresh = g.points.slice(at, at + 120); g.sent += fresh.length;
+    if (fresh.length || end) onLiveInk({ink: {g: g.g, tool: g.tool, size: state.size, color: state.color, at, end: end !== false}, p: fresh.map(clip)});
+    if (g.sent < g.points.length && end === false) liveTimer = setTimeout(() => flushLive(false), 50);
+  }
+  const queueLive = () => { if (!liveTimer) liveTimer = setTimeout(() => flushLive(false), 50); };
+  // redraw the line being written once per screen frame, however fast the pen reports points
+  let frame = 0;
+  function drawLive() {
+    frame = 0; const g = gesture; if (!g || (g.type !== 'draw' && g.type !== 'shape')) return;
+    const next = inkNode({kind: 'stroke', tool: g.tool, size: state.size, color: state.color, points: g.points}); next.classList.add('is-live');
+    if (g.live.isConnected) g.live.replaceWith(next); else ink.append(next);
+    g.live = next;
+  }
+  const queueDraw = () => { if (!frame) frame = requestAnimationFrame(drawLive); };
   // ---- pointer handling ----
   board.addEventListener('pointerdown', e => {
     if (e.target.closest('.gl-zoom, .gl-textbox')) return;
@@ -190,7 +211,7 @@ export function attachBoardTools({mode, send = () => {}, items = () => [], canIn
     if (['pen', 'brush', 'marker'].includes(tool) && inking) {
       e.preventDefault();
       const live = inkNode({kind: 'stroke', tool, size: state.size, color: state.color, points: [point]});
-      live.classList.add('is-live'); ink.append(live); gesture = {type: 'draw', tool, points: [point], live};
+      live.classList.add('is-live'); ink.append(live); gesture = {type: 'draw', tool, points: [point], live, g: (++liveSeq).toString(36) + Math.random().toString(36).slice(2, 7), sent: 0}; queueLive();
     } else if (tool === 'laser' && teacher) {
       // the laser pointer: everyone sees a passing red trail; nothing is stored
       e.preventDefault(); gesture = {type: 'laser', buf: [point], start: true}; laserTrail(ink, [point], true); flushLaser();
@@ -198,7 +219,7 @@ export function attachBoardTools({mode, send = () => {}, items = () => [], canIn
       // Drag from one corner to the other: a rectangle or a circle around what needs attention.
       e.preventDefault();
       const live = inkNode({kind: 'stroke', tool, size: state.size, color: state.color, points: [point, point]});
-      live.classList.add('is-live'); ink.append(live); gesture = {type: 'shape', tool, start: point, points: [point, point], live};
+      live.classList.add('is-live'); ink.append(live); gesture = {type: 'shape', tool, start: point, points: [point, point], live, g: (++liveSeq).toString(36) + Math.random().toString(36).slice(2, 7)};
     } else if (tool === 'text' && inking) {
       e.preventDefault();
       if (state.pendingText) { placeText(state.pendingText, point); state.pendingText = null; onStatus('وُضع النص الجاهز.'); }
@@ -229,16 +250,13 @@ export function attachBoardTools({mode, send = () => {}, items = () => [], canIn
         if (Math.hypot(p[0] - last[0], p[1] - last[1]) < 1.5 / state.camera.z || gesture.points.length >= LIMITS.points) continue;
         gesture.points.push(p);
       }
-      const next = inkNode({kind: 'stroke', tool: gesture.tool, size: state.size, color: state.color, points: gesture.points}); next.classList.add('is-live');
-      if (gesture.live.isConnected) gesture.live.replaceWith(next); else ink.append(next);
-      gesture.live = next;
+      queueDraw(); queueLive();
     } else if (gesture.type === 'laser') {
       const p = toBoard(e); gesture.buf.push(p); laserTrail(ink, [p]);
       if (!laserTimer) laserTimer = setTimeout(flushLaser, 70);
     } else if (gesture.type === 'shape') {
       gesture.end = toBoard(e); gesture.points = shapePoints(gesture.tool, gesture.start, gesture.end);
-      const next = inkNode({kind: 'stroke', tool: gesture.tool, size: state.size, color: state.color, points: gesture.points}); next.classList.add('is-live');
-      gesture.live.replaceWith(next); gesture.live = next;
+      queueDraw(); queueLive();
     } else if (gesture.type === 'erase') eraseAt(toBoard(e));
     else if (gesture.type === 'move') {
       const p = toBoard(e); gesture.d = [p[0] - gesture.start[0], p[1] - gesture.start[1]];
@@ -260,6 +278,8 @@ export function attachBoardTools({mode, send = () => {}, items = () => [], canIn
     if (gesture?.type === 'pinch') { if (pointers.size < 2) gesture = null; return; }
     const g = gesture; gesture = null; board.classList.remove('is-panning');
     if (!g) return;
+    if (frame) { cancelAnimationFrame(frame); frame = 0; if (g && (g.type === 'draw' || g.type === 'shape')) { gesture = g; drawLive(); gesture = null; } }
+    if (g && (g.type === 'draw' || g.type === 'shape')) flushLive(g);
     if (g.type === 'draw') { g.live.classList.remove('is-live'); if (g.points.length >= 2) { g.live.classList.add('is-pending'); send({op: 'stroke', tool: g.tool, size: state.size, color: state.color, points: g.points}); } else g.live.remove(); }
     if (g.type === 'laser') { clearTimeout(laserTimer); laserTimer = 0; gesture = g; flushLaser(); gesture = null; }
     if (g.type === 'shape') { g.live.classList.remove('is-live'); const [a, b] = [g.start, g.end || g.start]; if (Math.abs(b[0] - a[0]) > 6 || Math.abs(b[1] - a[1]) > 6) { g.live.classList.add('is-pending'); send({op: 'stroke', tool: g.tool, size: state.size, color: state.color, points: g.points}); } else g.live.remove(); }

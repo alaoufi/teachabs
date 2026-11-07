@@ -367,6 +367,7 @@ const tools = attachBoardTools({
   mode: 'teacher', send: command, items: () => view?.state.strokes[step().id] || [], canInk: () => view && INKABLE.includes(step().type),
   onStatus: text => status(text), onUndo: () => command({op: 'undo-stroke'}),
   onLaser: (p, start) => fetch(base + '/laser', {method: 'POST', headers: {'content-type': 'application/json'}, body: JSON.stringify({p, start})}).catch(() => {}),
+  onLiveInk: d => fetch(base + '/laser', {method: 'POST', headers: {'content-type': 'application/json'}, body: JSON.stringify(d), keepalive: true}).catch(() => {}),
   onNext: () => command({op: 'go', by: 1}),
   onPrev: () => command({op: 'go', by: -1})
 });

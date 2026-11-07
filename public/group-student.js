@@ -1,6 +1,6 @@
 // Student seat and classroom display screen: shows only what the teacher has made visible.
 import {publicStep, WORK_MODES} from './group-plan.js';
-import {el, renderStep, renderInk, playNarration, stopNarration, renderNarrator, setSpeaking, speechUrl, laserTrail, renderExtras} from './group-view.js';
+import {el, renderStep, renderInk, playNarration, stopNarration, renderNarrator, setSpeaking, speechUrl, laserTrail, liveInk, renderExtras} from './group-view.js';
 import {speakingMs} from './narrator-scripts.js';
 import {attachBoardTools} from './group-board-tools.js';
 import {formatNumber} from './science-shadow-model.js';
@@ -226,7 +226,7 @@ $('gl-full')?.addEventListener('click', () => document.documentElement.requestFu
 let queue = Promise.resolve();
 const ready = student ? Promise.resolve() : getJSON('/teach/live/' + code + '/plan').then(p => { plan = p; });
 const events = new EventSource(student ? classBase + '/events' : '/teach/live/' + code + '/display-events');
-events.addEventListener('laser', ev => { const d = JSON.parse(ev.data); laserTrail($('gl-ink'), d.p, d.start); }); // the teacher's laser pointer
+events.addEventListener('laser', ev => { const d = JSON.parse(ev.data); if (d.ink) liveInk($('gl-ink'), d); else laserTrail($('gl-ink'), d.p, d.start); }); // the teacher's laser pointer and live writing
 events.addEventListener('view', ev => {
   const next = JSON.parse(ev.data);
   queue = queue.then(() => ready).then(async () => { view = next; status(student ? 'متصل بالحصة.' : 'شاشة العرض متصلة.'); await render(); }).catch(e => status(e.message, true));

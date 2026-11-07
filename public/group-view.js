@@ -57,9 +57,40 @@ export function setSpeaking(board, on) { board.parentElement.querySelector(':sco
 export function renderInk(svg, items = []) {
   const markers = document.createElementNS(SVG, 'g'), ink = document.createElementNS(SVG, 'g');
   markers.setAttribute('class', 'gl-markers');
-  for (const item of items) (item.tool === 'marker' ? markers : ink).append(inkNode(item));
+  // Reuse the drawing of every line that did not change, so a busy board redraws instantly on each update.
+  const old = svg.__inkNodes || new Map(), next = new Map();
+  for (const item of items) {
+    const sig = JSON.stringify(item), had = item.id && old.get(item.id);
+    const node = had && had.sig === sig ? had.node : inkNode(item);
+    node.classList.remove('is-pending', 'is-erasing', 'is-moving'); node.removeAttribute('transform');
+    if (item.kind === 'stamp') node.setAttribute('transform', `translate(${item.x} ${item.y})`);
+    if (item.id) next.set(item.id, {sig, node});
+    (item.tool === 'marker' ? markers : ink).append(node);
+  }
+  svg.__inkNodes = next;
+  // a live line from the teacher is replaced by the finished stroke once it arrives
+  for (const n of svg.querySelectorAll(':scope > .gl-live-remote.is-done')) n.remove();
   // Keep a stroke that is being drawn right now when a live update redraws the board.
-  svg.replaceChildren(markers, ink, ...svg.querySelectorAll(':scope > .is-live, :scope > .gl-laser'));
+  svg.replaceChildren(markers, ink, ...svg.querySelectorAll(':scope > .is-live, :scope > .gl-laser, :scope > .gl-live-remote'));
+}
+
+/** The teacher's writing as it happens (students and the display): the line grows with each small batch of points. */
+export function liveInk(svg, {ink: k, p}) {
+  if (!svg || !k) return;
+  let n = svg.querySelector(`:scope > .gl-live-remote[data-g="${k.g}"]`);
+  // batches may arrive out of order: each one knows where its points belong in the line
+  if (k.replace && n && n.__at > k.at) return;
+  let raw;
+  if (k.replace) raw = p;
+  else { raw = (n?.__points || []).slice(); p.forEach((q, i) => { raw[k.at + i] = q; }); }
+  const points = raw.filter(Boolean);
+  if (points.length) {
+    const fresh = inkNode({kind: 'stroke', tool: k.tool, size: k.size, color: k.color, points: points.length === 1 ? [points[0], points[0]] : points});
+    fresh.classList.add('gl-live-remote'); fresh.dataset.g = k.g; fresh.__points = raw; fresh.__at = k.at;
+    if (n) n.replaceWith(fresh); else svg.append(fresh);
+    n = fresh;
+  }
+  if (n) { clearTimeout(n.__gone); n.__gone = setTimeout(() => n.remove(), k.end ? 2500 : 6000); if (k.end) n.classList.add('is-done'); }
 }
 export function inkNode(item) {
   if (item.kind === 'stamp') return stampNode(item);

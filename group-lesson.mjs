@@ -1,4 +1,5 @@
 // Group lesson service: planner, live teacher console, display screen and student seats.
+import {TOOLS, colorAllowed} from './public/group-ink.js';
 import {validatePlan, defaultPlan, PlanError, LIMITS, LESSON_TEMPLATES} from './public/group-plan.js';
 import {validImage} from './public/group-plan.js';
 import {speech, ttsReady} from './tts.mjs';
@@ -258,9 +259,16 @@ export function groupService(store) {
         if (action === 'display' && method === 'GET') return page(res, html, 'شاشة العرض', v.displayPage(code, s.plan.title, base));
         if (action === 'plan' && method === 'GET') return send(res, s.plan);
         if (action === 'laser' && method === 'POST') {
-          const b = await json(req, base, 4096), pts = Array.isArray(b.p) ? b.p : [];
-          need(pts.length <= 60 && pts.every(p => Array.isArray(p) && p.length === 2 && p.every(Number.isFinite) && p[0] >= 0 && p[0] <= 1000 && p[1] >= 0 && p[1] <= 600), 'مسار غير صالح.');
-          laser(code, {p: pts.map(([x, y]) => [Math.round(x), Math.round(y)]), start: b.start === true}); return send(res, {ok: true});
+          const b = await json(req, base, 8192), pts = Array.isArray(b.p) ? b.p : [];
+          need(pts.length <= 120 && pts.every(p => Array.isArray(p) && p.length === 2 && p.every(Number.isFinite) && p[0] >= 0 && p[0] <= 1000 && p[1] >= 0 && p[1] <= 600), 'مسار غير صالح.');
+          const p = pts.map(([x, y]) => [Math.round(x * 10) / 10, Math.round(y * 10) / 10]);
+          // live writing: students see the line grow while the teacher writes; the finished line then arrives as a stroke
+          if (b.ink) {
+            const k = b.ink; need(typeof k.g === 'string' && /^[a-z0-9]{1,12}$/.test(k.g) && Object.hasOwn(TOOLS, k.tool) && Object.hasOwn(TOOLS[k.tool].widths, k.size) && colorAllowed(k.color), 'كتابة غير صالحة.');
+            need(Number.isInteger(k.at) && k.at >= 0 && k.at <= 600, 'كتابة غير صالحة.');
+            laser(code, {ink: {g: k.g, tool: k.tool, size: k.size, color: k.color, at: k.at, replace: k.replace === true, end: k.end === true}, p}); return send(res, {ok: true});
+          }
+          laser(code, {p: p.map(([x, y]) => [Math.round(x), Math.round(y)]), start: b.start === true}); return send(res, {ok: true});
         }
         if (action === 'speech' && method === 'GET') { // the teacher (and the display screen) may hear any step of their lesson
           const seg = url.searchParams.get('segment'), sample = url.searchParams.get('sample');
