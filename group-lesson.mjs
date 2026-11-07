@@ -6,6 +6,8 @@ import {speech, ttsReady} from './tts.mjs';
 import {initialState, teacherCommand, teacherView, publicView, voiceOf, studentHand, speechText, speakerOf, classExtras, checkAnswer, checkEvaluation, contentFor, narrationFor, segmentAudio, MAX_STUDENTS} from './group-session.mjs';
 import {UserError} from './store.mjs';
 import * as v from './group-views.mjs';
+import {BOOKS, LESSON_PAGES, bookOf, lessonBookPage} from './public/book-catalog.js';
+import {Readable} from 'node:stream';
 
 const need = (ok, message, status = 400) => { if (!ok) throw new UserError(message, status); };
 function cleanText(body) {
@@ -20,6 +22,23 @@ const PAGE_CSP = "default-src 'self'; script-src 'self'; style-src 'self'; img-s
 
 export function groupService(store) {
   const g = store.group, listeners = new Map();
+  g.seedBooks(BOOKS, Object.fromEntries(Object.keys(LESSON_PAGES).map(l => [l, lessonBookPage(l)])));
+  // a ministry book page shown in a class: kept in memory for that class only, never saved
+  const bookPages = new Map();
+  const withBook = (plan, code) => { const b = bookPages.get(code); if (!b) return plan; return {...plan, steps: plan.steps.map(s => s.id === b.step ? {...s, source: 'upload', image: b.image, rights: true, book: {id: b.book, page: b.page}} : s)}; };
+  /** Teachers, and administration with academic affairs or libraries permissions, may open the books. */
+  const booksAllowed = u => u && (u.role === 'teacher' || (u.role === 'admin' && (p => p.permissions.includes('education.read') || p.permissions.includes('libraries.read')))(store.admin.profile(u.id)));
+  /** The book from its source, only the parts asked for (byte ranges), to this one viewer; nothing is cached or stored. */
+  async function relayBook(req, res, book) {
+    const url = process.env.BOOKS_SOURCE_ORIGIN ? book.pdf.replace(/^https:\/\/[^/]+/, process.env.BOOKS_SOURCE_ORIGIN) : book.pdf;
+    const ctl = new AbortController(); req.on('close', () => ctl.abort());
+    let r; try { r = await fetch(url, {headers: req.headers.range ? {range: req.headers.range} : {}, signal: ctl.signal}); } catch { throw new UserError('تعذّر الوصول إلى مصدر الكتاب الآن.', 502); }
+    need(r.status === 200 || r.status === 206, 'مصدر الكتاب لا يستجيب الآن.', 502);
+    const h = {'content-type': 'application/pdf', 'accept-ranges': 'bytes', 'cache-control': 'no-store, private', 'x-robots-tag': 'noindex', 'content-disposition': 'inline'};
+    for (const k of ['content-length', 'content-range']) if (r.headers.get(k)) h[k] = r.headers.get(k);
+    res.writeHead(r.status, h);
+    Readable.fromWeb(r.body).on('error', () => res.destroy()).pipe(res);
+  }
 
   async function json(req, base, max) {
     need(req.headers.origin === base, 'مصدر الطلب غير معتمد.', 403);
@@ -104,7 +123,7 @@ export function groupService(store) {
     matches: path => path === '/join' || path === '/start/student' || path.startsWith('/teach/') || path === '/teach' || path.startsWith('/class/'),
     async handle(ctx) {
       const {req, res, url} = ctx, path = url.pathname;
-      const api = /\/(events|content|narration|answer|hand|speech|laser|command|evaluate|remove|plan|display-events|texts|delete|import|rtc|page-image)$/.test(path) || /^\/teach\/texts\//.test(path) || path.endsWith('.json') || req.headers['content-type']?.startsWith('application/json');
+      const api = /\/(events|content|narration|answer|hand|speech|laser|command|evaluate|remove|plan|display-events|texts|delete|import|rtc|page-image|book-page|file)$/.test(path) || /^\/teach\/texts\//.test(path) || path.endsWith('.json') || req.headers['content-type']?.startsWith('application/json');
       try { return await route(ctx); } catch (err) {
         if (api && err instanceof UserError && !res.headersSent) return send(res, {error: err.message}, err.status);
         throw err;
@@ -168,7 +187,7 @@ export function groupService(store) {
           g.saveState(code, studentHand(s.state, me.id, body.up)); broadcast(code);
           return send(res, {ok: true});
         }
-        if (action === 'content' && method === 'GET') return send(res, contentFor(s.state, s.plan, url.searchParams.get('step') || ''));
+        if (action === 'content' && method === 'GET') return send(res, contentFor(s.state, withBook(s.plan, code), url.searchParams.get('step') || ''));
         if (action === 'narration' && method === 'GET') {
           const segment = url.searchParams.get('segment');
           return send(res, segment === null ? narrationFor(s.state, s.plan, url.searchParams.get('step') || '') : segmentAudio(s.state, s.plan, url.searchParams.get('step') || '', Number(segment)));
@@ -180,6 +199,18 @@ export function groupService(store) {
           return send(res, {ok: true});
         }
         throw new UserError('إجراء غير متاح.', 405);
+      }
+
+      // ---------- «مكتبة الكتب المدرسية»: the ministry books by grade and subject, each opening at a lesson's page
+      const bm = path.match(/^\/teach\/books(?:\/([a-z0-9-]{1,30})(\/file)?)?$/);
+      if (bm) {
+        if (!u) return redirect('/login');
+        need(method === 'GET', 'إجراء غير متاح.', 405); need(booksAllowed(u), 'الكتب للمعلمين والشؤون التعليمية.', 403);
+        if (!bm[1]) return page(res, html, 'مكتبة الكتب المدرسية', v.booksPage(g.books(), u.role === 'teacher'));
+        const book = bookOf(bm[1]); need(book, 'الكتاب غير موجود.', 404);
+        if (bm[2]) return relayBook(req, res, book);
+        const at = Number(url.searchParams.get('page')) || 1;
+        return page(res, html, book.title, v.bookViewerPage(book, Math.min(book.pages - book.offset, Math.max(1, at)), g.bookLessons(book.id)));
       }
 
       // ---------- «مكتبة الوسائل الدراسية»: teachers, academic affairs and the libraries section
@@ -252,12 +283,19 @@ export function groupService(store) {
         if (action === '/start' && method === 'POST') { await fields(req); const clean = validatePlan(plan.plan); return redirect('/teach/live/' + g.startSession(teacher.id, clean, initialState(clean))); }
         throw new UserError('إجراء غير متاح.', 405);
       }
-      const lm = path.match(/^\/teach\/live\/([A-Z0-9]{6})(?:\/(events|plan|command|evaluate|remove|display|display-events|rtc|page-image|speech|laser))?$/);
+      const lm = path.match(/^\/teach\/live\/([A-Z0-9]{6})(?:\/(events|plan|command|evaluate|remove|display|display-events|rtc|page-image|book-page|speech|laser))?$/);
       if (lm) {
         const [, code, action] = lm, s = ownSession(teacher, code);
         if (!action && method === 'GET') return page(res, html, 'إدارة الحصة', v.teacherPage(code, s.plan.title, base), true, true); // the teacher's microphone and camera
         if (action === 'display' && method === 'GET') return page(res, html, 'شاشة العرض', v.displayPage(code, s.plan.title, base));
-        if (action === 'plan' && method === 'GET') return send(res, s.plan);
+        if (action === 'plan' && method === 'GET') return send(res, withBook(s.plan, code));
+        if (action === 'book-page' && method === 'POST') { // a page of the ministry book, rendered on the teacher's device: this class only, in memory
+          const body = await json(req, base, 1_000_000), step = s.plan.steps.find(x => x.id === body.step && x.type === 'page'), book = bookOf(body.book);
+          need(step, 'خطوة المنهج غير موجودة.', 404); need(book && Number.isInteger(body.page) && body.page >= 1 && body.page <= book.pages, 'صفحة غير صالحة.'); need(validImage(body.image), 'صورة الصفحة غير صالحة.');
+          bookPages.set(code, {step: step.id, book: book.id, page: body.page, image: body.image});
+          const next = {...s.state, pageVer: (s.state.pageVer || 0) + 1, seq: s.state.seq + 1}; g.saveState(code, next); broadcast(code);
+          return send(res, {ok: true});
+        }
         if (action === 'laser' && method === 'POST') {
           const b = await json(req, base, 8192), pts = Array.isArray(b.p) ? b.p : [];
           need(pts.length <= 120 && pts.every(p => Array.isArray(p) && p.length === 2 && p.every(Number.isFinite) && p[0] >= 0 && p[0] <= 1000 && p[1] >= 0 && p[1] <= 600), 'مسار غير صالح.');
@@ -282,7 +320,7 @@ export function groupService(store) {
           const step = s.plan.steps.find(x => x.id === body.step && x.type === 'page');
           need(step, 'خطوة المنهج غير موجودة.', 404);
           need(validImage(body.image), 'الصورة يجب أن تكون PNG أو JPEG أو WebP صغيرة.');
-          Object.assign(step, {source: 'upload', image: body.image, rights: true});
+          Object.assign(step, {source: 'upload', image: body.image, rights: true}); bookPages.delete(code); // a photographed page replaces a book page
           g.saveSessionPlan(code, s.plan);
           const next = {...s.state, pageVer: (s.state.pageVer || 0) + 1, seq: s.state.seq + 1}; g.saveState(code, next); broadcast(code);
           return send(res, {ok: true});

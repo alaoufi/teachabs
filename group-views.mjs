@@ -24,7 +24,7 @@ export function plansPage(plans, sessions, colleagues = [], sent = false) {
    <form method="post" action="/teach/plans/${p.id}/start"><button class="btn">بدء الحصة</button></form>${sendForm(`/teach/plans/${p.id}/send`, colleagues, 'أرسل لمعلم')}</div></li>`).join('') : '<li class="gl-empty">لا توجد دروس بعد. ابدأ بالنموذج الجاهز ثم عدّله.</li>';
   const live = sessions.length ? `<h2>حصص سابقة وجارية</h2><ul class="gl-list">${sessions.map(s => `<li class="gl-row"><div><b>${e(s.title)}</b><small>الرمز ${e(s.code)} · ${dateText(s.created)} · ${s.live ? 'جارية' : 'انتهى العرض'}</small></div><a class="outline" href="/teach/live/${e(s.code)}">فتح إدارة الحصة</a></li>`).join('')}</ul>` : '';
   return `${css}<section class="gl-wrap" dir="rtl"><div class="section-head welcome-panel"><div class="eyebrow">الحصة الجماعية</div><h1>دروسي</h1>
-  <p>رتّب درسك قبل الحصة بالتسلسل: ${STEP_ORDER.map(t => STEP_TYPES[t].short).join(' ← ')}. أثناء الحصة تتحكم بما يظهر للطلاب وما يختفي. <a class="textlink" href="/guide">دليل الاستخدام</a> · <a class="textlink" href="/teach/aids">📚 مكتبة الوسائل الدراسية</a></p></div>
+  <p>رتّب درسك قبل الحصة بالتسلسل: ${STEP_ORDER.map(t => STEP_TYPES[t].short).join(' ← ')}. أثناء الحصة تتحكم بما يظهر للطلاب وما يختفي. <a class="textlink" href="/guide">دليل الاستخدام</a> · <a class="textlink" href="/teach/aids">📚 مكتبة الوسائل الدراسية</a> · <a class="textlink" href="/teach/books">📗 الكتب المدرسية</a></p></div>
   ${curriculumSection()}
   <div class="gl-actions gl-templates"><span class="gl-tpl-label">نماذج إضافية للتجربة (ليست ضمن الفصل الأول):</span>${Object.entries(LESSON_TEMPLATES).filter(([id]) => !TEMPLATE_IN_CURRICULUM.has(id)).map(([id, t]) => `<form method="post" action="/teach/plans/new"><input type="hidden" name="template" value="${id}"><button class="btn">${e(t.title)}</button></form>`).join('')}
   <button type="button" class="outline" id="plans-import-btn">استيراد درس من ملف</button><input type="file" id="plans-import" accept=".json,application/json" hidden></div>
@@ -65,6 +65,36 @@ export function aidsPage({subject = '', grade = '', teacher = false} = {}) {
   <h2>الوسائل (${new Intl.NumberFormat('ar-SA').format(aids.length)})</h2><div class="aid-grid">${cards}</div>
   <p class="gl-note">الرسوم والشروح من إعداد المشروع، وليست منسوخة من الكتب. ترتيب الدروس من فهرس كتب وزارة التعليم ١٤٤٧هـ.</p>
   <p>${teacher ? '<a class="textlink" href="/teach/plans">دروسي</a>' : '<a class="textlink" href="/admin">العودة إلى الإدارة</a>'}</p></section><script type="module" src="/aids-page.js"></script>`;
+}
+
+/** «مكتبة الكتب المدرسية»: the ministry books by grade, each with its source, edition and lessons linked to pages. */
+export function booksPage(books, teacher) {
+  const ar = new Intl.NumberFormat('ar-SA'), titles = Object.fromEntries(curriculumLessons().map(l => [l.id, l.title]));
+  const byGrade = [1, 2, 3, 4, 5, 6].map(g => {
+    const list = books.filter(b => b.grade === g); if (!list.length) return '';
+    return `<section class="bk-grade"><h2>الصف ${e(GRADE_NAMES[g])} الابتدائي</h2><div class="bk-row">${list.map(b => `<article class="bk-card" data-book="${e(b.id)}"><div class="bk-cover bk-${e(b.subject)}"><span>${b.subject === 'math' ? '➗' : '🔬'}</span><b>${b.subject === 'math' ? 'الرياضيات' : 'العلوم'}</b><small>الفصل الدراسي الأول</small></div>
+<div class="bk-body"><small>طبعة ${e(b.edition)} · ${ar.format(b.pages)} صفحة${b.lessons ? ` · ${ar.format(b.lessons)} درسًا مربوطًا بصفحته` : ' · ربط الدروس بالصفحات قريبًا'}</small>
+<a class="btn gl-mini" href="/teach/books/${e(b.id)}">📖 افتح الكتاب</a> <a class="textlink" href="${e(b.source)}" target="_blank" rel="noopener noreferrer">المصدر</a></div></article>`).join('')}</div></section>`;
+  }).join('');
+  return `${css}<section class="gl-wrap bk-page" dir="rtl"><div class="section-head welcome-panel"><div class="eyebrow">مكتبة المدرسة</div><h1>مكتبة الكتب المدرسية</h1>
+  <p>كتب العلوم والرياضيات لوزارة التعليم للمرحلة الابتدائية. يفتح الكتاب من مصدره مباشرة ولا تُحفظ منه نسخة في المنصة. في الحصة: من خطوة «المنهج» اضغط «📖 كتاب الوزارة» فيفتح على صفحة الدرس، وتعرضها على السبورة وتكتب عليها دون أن يتغير الكتاب.</p></div>
+  ${byGrade}<p class="gl-note">المصدر: نسخ كتب وزارة التعليم على منصة الدلفين التعليمية، والمصدر الرسمي بوابة عين. الطبعة المتاحة الآن ١٤٤٧هـ، وكتب الفصل الدراسي الثاني لم تُنشر بعد.</p>
+  <p>${teacher ? '<a class="textlink" href="/teach/plans">دروسي</a> · <a class="textlink" href="/teach/aids">مكتبة الوسائل الدراسية</a>' : '<a class="textlink" href="/admin">العودة إلى الإدارة</a>'}</p></section>`;
+}
+
+/** One book, page by page (rendered on this device from the source); its lessons jump to their pages. */
+export function bookViewerPage(book, page, lessons) {
+  const titles = Object.fromEntries(curriculumLessons().map(l => [l.id, l.title])), ar = new Intl.NumberFormat('ar-SA');
+  return `${css}<section class="gl-wrap bk-viewer" dir="rtl" id="book-viewer" data-book="${e(book.id)}" data-page="${page}" data-pages="${book.pages - book.offset}" data-offset="${book.offset}">
+  <div class="gl-top"><div><div class="eyebrow">مكتبة الكتب المدرسية</div><h1>${e(book.title)}</h1></div><div class="gl-actions"><a class="outline" href="/teach/books">كل الكتب</a></div></div>
+  <div class="bk-bar" role="toolbar" aria-label="التنقل في الكتاب"><button type="button" class="outline" id="bk-prev" aria-label="الصفحة السابقة">◀ السابقة</button>
+  <label>الصفحة <input id="bk-page" type="number" min="1" max="${book.pages - book.offset}" value="${page}" inputmode="numeric"></label><span id="bk-of">من ${ar.format(book.pages - book.offset)}</span>
+  <button type="button" class="outline" id="bk-next" aria-label="الصفحة التالية">التالية ▶</button>
+  <button type="button" class="outline" id="bk-zoom-out" aria-label="تصغير">−</button><button type="button" class="outline" id="bk-zoom-in" aria-label="تكبير">+</button>
+  ${lessons.length ? `<select id="bk-lesson" aria-label="انتقل إلى درس"><option value="">انتقل إلى درس…</option>${lessons.map(l => `<option value="${l.page}">${e(titles[l.lesson] || l.lesson)} — ص ${ar.format(l.page)}</option>`).join('')}</select>` : ''}</div>
+  <p id="bk-status" class="gl-status" role="status" aria-live="polite">جارٍ فتح الكتاب من مصدره…</p>
+  <div class="bk-stage"><canvas id="bk-canvas" aria-label="صفحة الكتاب"></canvas></div>
+  <p class="gl-note">يُعرض الكتاب من مصدره (${e(new URL(book.source).host)}) ولا تُحفظ منه نسخة. الطبعة: ${e(book.edition)}.</p></section><script type="module" src="/book-viewer.js"></script>`;
 }
 
 /** Academic affairs: the school's lesson preps. */

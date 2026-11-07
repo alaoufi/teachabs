@@ -14,8 +14,22 @@ export function createGroupStore({db, one, all, run, transaction}) {
   try { db.exec('ALTER TABLE group_plans ADD COLUMN origin TEXT'); } catch {}
   // the registered child when a parent's account enters the class for one of their children
   try { db.exec('ALTER TABLE group_students ADD COLUMN child TEXT REFERENCES children(id)'); } catch {}
+  // «مكتبة الكتب المدرسية»: book metadata and source links only (no book files); the printed page of each lesson
+  db.exec(`CREATE TABLE IF NOT EXISTS school_books(id TEXT PRIMARY KEY,track TEXT NOT NULL,stage TEXT NOT NULL,grade INTEGER NOT NULL,term INTEGER NOT NULL,subject TEXT NOT NULL,title TEXT NOT NULL,edition TEXT NOT NULL,pages INTEGER NOT NULL,page_offset INTEGER NOT NULL,offset_checked INTEGER NOT NULL,source TEXT NOT NULL,pdf TEXT NOT NULL,checked TEXT NOT NULL,stored INTEGER NOT NULL DEFAULT 0 CHECK(stored=0));
+  CREATE TABLE IF NOT EXISTS book_lessons(lesson TEXT PRIMARY KEY,book TEXT NOT NULL REFERENCES school_books(id),page INTEGER NOT NULL);`);
   const parse = row => row && {...row, plan: JSON.parse(row.plan), ...(row.state ? {state: JSON.parse(row.state)} : {})};
   return {
+    /** Keep the catalogue in the database in step with book-catalog.js (upsert; nothing is downloaded). */
+    seedBooks(books, lessonPage) {
+      transaction(() => {
+        for (const b of books) run('INSERT INTO school_books(id,track,stage,grade,term,subject,title,edition,pages,page_offset,offset_checked,source,pdf,checked) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET title=excluded.title,edition=excluded.edition,pages=excluded.pages,page_offset=excluded.page_offset,offset_checked=excluded.offset_checked,source=excluded.source,pdf=excluded.pdf,checked=excluded.checked',
+          b.id, b.track, b.stage, b.grade, b.term, b.subject, b.title, b.edition, b.pages, b.offset, b.offsetChecked ? 1 : 0, b.source, b.pdf, b.checked);
+        for (const [lesson, at] of Object.entries(lessonPage)) run('INSERT INTO book_lessons VALUES(?,?,?) ON CONFLICT(lesson) DO UPDATE SET book=excluded.book,page=excluded.page', lesson, at.book, at.page);
+      });
+    },
+    books: () => all('SELECT b.*,(SELECT COUNT(*) FROM book_lessons l WHERE l.book=b.id) lessons FROM school_books b ORDER BY grade,subject DESC,term'),
+    book: id => one('SELECT * FROM school_books WHERE id=?', id),
+    bookLessons: book => all('SELECT lesson,page FROM book_lessons WHERE book=? ORDER BY page', book),
     texts: teacher => all('SELECT id,title,body,origin,updated FROM group_texts WHERE teacher=? ORDER BY updated DESC', teacher),
     textCount: teacher => one('SELECT COUNT(*) n FROM group_texts WHERE teacher=?', teacher).n,
     createText(teacher, {title, body, origin}) { const id = randomUUID(); run('INSERT INTO group_texts VALUES(?,?,?,?,?,?)', id, teacher, title, body, origin || null, Date.now()); return id; },

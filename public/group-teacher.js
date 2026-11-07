@@ -10,6 +10,7 @@ import {speakingMs} from './narrator-scripts.js';
 import {formatNumber} from './science-shadow-model.js';
 import {activityOf, segmentLabel, bigOf, textOf, quickParams} from './activities.js';
 import {teacherVoice} from './group-voice.js';
+import {bookOf, bookFor, lessonBookPage} from './book-catalog.js';
 
 const app = document.getElementById('gl-app'), code = app.dataset.code, base = '/teach/live/' + code;
 const $ = x => document.getElementById(x);
@@ -97,7 +98,12 @@ function renderQuick(s) {
     parts.push(qMenu('evaluation', '✅ التقييم', [el('button', {type: 'button', class: 'gl-mini', onclick: () => openDrawer(true)}, 'قيّم الطلاب'),
       el('button', {type: 'button', class: (view.state.evaluationPublished ? 'is-warn' : 'btn') + ' gl-mini', onclick: () => command({op: 'publish-evaluation', on: !view.state.evaluationPublished})}, view.state.evaluationPublished ? 'إخفاء التقييم' : 'نشر التقييم')]));
   }
-  if (s.type === 'page') parts.push(el('button', {type: 'button', class: 'btn gl-mini', title: 'صوّر صفحة الكتاب أو اختر صورتها فتظهر على السبورة للجميع', onclick: () => $('gl-page-file').click()}, '📷 صفحة الكتاب'));
+  if (s.type === 'page') {
+    // the ministry book of this subject and grade, opening at the lesson's page; shown on the board for this class only
+    const at = lessonBookPage(plan.lesson), book = at ? bookOf(at.book) : bookFor(plan.subject, plan.grade);
+    if (book) parts.push(el('button', {type: 'button', class: 'btn gl-mini', id: 'gl-ministry-book', title: `افتح ${book.title} على صفحة الدرس واعرضها على السبورة`, onclick: () => openMinistryBook(book, at?.page || 1)}, '📖 كتاب الوزارة'));
+    parts.push(el('button', {type: 'button', class: 'outline gl-mini', title: 'صوّر صفحة الكتاب أو اختر صورتها فتظهر على السبورة للجميع', onclick: () => $('gl-page-file').click()}, '📷 تصوير صفحة'));
+  }
   if (s.type !== 'interactive' || !s.narrator) {
     if (s.narration.mode === 'live') parts.push(el('span', {class: 'gl-live-voice', text: '🎙 اشرح بصوتك'}));
     else parts.push(qMenu('narration', s.narration.mode === 'recorded' ? '🔊 الشرح (تسجيلك)' : '🔊 الشرح الصوتي', [
@@ -377,6 +383,15 @@ function renderSnippets(s) {
   box.replaceChildren(el('span', {class: 'gl-snip-label', text: 'نصوص جاهزة:'}), ...list.map(t => el('button', {type: 'button', class: 'gl-snip', onclick: () => tools.prepareSnippet(t)}, t)));
 }
 
+// ---- the ministry book: opened at the lesson's page on this device; the chosen page goes to this class only ----
+async function openMinistryBook(book, page) {
+  const {openBookDialog} = await import('./book-viewer.js');
+  openBookDialog({book, page, onShow: async (image, at) => {
+    await post('/book-page', {step: step().id, book: book.id, page: at, image});
+    plan = await fetch(base + '/plan').then(r => r.json()); contentKey = ''; render();
+    status(`ظهرت صفحة ${at} من كتاب الوزارة على السبورة للجميع. اكتب عليها كما تشاء؛ الكتاب لا يتغير.`);
+  }});
+}
 // ---- the book page: photographed or picked during the class, shrunk on this device, shown on the board ----
 async function shrinkImage(file) {
   const img = await createImageBitmap(file);
