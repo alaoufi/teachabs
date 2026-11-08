@@ -46,6 +46,17 @@ const assert = require('node:assert/strict'), fs = require('node:fs'), path = re
     await s.waitForFunction(() => !document.getElementById('gl-board').hidden && document.querySelector('#gl-content')?.dataset.type === 'board');
     assert.match(await t.locator('#gl-vis').textContent(), /يرون هذه/);
     results.push('👁 again showed it on the students\' board');
+    // a phone held sideways (stage 073): slim bars, tools in a rail, and a board of real size
+    for (const [w, h, min] of [[915, 412, 420], [740, 360, 340]]) {
+      const lc = await browser.newContext({viewport: {width: w, height: h}, isMobile: true, hasTouch: true}); lc.setDefaultTimeout(15000); await lc.addInitScript(() => localStorage.setItem('gl-autostart', '0'));
+      await lc.addCookies((await tc.cookies()).map(c => ({...c})));
+      const lp = await lc.newPage(); lp.on('pageerror', e => errors.push(e.message)); await lp.goto(t.url()); await lp.waitForSelector('#gl-steps li.is-current');
+      const m = await lp.evaluate(() => { const r = s => document.querySelector(s).getBoundingClientRect(), b = r('#gl-board'), n = r('.gl-sections'), f = r('footer.gl-bar-bottom');
+        return {board: Math.round(b.width), sectionsIn: n.bottom <= innerHeight + 1 && n.top >= b.bottom - 1, railBeside: f.right <= b.left + 1 || f.left >= b.right - 1, scroll: document.documentElement.scrollHeight > innerHeight + 1}; });
+      assert.ok(m.board >= min && m.sectionsIn && m.railBeside && !m.scroll, `${w}x${h} ${JSON.stringify(m)}`);
+      await lp.screenshot({path: path.join(out, `sections-phone-landscape-${w}.png`)}); await lc.close();
+      results.push(`phone held sideways ${w}x${h}: board ${m.board}px wide, tools in a rail beside it, sections under it, no scroll`);
+    }
     assert.deepEqual(errors, []);
     console.log(JSON.stringify({ok: true, results}, null, 1));
   } finally { await browser.close(); app.closeAllConnections(); await new Promise(r => app.close(r)); store.close(); }

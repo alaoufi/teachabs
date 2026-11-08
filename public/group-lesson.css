@@ -906,3 +906,42 @@ body:has(#planner) .demo{margin-bottom:8px;padding:6px 10px}
 @media (min-width:1000px) and (orientation:landscape){
  .gl-present .gl-stage:has(> .gl-sections)>.gl-zoom{top:2px;bottom:auto}
 }
+
+/* ===== stage 073: a phone (or small tablet) held sideways — the height is short, so every bar is one slim line, the drawing
+   tools go to a rail beside the board (as on a computer), and the board takes all the height that is left ===== */
+@media (orientation:landscape) and (max-height:560px){
+ .gl-present{height:100vh;height:100dvh;overflow:hidden;grid-template-columns:auto minmax(0,1fr);grid-template-rows:auto auto minmax(0,1fr);padding:3px 4px calc(3px + env(safe-area-inset-bottom));gap:3px;align-content:stretch}
+ .gl-present::after{content:none}
+ .gl-present>.gl-bar-top,.gl-present>.gl-bar-steps{grid-column:1/-1}
+ .gl-present>.gl-stage{grid-column:2;grid-row:3;min-width:0;container-type:size;padding:0 0 2px!important;height:auto}
+ .gl-present .gl-bar{padding:2px 6px;border-radius:10px;min-height:0}
+ .gl-present .gl-bar-top,.gl-present .gl-bar-actions,.gl-present .gl-bar-title,.gl-present nav.gl-bar-steps,.gl-present .gl-quick,.gl-present .gl-quick .gl-narr-quick,.gl-present .gl-quick .gl-row{flex-wrap:nowrap}
+ .gl-present .gl-bar-top,.gl-present nav.gl-bar-steps{overflow-x:auto;overflow-y:hidden;scrollbar-width:none}
+ .gl-present .gl-bar-title,.gl-present .gl-bar-actions{flex:none}
+ .gl-present .gl-bar-title h1,.gl-present .gl-status-dot,.gl-present .gl-bar-steps .gl-vis{display:none}
+ .gl-wrap.gl-present .gl-mini,.gl-present .gl-code-chip,.gl-present .gl-avbtn{min-height:30px;font-size:12px;padding:1px 8px}
+ .gl-present .gl-code-chip .gl-code{font-size:13px;letter-spacing:1px}
+ /* the drawing tools: a narrow rail beside the board */
+ .gl-present>footer.gl-bar-bottom{grid-column:1;grid-row:3;flex-direction:column;flex-wrap:nowrap;align-items:stretch;justify-content:flex-start;inline-size:96px;overflow-y:auto;overflow-x:hidden;padding:3px;gap:3px;scrollbar-width:thin}
+ .gl-present footer .gl-tools{flex-direction:column;flex-wrap:nowrap;align-items:stretch;gap:3px;width:100%}
+ .gl-present footer .gl-toolgroup{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr));gap:3px;flex:none;border:0!important;padding:0!important;margin:0}
+ .gl-present footer .gl-toolgroup+.gl-toolgroup{border-top:1px solid var(--line)!important;padding-top:3px!important}
+ .gl-present footer .gl-tool{min-width:0;min-height:38px;padding:1px!important;font-size:10px;flex-direction:column}
+ .gl-present footer .gl-tool span:first-child{font-size:15px}
+ .gl-present footer .gl-size,.gl-present footer [aria-label="إجراءات"] button{min-width:0;min-height:30px;font-size:11px;padding:1px 3px}
+ .gl-present footer [aria-label="إجراءات"],.gl-present footer [aria-label="الحجم"]{grid-template-columns:1fr}
+ .gl-present footer .gl-snippets{flex-direction:column;align-items:stretch;border:0;padding:3px 0 0;border-top:1px solid var(--line);gap:3px}
+ .gl-present footer .gl-snippets .gl-snip{white-space:normal;min-height:28px;font-size:11px;padding:2px 4px;text-align:start}
+ /* the sections: one slim row, only the current one with its name */
+ .gl-sections{margin-top:3px;padding:2px 4px;gap:3px;border-radius:12px;max-width:calc(100% - 4px)}
+ .gl-wrap .gl-sections .gl-mini,.gl-wrap .gl-sections .gl-steps-strip .gl-go{min-height:30px;padding:1px 6px;font-size:12px}
+ .gl-wrap .gl-sections .gl-eye{min-height:26px;min-width:26px;font-size:12px}
+ .gl-sections .gl-steps-strip .gl-num{width:20px;height:20px;font-size:11px}
+ .gl-sections .gl-steps-strip li:not(.is-current) .gl-step-name{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
+ /* the board: all the height left over */
+ .gl-present .gl-board,.gl-present .gl-stage:has(> .gl-sections) .gl-board{width:min(100cqw - 4px,(100cqh - 42px) * 1.6667)!important;border-width:5px}
+ .gl-present .gl-stage:has(> .gl-narrator) .gl-board,.gl-present .gl-stage:has(> .gl-sections):has(> .gl-narrator) .gl-board,.gl-present .gl-narrator{width:min(100cqw - 4px,(100cqh - 120px) * 1.6667)!important}
+ .gl-present .gl-stage::after,.gl-present .gl-stage::before{display:none}
+ .gl-present .gl-stage>.gl-zoom{position:absolute;top:2px;bottom:auto}
+ .gl-present .gl-zoom button{min-height:28px;min-width:30px;font-size:12px}
+}
