@@ -577,7 +577,7 @@ body:has(#planner) .demo{margin-bottom:8px;padding:6px 10px}
 .gl-content .gl-facts{font-size:24px!important}
 .gl-content .gl-wait-inline{font-size:28px}
 /* stage 048: display screen held upright on a phone — the board fills the whole screen sideways (no empty space) */
-@media (orientation:portrait) and (max-width:760px){
+@media (orientation:portrait) and (max-width:599px){ /* phones only; an upright tablet keeps its wide board */
   body:has(.gl-show){overflow:hidden}
   .gl-show{position:fixed;top:0;left:100vw;width:100vh;width:100dvh;height:100vw;transform-origin:0 0;transform:rotate(90deg);overflow:hidden;z-index:50}
   .gl-show{padding:4px 8px;gap:4px}
@@ -625,7 +625,7 @@ body:has(#planner) .demo{margin-bottom:8px;padding:6px 10px}
 /* the student bar stays at the bottom even when the board is taken out of the flow */
 .gl-solo>.gl-sbar{grid-row:2}
 /* student on an upright phone: the board turns sideways and fills the screen above the bar (turn the phone) */
-@media (orientation:portrait) and (max-width:760px){
+@media (orientation:portrait) and (max-width:599px){ /* phones only */
  .gl-solo .gl-stage{position:absolute!important;top:0;left:100vw;width:calc(100vh - 84px);width:calc(100dvh - 84px);height:100vw;transform-origin:0 0;transform:rotate(90deg)}
  .gl-solo .gl-stage::after{display:none}
  .gl-solo .gl-stage>.gl-zoom{margin-top:4px}.gl-solo .gl-stage>.gl-zoom button{min-height:30px}
@@ -907,9 +907,9 @@ body:has(#planner) .demo{margin-bottom:8px;padding:6px 10px}
  .gl-present .gl-stage:has(> .gl-sections)>.gl-zoom{top:2px;bottom:auto}
 }
 
-/* ===== stage 073: a phone (or small tablet) held sideways — the height is short, so every bar is one slim line, the drawing
+/* ===== stage 073: a phone or a small tablet held sideways — the height is short, so every bar is one slim line, the drawing
    tools go to a rail beside the board (as on a computer), and the board takes all the height that is left ===== */
-@media (orientation:landscape) and (max-height:560px){
+@media (orientation:landscape) and (max-height:640px){
  .gl-present{height:100vh;height:100dvh;overflow:hidden;grid-template-columns:auto minmax(0,1fr);grid-template-rows:auto auto minmax(0,1fr);padding:3px 4px calc(3px + env(safe-area-inset-bottom));gap:3px;align-content:stretch}
  .gl-present::after{content:none}
  .gl-present>.gl-bar-top,.gl-present>.gl-bar-steps{grid-column:1/-1}
@@ -918,7 +918,7 @@ body:has(#planner) .demo{margin-bottom:8px;padding:6px 10px}
  .gl-present .gl-bar-top,.gl-present .gl-bar-actions,.gl-present .gl-bar-title,.gl-present nav.gl-bar-steps,.gl-present .gl-quick,.gl-present .gl-quick .gl-narr-quick,.gl-present .gl-quick .gl-row{flex-wrap:nowrap}
  .gl-present .gl-bar-top,.gl-present nav.gl-bar-steps{overflow-x:auto;overflow-y:hidden;scrollbar-width:none}
  .gl-present .gl-bar-title,.gl-present .gl-bar-actions{flex:none}
- .gl-present .gl-bar-title h1,.gl-present .gl-status-dot,.gl-present .gl-bar-steps .gl-vis{display:none}
+ .gl-present .gl-bar-title h1,.gl-present .gl-status-dot:not(.is-error),.gl-present .gl-bar-steps .gl-vis{display:none}
  .gl-wrap.gl-present .gl-mini,.gl-present .gl-code-chip,.gl-present .gl-avbtn{min-height:30px;font-size:12px;padding:1px 8px}
  .gl-present .gl-code-chip .gl-code{font-size:13px;letter-spacing:1px}
  /* the drawing tools: a narrow rail beside the board */
@@ -944,4 +944,31 @@ body:has(#planner) .demo{margin-bottom:8px;padding:6px 10px}
  .gl-present .gl-stage::after,.gl-present .gl-stage::before{display:none}
  .gl-present .gl-stage>.gl-zoom{position:absolute;top:2px;bottom:auto}
  .gl-present .gl-zoom button{min-height:28px;min-width:30px;font-size:12px}
+}
+
+/* ===== stage 074: tablets and iPads ===== */
+/* below 1200px only the current section shows its name, so the row fits beside the arrows */
+@media (max-width:1199px){
+ .gl-sections .gl-steps-strip li:not(.is-current) .gl-step-name{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
+ .gl-wrap .gl-sections .gl-steps-strip li:not(.is-current) .gl-go{padding:2px 6px}
+}
+/* iPads and tablets held sideways: the top bar stays on one line (the lesson's name is on its title page; the connection
+   line shows only when something is wrong), so the board keeps the height */
+@media (orientation:landscape) and (min-width:1000px) and (max-width:1439px) and (min-height:641px){
+ .gl-present .gl-bar-top{flex-wrap:nowrap;overflow-x:auto;overflow-y:hidden;scrollbar-width:none}
+ .gl-present .gl-bar-title,.gl-present .gl-bar-actions{flex-wrap:nowrap;flex:none}
+ .gl-present .gl-bar-title h1{display:none}
+ .gl-present .gl-status-dot:not(.is-error){display:none}
+}
+/* a phone hint on a tablet reads wrong: a portrait tablet already has a full-width board */
+@media (min-width:600px) and (orientation:portrait){.gl-present::after{content:none}}
+/* small tablets and phones held upright: a compact sections row, so all of them fit without scrolling */
+@media (max-width:700px){
+ .gl-sections{gap:2px;padding:2px 3px}
+ .gl-sections .gl-steps-strip{gap:2px}
+ .gl-sections .gl-steps-strip li{padding-inline-end:0}
+ .gl-wrap .gl-sections .gl-steps-strip li:not(.is-current) .gl-go{padding:1px 3px;min-height:30px}
+ .gl-wrap .gl-sections .gl-eye{min-width:24px;min-height:24px;font-size:12px;padding:0 2px}
+ .gl-sections .gl-steps-strip .gl-num{width:20px;height:20px;font-size:11px}
+ .gl-wrap .gl-sections #gl-prev,.gl-wrap .gl-sections #gl-next{min-width:30px;padding:1px 6px}
 }
