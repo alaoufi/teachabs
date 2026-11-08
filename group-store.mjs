@@ -14,6 +14,10 @@ export function createGroupStore({db, one, all, run, transaction}) {
   try { db.exec('ALTER TABLE group_plans ADD COLUMN origin TEXT'); } catch {}
   // the registered child when a parent's account enters the class for one of their children
   try { db.exec('ALTER TABLE group_students ADD COLUMN child TEXT REFERENCES children(id)'); } catch {}
+  // stage 075: a school class room belongs to one scheduled period on one date (the administration's class_periods.id and
+  // the occurrence date), never to the period alone, since a period repeats every week. IDs are the administration's TEXT ids.
+  for (const col of ['period_id TEXT', 'occurrence_date TEXT', 'class_id TEXT']) try { db.exec('ALTER TABLE group_sessions ADD COLUMN ' + col); } catch {}
+  db.exec('CREATE UNIQUE INDEX IF NOT EXISTS group_session_occurrence ON group_sessions(period_id,occurrence_date) WHERE period_id IS NOT NULL');
   // «مكتبة الكتب المدرسية»: book metadata and source links only (no book files); the printed page of each lesson
   db.exec(`CREATE TABLE IF NOT EXISTS school_books(id TEXT PRIMARY KEY,track TEXT NOT NULL,stage TEXT NOT NULL,grade INTEGER NOT NULL,term INTEGER NOT NULL,subject TEXT NOT NULL,title TEXT NOT NULL,edition TEXT NOT NULL,pages INTEGER NOT NULL,page_offset INTEGER NOT NULL,offset_checked INTEGER NOT NULL,source TEXT NOT NULL,pdf TEXT NOT NULL,checked TEXT NOT NULL,stored INTEGER NOT NULL DEFAULT 0 CHECK(stored=0));
   CREATE TABLE IF NOT EXISTS book_lessons(lesson TEXT PRIMARY KEY,book TEXT NOT NULL REFERENCES school_books(id),page INTEGER NOT NULL);`);
@@ -50,14 +54,19 @@ export function createGroupStore({db, one, all, run, transaction}) {
     createPlan(teacher, plan) { const id = randomUUID(); run('INSERT INTO group_plans(id,teacher,title,plan,updated) VALUES(?,?,?,?,?)', id, teacher, plan.title, JSON.stringify(plan), Date.now()); return id; },
     savePlan: (teacher, id, plan) => run('UPDATE group_plans SET title=?,plan=?,updated=? WHERE id=? AND teacher=?', plan.title, JSON.stringify(plan), Date.now(), id, teacher).changes === 1,
     deletePlan: (teacher, id) => run('DELETE FROM group_plans WHERE id=? AND teacher=?', id, teacher).changes === 1,
-    startSession(teacher, plan, state) {
+    /** A new class room; `link` ({periodId, date, classId}) ties it to one scheduled occurrence (one room per occurrence). */
+    startSession(teacher, plan, state, link = null) {
       return transaction(() => {
+        if (link) { const had = one('SELECT code FROM group_sessions WHERE period_id=? AND occurrence_date=?', link.periodId, link.date); if (had) return had.code; }
         let code;
         do { code = Array.from(randomBytes(6), b => CODE_ALPHABET[b % CODE_ALPHABET.length]).join(''); } while (one('SELECT 1 FROM group_sessions WHERE code=?', code));
-        run('INSERT INTO group_sessions VALUES(?,?,?,?,?,?)', code, teacher, JSON.stringify(plan), JSON.stringify(state), Date.now(), Date.now());
+        run('INSERT INTO group_sessions(code,teacher,plan,state,created,updated,period_id,occurrence_date,class_id) VALUES(?,?,?,?,?,?,?,?,?)', code, teacher, JSON.stringify(plan), JSON.stringify(state), Date.now(), Date.now(),
+          link?.periodId ?? null, link?.date ?? null, link?.classId ?? null);
         return code;
       });
     },
+    /** The room of a scheduled occurrence, if its teacher opened it. */
+    occurrenceRoom: (periodId, date) => one('SELECT code,teacher,json_extract(state,\'$.live\') live FROM group_sessions WHERE period_id=? AND occurrence_date=?', periodId, date) || null,
     session: code => parse(one('SELECT * FROM group_sessions WHERE code=?', code)),
     sessions: teacher => all('SELECT code,created,json_extract(plan,\'$.title\') title,json_extract(state,\'$.live\') live FROM group_sessions WHERE teacher=? ORDER BY created DESC LIMIT 20', teacher),
     /** The trial's most recent running class (trial teachers only, active in the last few hours): the app's «أنا الطالب». */
@@ -76,7 +85,7 @@ export function createGroupStore({db, one, all, run, transaction}) {
         return {id, token};
       });
     },
-    student: (code, token) => typeof token === 'string' && /^[a-f0-9]{64}$/.test(token) ? one('SELECT id,name FROM group_students WHERE code=? AND token=? AND removed=0', code, sha(token)) : undefined,
+    student: (code, token) => typeof token === 'string' && /^[a-f0-9]{64}$/.test(token) ? one('SELECT id,name,child FROM group_students WHERE code=? AND token=? AND removed=0', code, sha(token)) : undefined,
     students: code => all('SELECT id,name FROM group_students WHERE code=? AND removed=0 ORDER BY joined', code),
     removeStudent: (code, id) => run('UPDATE group_students SET removed=1 WHERE code=? AND id=?', code, id).changes === 1,
     respond: (code, student, step, item, kind, data) => run('INSERT INTO group_responses VALUES(?,?,?,?,?,?,?) ON CONFLICT(code,student,step,item,kind) DO UPDATE SET data=excluded.data,updated=excluded.updated', code, student, step, item, kind, JSON.stringify(data), Date.now()),

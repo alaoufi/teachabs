@@ -8,7 +8,9 @@ import {UserError} from './store.mjs';
 import * as v from './group-views.mjs';
 import {BOOKS, bookOf, lessonBookPage, allLessons} from './public/book-catalog.js';
 import {curriculumPlan} from './public/group-plan.js';
+import {curriculumLessons} from './public/curriculum-g4.js';
 import {Readable} from 'node:stream';
+import {riyadh, DirectoryError} from './school-directory.mjs';
 
 const need = (ok, message, status = 400) => { if (!ok) throw new UserError(message, status); };
 function cleanText(body) {
@@ -21,7 +23,9 @@ const CODE = /^[A-HJ-NP-Z2-9]{6}$/;
 const UUID = /^[0-9a-f-]{36}$/;
 const PAGE_CSP = "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data: blob:; media-src 'self' data: blob:; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'; object-src 'none'";
 
-export function groupService(store) {
+/** options.directory: the school's administration data (school-directory.mjs), or null when the link is not set up.
+ *  options.now: the clock (tests move it through a school day). */
+export function groupService(store, {directory = null, now = Date.now} = {}) {
   const g = store.group, listeners = new Map();
   g.seedBooks(BOOKS, Object.fromEntries(allLessons().map(l => [l.id, lessonBookPage(l.id)]).filter(([, at]) => at)));
   // a ministry book page shown in a class: kept in memory for that class only, never saved
@@ -58,6 +62,21 @@ export function groupService(store) {
   const page = (res, html, title, body, mic = false, cam = false) => { res.setHeader('Content-Security-Policy', PAGE_CSP); res.setHeader('Permissions-Policy', `camera=(${cam ? 'self' : ''}), microphone=(${mic ? 'self' : ''}), display-capture=(), geolocation=()`); return html(title, body); };
 
   const firstName = n => String(n).trim().split(/\s+/)[0].slice(0, 30); // only the first name is shown in class
+  /** The administration's answer, or the reason it refuses, as a user error. */
+  const dir = fn => { need(directory, 'الربط مع بيانات المدرسة غير مفعّل بعد.', 503); try { return fn(directory); } catch (e) { if (e instanceof DirectoryError) throw new UserError(e.message, e.status); throw e; } };
+  /** A school room admits only a student of that class, during that period (or for its open homework); checked on every
+   *  request, so a removed, suspended or moved student, or one whose period ended, is turned away even when reconnecting. */
+  function schoolAdmit(s, me) {
+    if (!s.period_id) return; // trial and guest rooms keep entering by code and first name
+    need(directory, 'الربط مع بيانات المدرسة غير مفعّل بعد.', 503);
+    need(me?.child, 'هذه حصة مدرسية: ادخل بحساب ولي الأمر.', 403);
+    const during = directory.studentMayAttend(me.child, s.period_id, s.occurrence_date, now());
+    const homework = s.state.homework === 'open' && directory.studentEnrolledIn(me.child, s.period_id, s.occurrence_date);
+    need(during || homework, directory.studentEnrolledIn(me.child, s.period_id, s.occurrence_date) ? 'انتهى وقت هذه الحصة.' : 'هذه الحصة ليست لفصلك.', 403);
+  }
+  /** The ready lesson of a curriculum lesson: other grades as 'ready-<id>', grade 4 through its curriculum entry. */
+  const readyTemplate = id => LESSON_TEMPLATES['ready-' + id] || LESSON_TEMPLATES[curriculumLessons().find(l => l.id === id)?.template] || null;
+  const setStudentCookie = (res, base, code, token) => res.setHeader('Set-Cookie', `gl_${code}=${token}; Path=/class/${code}; Max-Age=1209600; HttpOnly; SameSite=Lax${base.startsWith('https:') ? '; Secure' : ''}`);
   function teacherOnly(u) { need(u, 'سجّل الدخول بحساب معلم.', 401); need(u.role === 'teacher', 'هذه الصفحة للمعلم.', 403); return u; }
   function ownSession(u, code) {
     need(CODE.test(code), 'رمز الحصة غير صالح.', 404);
@@ -127,7 +146,7 @@ export function groupService(store) {
   }
 
   return {
-    matches: path => path === '/join' || path === '/start/student' || path.startsWith('/teach/') || path === '/teach' || path.startsWith('/class/'),
+    matches: path => path === '/join' || path === '/start/student' || path === '/school' || path.startsWith('/school/') || path.startsWith('/teach/') || path === '/teach' || path.startsWith('/class/'),
     async handle(ctx) {
       const {req, res, url} = ctx, path = url.pathname;
       const api = /\/(events|content|narration|answer|hand|speech|laser|command|evaluate|remove|plan|display-events|texts|delete|import|rtc|page-image|book-page|file)$/.test(path) || /^\/teach\/texts\//.test(path) || path.endsWith('.json') || req.headers['content-type']?.startsWith('application/json');
@@ -154,6 +173,7 @@ export function groupService(store) {
         need(CODE.test(code), 'تأكد من رمز الحصة المكوّن من ستة أحرف وأرقام.');
         need(name.length >= 2 && name.length <= 30, 'اكتب اسمك الأول (من حرفين إلى ٣٠ حرفًا).');
         const s = g.session(code); need(s && (s.state.live || s.state.homework === 'open'), 'الحصة غير متاحة أو انتهت.', 404);
+        schoolAdmit(s, {child}); // a school room: only an enrolled student of that class, during the period
         const joined = g.join(code, name, MAX_STUDENTS, child); need(joined, 'اكتمل عدد الطلاب في هذه الحصة.', 409);
         res.setHeader('Set-Cookie', `gl_${code}=${joined.token}; Path=/class/${code}; Max-Age=1209600; HttpOnly; SameSite=Lax${base.startsWith('https:') ? '; Secure' : ''}`);
         broadcast(code); return redirect('/class/' + code);
@@ -169,11 +189,34 @@ export function groupService(store) {
         res.setHeader('Set-Cookie', `gl_${code}=${joined.token}; Path=/class/${code}; Max-Age=1209600; HttpOnly; SameSite=Lax${base.startsWith('https:') ? '; Secure' : ''}`);
         broadcast(code); return redirect('/class/' + code);
       }
+      // ---------- «حصتي الآن»: a student enters their class's current period from the parent's account ----------
+      if (path === '/school' || path === '/school/enter') {
+        if (!u) return redirect('/login');
+        need(u.role === 'parent', 'هذه الصفحة لحساب ولي الأمر.', 403);
+        if (!directory) return page(res, html, 'حصتي الآن', v.schoolPage({off: true}));
+        const kids = dir(d => d.childrenOf(u.id, now()));
+        if (method === 'GET') {
+          const pick = String(url.searchParams.get('student') || ''), chosen = kids.find(k => k.studentId === pick) || (kids.length === 1 ? kids[0] : null);
+          const subjects = chosen ? dir(d => d.studentSubjects(u.id, chosen.studentId, now())) : [];
+          return page(res, html, 'حصتي الآن', v.schoolPage({kids, chosen, subjects}));
+        }
+        need(method === 'POST', 'إجراء غير متاح.', 405);
+        const data = await fields(req), studentId = String(data.student || ''), subject = String(data.subject || '');
+        const r = dir(d => d.studentNow(u.id, studentId, subject, now())), chosen = kids.find(k => k.studentId === r.student.id);
+        const subjects = dir(d => d.studentSubjects(u.id, r.student.id, now()));
+        if (!r.now) return page(res, html, 'حصتي الآن', v.schoolPage({kids, chosen, subjects, subject, next: r.next}));
+        const room = g.occurrenceRoom(r.now.periodId, r.now.date);
+        if (!room || !room.live) return page(res, html, 'حصتي الآن', v.schoolPage({kids, chosen, subjects, subject, waiting: r.now}));
+        const s = g.session(room.code); schoolAdmit(s, {child: r.student.id});
+        const joined = g.join(room.code, r.student.firstName, MAX_STUDENTS, r.student.id); need(joined, 'اكتمل عدد الطلاب في هذه الحصة.', 409);
+        setStudentCookie(res, base, room.code, joined.token); broadcast(room.code); return redirect('/class/' + room.code);
+      }
       const cls = path.match(/^\/class\/([A-Z0-9]{6})(?:\/(events|content|narration|answer|rtc|hand|speech))?$/);
       if (cls) {
         const [, code, action] = cls; need(CODE.test(code), 'رمز الحصة غير صالح.', 404);
         const s = g.session(code), me = s && g.student(code, studentToken(req, code));
         if (!me) { if (!action && method === 'GET') return redirect('/join?code=' + code); throw new UserError('انضم إلى الحصة أولًا.', 401); }
+        schoolAdmit(s, me);
         if (!action && method === 'GET') return page(res, html, 'الحصة', v.studentPage(code, me.name, s.plan.title), true); // the student may open the microphone
         if (action === 'events' && method === 'GET') return subscribe(req, res, code, 'student', me.id);
         if (action === 'rtc' && method === 'POST') {
@@ -251,7 +294,31 @@ export function groupService(store) {
       if (path === '/teach' || path === '/teach/plans') {
         need(method === 'GET', 'إجراء غير متاح.', 405);
         const grade = /^[1-6]$/.test(url.searchParams.get('grade') || '') ? Number(url.searchParams.get('grade')) : 4;
-        return page(res, html, 'دروسي للحصة الجماعية', v.plansPage(g.plans(teacher.id), g.sessions(teacher.id), g.colleagues(teacher.scope).filter(c => c.id !== teacher.id), url.searchParams.get('sent') === '1', grade));
+        return page(res, html, 'دروسي للحصة الجماعية', (directory ? v.todayLink() : '') + v.plansPage(g.plans(teacher.id), g.sessions(teacher.id), g.colleagues(teacher.scope).filter(c => c.id !== teacher.id), url.searchParams.get('sent') === '1', grade));
+      }
+      // ---------- «حصص اليوم»: the teacher's scheduled periods from the administration; a room per period and date ----------
+      if (path === '/teach/today') {
+        need(method === 'GET', 'إجراء غير متاح.', 405);
+        if (!directory) return page(res, html, 'حصص اليوم', v.todayPage({off: true}));
+        const list = dir(d => d.teacherToday(teacher.id, now())).map(o => ({...o, room: g.occurrenceRoom(o.periodId, o.date)}));
+        return page(res, html, 'حصص اليوم', v.todayPage({list, plans: g.plans(teacher.id), at: now()}));
+      }
+      if (path === '/teach/today/start') {
+        need(method === 'POST', 'إجراء غير متاح.', 405);
+        const data = await fields(req), periodId = String(data.period || ''), {date} = riyadh(now());
+        const o = dir(d => d.teacherOccurrence(teacher.id, periodId, date, now()));
+        const had = g.occurrenceRoom(o.periodId, o.date);
+        if (had) { need(had.teacher === teacher.id, 'هذه الحصة بدأها معلم آخر.', 409); return redirect('/teach/live/' + had.code); }
+        // the prep: a saved plan of this teacher, or the ready lesson of the period's lesson, or that lesson's book page
+        const choice = String(data.plan || '');
+        let plan;
+        if (choice.startsWith('plan:')) { const saved = g.plan(teacher.id, choice.slice(5)); need(saved, 'التحضير غير موجود.', 404); plan = saved.plan; }
+        else if (choice.startsWith('ready:') && readyTemplate(choice.slice(6))) plan = readyTemplate(choice.slice(6)).plan();
+        else if (choice.startsWith('lesson:')) { plan = curriculumPlan(choice.slice(7)); need(plan, 'الدرس غير موجود في المنهج.', 404); }
+        else throw new UserError('اختر تحضير الحصة.');
+        const clean = classPlan(validatePlan(plan));
+        const code = g.startSession(teacher.id, clean, initialState(clean), {periodId: o.periodId, date: o.date, classId: o.classId});
+        return redirect('/teach/live/' + code);
       }
       if (path === '/teach/texts') {
         if (method === 'GET') return send(res, g.texts(teacher.id));

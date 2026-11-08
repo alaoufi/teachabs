@@ -293,3 +293,39 @@ export function joinPage(code, none = false, kids = []) {
   <button class="btn">دخول الحصة</button></form>${kids.length ? '' : '<p class="gl-note">لولي الأمر: سجّل الدخول بحسابك فتظهر أسماء أبنائك هنا لتختار منهم.</p>'}
   <p class="gl-note">اكتب اسمك الأول فقط. يرى المعلم إجاباتك، ولا يظهر اسمك للآخرين إلا إذا اختار المعلم عرضه.</p></section>`;
 }
+
+// ---------- stage 075: the school's schedule (administration data, read only) ----------
+const arT = new Intl.DateTimeFormat('ar-SA', {timeZone: 'Asia/Riyadh', weekday: 'long', hour: 'numeric', minute: '2-digit'});
+const arNum = n => new Intl.NumberFormat('ar-SA').format(n);
+const subjectName = k => SUBJECTS[k] || k;
+const linkOff = '<p class="gl-status" role="status">الربط مع بيانات المدرسة (الفصول والجدول) غير مفعّل بعد. ادخل الحصة برمزها أو برابطها كما في السابق.</p>';
+
+/** «حصتي الآن»: the parent's account picks the student (if more than one) and a subject; the class's current period opens. */
+export function schoolPage({off = false, kids = [], chosen = null, subjects = [], subject = '', next = null, waiting = null} = {}) {
+  const head = `<div class="section-head welcome-panel"><div class="eyebrow">الحصة المدرسية</div><h1>حصتي الآن</h1><p>اختر المادة، فتدخل حصة فصلك إن كانت الآن.</p></div>`;
+  if (off) return `${css}<section class="gl-wrap sc-page" dir="rtl">${head}${linkOff}<p><a class="btn" href="/join">الدخول برمز الحصة</a></p></section>`;
+  if (!kids.length) return `${css}<section class="gl-wrap sc-page" dir="rtl">${head}<p class="gl-status" role="status">لا يوجد في هذا الحساب طالب مسجّل في فصل. راجع إدارة المدرسة.</p></section>`;
+  const who = kids.length > 1 ? `<nav class="gl-actions sc-kids" aria-label="الطالب">${kids.map(k => `<a class="${chosen?.studentId === k.studentId ? 'btn' : 'outline'}" href="/school?student=${encodeURIComponent(k.studentId)}"${chosen?.studentId === k.studentId ? ' aria-current="true"' : ''}>${e(k.firstName)}${k.className ? ` <small>${e(k.className)}</small>` : ''}</a>`).join('')}</nav>` : '';
+  const note = waiting ? `<p class="gl-status" role="status">حصة ${e(subjectName(subject))} الآن (${e(waiting.starts)}–${e(waiting.ends)})، والمعلم لم يبدأها بعد. انتظر قليلًا ثم اضغط المادة مرة أخرى.</p>`
+    : subject && next ? `<p class="gl-status" role="status">لا توجد حصة ${e(subjectName(subject))} الآن. حصتك القادمة: ${e(arT.format(next.opensAt + 10 * 60_000))} (${e(next.starts)}–${e(next.ends)}).</p>`
+    : subject ? `<p class="gl-status" role="status">لا توجد حصة ${e(subjectName(subject))} لفصلك في الأسبوعين القادمين.</p>` : '';
+  const pick = chosen ? (subjects.length ? `<form method="post" action="/school/enter" class="gl-actions sc-subjects"><input type="hidden" name="student" value="${e(chosen.studentId)}">${subjects.map(k => `<button class="btn" name="subject" value="${e(k)}">${e(subjectName(k))}</button>`).join('')}</form>`
+    : '<p class="gl-note">لا توجد مواد مسندة لفصلك في هذا الفصل الدراسي.</p>') : '<p class="gl-note">اختر الطالب أولًا.</p>';
+  return `${css}<section class="gl-wrap sc-page" dir="rtl">${head}${who}${chosen ? `<h2>${e(chosen.firstName)}${chosen.className ? ` — ${e(chosen.className)}` : ''}</h2>` : ''}${note}${pick}
+  <p class="gl-note">يدخل الطالب حصة فصله فقط، في وقتها. ويظهر للزملاء اسمه الأول فقط.</p></section>`;
+}
+
+/** «حصص اليوم»: the teacher's periods from the school's schedule; each opens one room for that period and date. */
+export function todayPage({off = false, list = [], plans = [], at = Date.now()} = {}) {
+  const head = `<div class="section-head welcome-panel"><div class="eyebrow">من جدول المدرسة</div><h1>حصص اليوم</h1><p>حصصك المسندة إليك اليوم. ابدأ الحصة في وقتها، فيدخلها طلاب فصلها فقط.</p></div>`;
+  if (off) return `${css}<section class="gl-wrap sc-page" dir="rtl">${head}${linkOff}<p><a class="textlink" href="/teach/plans">دروسي</a></p></section>`;
+  const options = o => [o.lesson ? `<option value="ready:${e(o.lesson)}">الدرس المحدد للحصة (تحضير جاهز)</option>` : '', ...plans.map(p => `<option value="plan:${e(p.id)}">${e(p.title)}</option>`)].join('');
+  const rows = list.map(o => {
+    const open = o.opensAt <= at, live = o.room?.live;
+    return `<li class="sc-period" data-period="${e(o.periodId)}"><div><b>${e(o.className)} · ${e(o.subject ? subjectName(o.subject) : o.subjectName)}</b><small>الحصة ${arNum(o.order)} · ${e(o.starts)}–${e(o.ends)}</small></div>
+${live ? `<a class="btn" href="/teach/live/${e(o.room.code)}">العودة إلى الحصة</a>` : open ? `<form method="post" action="/teach/today/start" class="gl-actions"><input type="hidden" name="period" value="${e(o.periodId)}"><select name="plan" aria-label="تحضير الحصة" required><option value="">اختر التحضير…</option>${options(o)}</select><button class="btn">ابدأ الحصة</button></form>` : `<small class="gl-soon">تبدأ ${e(o.starts)}</small>`}</li>`;
+  }).join('');
+  return `${css}<section class="gl-wrap sc-page" dir="rtl">${head}${rows ? `<ol class="sc-periods">${rows}</ol>` : '<p class="gl-empty">لا توجد حصص مسندة إليك في بقية اليوم.</p>'}
+  <p><a class="textlink" href="/teach/plans">دروسي</a></p></section>`;
+}
+export const todayLink = () => '<p class="gl-wrap sc-today-link" dir="rtl"><a class="btn" href="/teach/today">📅 حصص اليوم من جدول المدرسة</a></p>';

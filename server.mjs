@@ -43,10 +43,10 @@ async function fields(req){
   return Object.fromEntries(new URLSearchParams(Buffer.concat(chunks).toString()));
 }
 
-export function createApp(store,{origin=process.env.APP_ORIGIN}={}) {
+export function createApp(store,{origin=process.env.APP_ORIGIN,directory=null,now}={}) {
   const lessons=lessonService(store);
   const administration=adminService(store);
-  const groups=groupService(store);
+  const groups=groupService(store,{directory,now}); // directory: the school's administration data (stage 075); null until the link is set up
   const limits=new Map();
   function limit(req,key,max){
     const now=Date.now();
