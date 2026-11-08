@@ -46,7 +46,7 @@ const assert = require('node:assert/strict'), fs = require('node:fs'), path = re
     results.push('«مكتبة الكتب المدرسية»: 12 books; the science book viewer jumped to «الخلايا» (p. 26) and turned to p. 27');
     // any grade: «دروسي» → الصف الخامس → «حضّر هذا الدرس» → the class opens the book at the lesson's page
     await t.goto(base + '/teach/plans'); await t.locator('.gl-grade-tabs a', {hasText: 'الخامس'}).click(); await t.waitForURL(/grade=5/);
-    await t.locator('li[data-lesson="p5m07"] button').click(); await t.waitForSelector('#pl-steps li');
+    await t.locator('li[data-lesson="p5m07"] form:has(input[value="cur-p5m07"]) button').click(); await t.waitForSelector('#pl-steps li');
     assert.ok(await t.locator('input[type=radio][name^=src-]').first().isChecked(), 'the curriculum step uses the ministry book');
     assert.equal(await t.locator('input[aria-label="رقم الصفحة"]').inputValue(), '38');
     await t.getByRole('button', {name: 'بدء الحصة بهذا الترتيب'}).click(); await t.waitForURL(/\/teach\/live\/[A-Z0-9]{6}$/);

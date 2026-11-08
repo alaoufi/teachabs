@@ -99,7 +99,7 @@ test('every ready prep of grades 1, 2, 3, 5 and 6 validates, opens its book page
   }
   assert.ok([0, 1, 2].every(k => places.filter(x => x === k).length > places.length / 5), 'the right answer is not always in the same place');
   for (const g of Object.keys(byGrade)) assert.equal(byGrade[g], primaryLessons().filter(l => l.grade === Number(g)).length, `grade ${g}: every lesson has a prep`);
-  assert.ok(byGrade[1] === 52 && byGrade[2] === 63 && byGrade[3] === 47 && byGrade[5] === 54, 'grades 1, 2, 3 and 5 done');
+  assert.ok(byGrade[1] === 52 && byGrade[2] === 63 && byGrade[3] === 47 && byGrade[5] === 54 && byGrade[6] === 47, 'every elementary grade done');
   assert.ok(checked >= 100, 'checked ' + checked);
   assert.equal(toolsFor({subject: 'math', grade: 1, lesson: 'p1m26'}).forLesson[0].id, READY_PREPS.p1m26.aids[0]);
 });
