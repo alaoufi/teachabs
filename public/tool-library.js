@@ -168,7 +168,7 @@ export const LIBRARY = [
   {id: 'fractionbars', kind: 'stamp', icon: '🍫', title: 'أشرطة الكسور', desc: 'الواحد والنصف والثلث والربع والسدس.', subjects: ['math'], grades: [3, 4, 5, 6], lessons: []},
   {id: 'fractioncircle', kind: 'stamp', icon: '🍕', title: 'دائرة الكسور', desc: 'دائرة مقسمة لأثمان وربع مظلل.', subjects: ['math'], grades: [2, 3, 4, 5], lessons: []},
   {id: 'clock', kind: 'stamp', icon: '🕒', title: 'الساعة', desc: 'وجه ساعة لقراءة الوقت.', subjects: ['math'], grades: [1, 2, 3], lessons: []},
-  {id: 'grid', kind: 'stamp', icon: '#️⃣', title: 'المستوى الإحداثي', desc: 'شبكة بمحورين للنقاط والتمثيل بالخطوط.', subjects: ['math'], grades: [4, 5, 6], lessons: ['m3-4']},
+  {id: 'grid', kind: 'stamp', icon: '#️⃣', title: 'المستوى الإحداثي', desc: 'شبكة بمحورين للنقاط والتمثيل بالخطوط.', subjects: ['math'], grades: [3, 4, 5, 6], lessons: ['m3-4']},
   {id: 'bargraph', kind: 'stamp', icon: '📊', title: 'محاور التمثيل بالأعمدة', desc: 'محوران وخطوط شبكة لرسم الأعمدة.', subjects: ['math'], grades: [2, 3, 4, 5], lessons: ['m3-1', 'm3-2', 'm3-3']},
   {id: 'piechart', kind: 'stamp', icon: '🥧', title: 'قطاعات دائرية', desc: 'دائرة بأربعة قطاعات ملونة.', subjects: ['math'], grades: [4, 5, 6], lessons: ['m3-5']},
   {id: 'spinner', kind: 'stamp', icon: '🎯', title: 'القرص الدوار', desc: 'أربعة ألوان متساوية لدرس الاحتمال.', subjects: ['math'], grades: [2, 3, 4, 5, 6], lessons: ['m3-6']},
