@@ -126,6 +126,11 @@ export function renderStep(container, content, {teacher = false, revealed = null
   const title = el('h2', {class: 'gl-step-title', text: content.title});
   if (content.type !== 'interactive') { container.replaceChildren(); delete container.dataset.step; }
   container.dataset.type = content.type;
+  if (content.type === 'title') { // the class's first view: the lesson's topic
+    container.append(el('div', {class: 'gl-title-card'}, el('span', {class: 'gl-title-kicker', text: 'موضوع الدرس'}), el('h2', {class: 'gl-title-main', text: content.title}),
+      content.meta ? el('p', {class: 'gl-title-meta', text: content.meta}) : null, content.where ? el('p', {class: 'gl-title-where', text: content.where}) : null));
+    return;
+  }
   if (content.type === 'page') {
     const frame = el('div', {class: 'gl-page'});
     if (content.source === 'upload') frame.append(el('img', {src: content.image, alt: content.title}));

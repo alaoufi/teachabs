@@ -1,6 +1,6 @@
 // Group lesson service: planner, live teacher console, display screen and student seats.
 import {TOOLS, colorAllowed} from './public/group-ink.js';
-import {validatePlan, defaultPlan, PlanError, LIMITS, LESSON_TEMPLATES} from './public/group-plan.js';
+import {validatePlan, defaultPlan, PlanError, LIMITS, LESSON_TEMPLATES, classPlan} from './public/group-plan.js';
 import {validImage} from './public/group-plan.js';
 import {speech, ttsReady} from './tts.mjs';
 import {initialState, teacherCommand, teacherView, publicView, voiceOf, studentHand, speechText, speakerOf, classExtras, checkAnswer, checkEvaluation, contentFor, narrationFor, segmentAudio, MAX_STUDENTS} from './group-session.mjs';
@@ -292,7 +292,7 @@ export function groupService(store) {
           const data = await fields(req), to = g.colleagues(teacher.scope).find(t => t.id === data.to && t.id !== teacher.id); need(to, 'اختر معلمًا من مدرستك.');
           g.copyPlan(id, to.id, `أرسله إليك ${teacher.name}`); return redirect('/teach/plans?sent=1');
         }
-        if (action === '/start' && method === 'POST') { await fields(req); const clean = validatePlan(plan.plan); return redirect('/teach/live/' + g.startSession(teacher.id, clean, initialState(clean))); }
+        if (action === '/start' && method === 'POST') { await fields(req); const clean = classPlan(validatePlan(plan.plan)); return redirect('/teach/live/' + g.startSession(teacher.id, clean, initialState(clean))); }
         throw new UserError('إجراء غير متاح.', 405);
       }
       const lm = path.match(/^\/teach\/live\/([A-Z0-9]{6})(?:\/(events|plan|command|evaluate|remove|display|display-events|rtc|page-image|book-page|speech|laser))?$/);

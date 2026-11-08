@@ -7,13 +7,15 @@ import {TOOLS, TEXT_SIZES, LIMITS as INK, colorAllowed, clampCamera} from './pub
 
 const need = (ok, message, status = 400) => { if (!ok) throw new UserError(message, status); };
 export const MAX_STUDENTS = 40, MAX_STROKES = INK.items, MAX_POINTS = INK.points;
-const INKABLE = ['page', 'board', 'interactive', 'questions'];
+const INKABLE = ['title', 'page', 'board', 'interactive', 'questions'];
 
 export function initialState(plan) {
   return {speaker: plan.speaker === 'female' ? 'female' : 'male', live: true, index: 0, shown: !plan.steps[0].startHidden, revealed: {}, open: {}, display: {}, strokes: {}, camera: {}, narrator: initialNarrator(), acts: {}, explore: false, homework: 'none', evaluationPublished: false, narrate: null, seq: 0};
 }
 
 const current = (state, plan) => plan.steps[state.index];
+/** Whether students see a step: the teacher's choice during the class, otherwise the plan's «start hidden». */
+const shownOf = (state, step) => !(state.hide?.[step.id] ?? step.startHidden);
 
 /** Live voice settings; older sessions without them start with the teacher silent and student mics allowed. */
 export const voiceOf = state => ({teacher: false, mics: true, camera: false, ...(state.voice || {})});
@@ -50,9 +52,15 @@ export function teacherCommand(state, plan, cmd) {
       // «next/previous» come as a step forward or back from where the class is now, so quick presses never get lost
       if (Number.isInteger(cmd.by) && cmd.index === undefined) { need(Math.abs(cmd.by) === 1, 'خطوة غير موجودة.'); const to = s.index + cmd.by; if (to < 0 || to >= plan.steps.length) return state; cmd = {...cmd, index: to}; }
       need(Number.isInteger(cmd.index) && cmd.index >= 0 && cmd.index < plan.steps.length, 'خطوة غير موجودة.');
-      s.index = cmd.index; s.shown = !plan.steps[cmd.index].startHidden; return s;
+      s.index = cmd.index; s.shown = shownOf(s, plan.steps[cmd.index]); return s;
     }
-    case 'show': need(typeof cmd.shown === 'boolean', 'قيمة غير صالحة.'); s.shown = cmd.shown; return s;
+    case 'show': { // any step of the lesson, hidden from or shown on the students' board; it stays so when the class comes back to it
+      need(typeof cmd.shown === 'boolean', 'قيمة غير صالحة.');
+      const target = cmd.step === undefined ? step : plan.steps.find(x => x.id === cmd.step); need(target, 'خطوة غير موجودة.', 404);
+      s.hide = {...(s.hide || {}), [target.id]: !cmd.shown};
+      if (target === step) s.shown = cmd.shown;
+      return s;
+    }
     case 'reveal': {
       need(step.type === 'board', 'هذه الخطوة ليست سبورة مجهزة.');
       const ids = step.items.map(i => i.id), list = new Set(s.revealed[step.id] || []);

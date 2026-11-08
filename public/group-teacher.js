@@ -26,7 +26,7 @@ const speaker = () => view?.state?.speaker === 'female' ? 'female' : 'male';
 /** A step's prepared explanation, with the natural voice when the server has one. */
 const speakerButton = () => !view?.natural ? null : el('button', {type: 'button', class: 'gl-mini gl-speaker', 'data-narr': 'speaker', title: 'صوت المتحدث: رجل أو امرأة', onclick: () => command({op: 'speaker', speaker: speaker() === 'male' ? 'female' : 'male'})}, speaker() === 'male' ? '🧔 رجل' : '🧕 امرأة');
 const spoken = s => s.narration.mode === 'speech' && view?.natural ? {...s.narration, url: speechUrl(base, s.id, null, speaker())} : s.narration; // interactive steps whose explanation already started by itself in this class
-const INKABLE = ['page', 'board', 'interactive', 'questions'];
+const INKABLE = ['title', 'page', 'board', 'interactive', 'questions'];
 
 async function command(body) {
   if (busy && body.op !== 'stroke') return;
@@ -44,11 +44,15 @@ async function post(path, body) {
 const step = () => plan.steps[view.state.index];
 const nameOf = id => view.students.find(s => s.id === id)?.name || 'طالب';
 
+/** Whether the students see a step: the current one as the class has it now, the others as the teacher left them. */
+const stepShown = (s, i) => i === view.state.index ? view.state.shown : !(view.state.hide?.[s.id] ?? s.startHidden);
 function renderSequence() {
-  // A compact strip above the board: number and short name of each step; the current one is marked.
-  $('gl-steps').replaceChildren(...plan.steps.map((s, i) => el('li', {'data-type': s.type, class: (i === view.state.index ? 'is-current' : '') + (i === view.state.index && !view.state.shown ? ' is-hidden-step' : '')},
-    el('button', {type: 'button', title: `${i + 1}. ${s.title} (${STEP_TYPES[s.type].label})`, 'aria-current': i === view.state.index ? 'step' : null, onclick: () => command({op: 'go', index: i})},
-      el('span', {class: 'gl-num', text: String(i + 1)}), el('span', {class: 'gl-step-name', text: STEP_TYPES[s.type].short})))));
+  // The lesson's sections under the board: go to any of them, and hide or show any of them on the students' board.
+  $('gl-steps').replaceChildren(...plan.steps.map((s, i) => { const shown = stepShown(s, i), name = STEP_TYPES[s.type]?.short || s.type;
+    return el('li', {'data-type': s.type, class: (i === view.state.index ? 'is-current' : '') + (shown ? '' : ' is-hidden-step')},
+      el('button', {type: 'button', class: 'gl-go', title: `${i + 1}. ${s.title} (${STEP_TYPES[s.type]?.label || s.type})`, 'aria-current': i === view.state.index ? 'step' : null, onclick: () => command({op: 'go', index: i})},
+        el('span', {class: 'gl-num', text: String(i + 1)}), el('span', {class: 'gl-step-name', text: name})),
+      el('button', {type: 'button', class: 'gl-eye', 'aria-pressed': String(!shown), 'aria-label': (shown ? 'إخفاء عن الطلاب: ' : 'إظهار للطلاب: ') + name, title: shown ? `الطلاب يرون «${s.title}» — اضغط لإخفائها عنهم` : `«${s.title}» مخفية عن الطلاب — اضغط لإظهارها`, onclick: () => command({op: 'show', step: s.id, shown: !shown})}, shown ? '👁' : '🚫')); }));
   $('gl-prev').disabled = view.state.index === 0; $('gl-next').disabled = view.state.index === plan.steps.length - 1;
   $('gl-steps').querySelector('.is-current')?.scrollIntoView({block: 'nearest', inline: 'nearest'});
 }
@@ -248,6 +252,7 @@ function activityControls(s) {
 function renderPanel() {
   const s = step(), panel = $('gl-panel');
   const head = el('h2', {text: STEP_TYPES[s.type].label});
+  if (s.type === 'title') return panel.replaceChildren(head, el('p', {text: 'عنوان الدرس ظاهر على السبورة. قدّم الموضوع، واكتب عليه إن شئت، ثم اضغط «التالي» لأول فقرة.'}));
   if (s.type === 'page') return panel.replaceChildren(head, el('p', {text: 'اكتب على الصفحة بالقلم أثناء الشرح. الطلاب يرون الكتابة مباشرة. انتقل إلى «التالي» للشرح التفاعلي.'}));
   if (s.type === 'interactive') return panel.replaceChildren(head, activityControls(s), s.narrator ? narratorPanel(s) : null);
   if (s.type === 'board') {

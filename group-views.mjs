@@ -176,7 +176,7 @@ export function plannerPage(id, title) {
 
 const zoomBar = (follow = false) => `<div class="gl-zoom" role="group" aria-label="تكبير السبورة"><button type="button" data-zoom="in" aria-label="تكبير" title="تكبير (+)">＋</button><button type="button" data-zoom="out" aria-label="تصغير" title="تصغير (−)">－</button><button type="button" data-zoom="fit" title="ملاءمة (0)">ملاءمة</button>${follow ? '<button type="button" data-zoom="follow" hidden>اتبع المعلم</button><button type="button" data-zoom="max" aria-pressed="false" title="السبورة بملء الشاشة">⛶</button>' : ''}</div>`;
 // Students get the zoom controls under the board so they never cover the lesson on a small phone.
-const boardShell = (extra = '', follow = false) => `<div class="gl-stage"><div class="gl-board" id="gl-board" aria-live="polite"><div class="gl-camera" id="gl-camera"><div class="gl-content" id="gl-content"></div><svg class="gl-ink" id="gl-ink" viewBox="0 0 1000 600" preserveAspectRatio="none" aria-hidden="true"></svg></div></div>${zoomBar(follow)}${extra}</div>`; // zoom sits under the board, never on it
+const boardShell = (extra = '', follow = false, under = '') => `<div class="gl-stage"><div class="gl-board" id="gl-board" aria-live="polite"><div class="gl-camera" id="gl-camera"><div class="gl-content" id="gl-content"></div><svg class="gl-ink" id="gl-ink" viewBox="0 0 1000 600" preserveAspectRatio="none" aria-hidden="true"></svg></div></div>${under}${zoomBar(follow)}${extra}</div>`; // zoom sits under the board, never on it
 
 export function teacherPage(code, title, base) {
   // Presentation mode: one screen, no page scroll. The raised board fills the middle; lesson controls sit above it,
@@ -211,15 +211,15 @@ export function teacherPage(code, title, base) {
      <b class="gl-fly-head">🚦 وضع العمل يراه الطلاب</b>${Object.entries(WORK_MODES).map(([k, v]) => `<button type="button" class="gl-work-btn" data-mode="${k}" aria-pressed="${k === 'none'}">${k === 'none' ? '✖ إلغاء' : v}</button>`).join('')}
     </div></div><button type="button" class="gl-mini gl-hands" id="gl-hands" hidden title="طلاب رفعوا أيديهم">✋ <b id="gl-hands-n"></b></button><button type="button" class="outline gl-mini" id="gl-drawer-btn" aria-expanded="false" aria-controls="gl-drawer">👥 الطلاب <span id="gl-count"></span></button><a class="quiet gl-mini" href="/guide" target="_blank" rel="noopener">الدليل</a><button type="button" class="quiet gl-mini" id="gl-live">إنهاء العرض</button></div>
   </header>
-  <nav class="gl-bar gl-bar-steps" aria-label="تسلسل الدرس">
-   <button type="button" id="gl-prev" class="gl-mini" title="السابق (PageUp)">→</button>
-   <ol id="gl-steps" class="gl-steps-strip"></ol>
-   <button type="button" id="gl-next" class="btn gl-mini" title="التالي (PageDown)">←</button>
-   <span class="gl-sep"></span>
+  <nav class="gl-bar gl-bar-steps" aria-label="الخطوة الحالية">
    <button type="button" id="gl-show" class="gl-mini" aria-pressed="true">إخفاء عن الطلاب</button><span class="gl-vis" id="gl-vis"></span>
    <div class="gl-quick" id="gl-quick" role="group" aria-label="أزرار الخطوة الحالية"></div>
   </nav>
-  ${boardShell('<video class="gl-cam gl-selfcam" id="gl-selfcam" muted playsinline autoplay hidden aria-label="صورتك كما يراها الطلاب"></video><div class="gl-textbox" id="gl-textbox" hidden><input id="gl-textinput" maxlength="200" aria-label="اكتب على السبورة" placeholder="اكتب ثم Enter" dir="auto"><button type="button" id="gl-textok" class="btn">ضع</button><button type="button" id="gl-textcancel" class="quiet">إلغاء</button></div>')}
+  ${boardShell('<video class="gl-cam gl-selfcam" id="gl-selfcam" muted playsinline autoplay hidden aria-label="صورتك كما يراها الطلاب"></video><div class="gl-textbox" id="gl-textbox" hidden><input id="gl-textinput" maxlength="200" aria-label="اكتب على السبورة" placeholder="اكتب ثم Enter" dir="auto"><button type="button" id="gl-textok" class="btn">ضع</button><button type="button" id="gl-textcancel" class="quiet">إلغاء</button></div>', false, `<nav class="gl-sections" aria-label="فقرات الدرس: التنقل، وإخفاء أي فقرة عن الطلاب أو إظهارها">
+   <button type="button" id="gl-prev" class="gl-mini" title="السابق (PageUp)" aria-label="الفقرة السابقة">→</button>
+   <ol id="gl-steps" class="gl-steps-strip"></ol>
+   <button type="button" id="gl-next" class="btn gl-mini" title="التالي (PageDown)" aria-label="الفقرة التالية">←</button>
+  </nav>`)}
   <footer class="gl-bar gl-bar-bottom"><div class="gl-av" id="gl-av" role="group" aria-label="الصوت والكاميرا — تحكم سريع">
    <button type="button" id="gl-voice" class="gl-avbtn" aria-pressed="false" title="صوتك يصل إلى أجهزة الطلاب"><span class="gl-avl">🎙 صوتي</span><span class="gl-avs">: مغلق</span></button>
    <button type="button" id="gl-cam" class="gl-avbtn" aria-pressed="false" title="صورتك تظهر للطلاب"><span class="gl-avl">📷 الكاميرا</span><span class="gl-avs">: مغلقة</span></button>

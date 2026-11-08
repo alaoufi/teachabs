@@ -125,7 +125,7 @@ test('HTTP flow: plan, start, join, answer, results, homework and evaluation', a
   const cmd = body => fetch(base + '/teach/live/' + code + '/command', json(teacher, body));
   const answer = (cookie, body) => fetch(base + '/class/' + code + '/answer', json(cookie, body));
   assert.equal((await answer(sara, {step: 'check', question: 'q1', choice: 1})).status, 409);
-  assert.equal((await cmd({op: 'go', index: 3})).status, 200);
+  assert.equal((await cmd({op: 'go', index: 4})).status, 200); // step 0 is the lesson title (stage 072)
   assert.equal((await cmd({op: 'open', open: true})).status, 200);
   assert.equal((await answer(sara, {step: 'check', question: 'q1', choice: 1})).status, 200);
   assert.equal((await answer(layan, {step: 'check', question: 'q1', choice: 0})).status, 200);

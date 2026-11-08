@@ -8,6 +8,7 @@ import {curriculumLessons} from './curriculum-g4.js';
 import {bookOf, lessonOf, lessonBookPage} from './book-catalog.js';
 
 export const STEP_TYPES = {
+  title: {label: 'عنوان الدرس (الموضوع)', short: 'العنوان'}, // added by the class itself as its first view (classPlan); not a planner step
   page: {label: 'صفحة المنهج على السبورة', short: 'المنهج'},
   interactive: {label: 'الشرح التفاعلي المطوّر', short: 'الشرح التفاعلي'},
   board: {label: 'نصوص وصور مجهزة قبل الحصة', short: 'النصوص المجهزة'},
@@ -123,7 +124,7 @@ export function validatePlan(raw) {
   const ids = new Set();
   plan.steps = raw.steps.map((s, i) => {
     need(s && ID.test(s.id) && !ids.has(s.id), 'معرّف خطوة غير صالح.'); ids.add(s.id);
-    need(Object.hasOwn(STEP_TYPES, s.type), 'نوع خطوة غير معروف.');
+    need(Object.hasOwn(STEP_TYPES, s.type) && s.type !== 'title', 'نوع خطوة غير معروف.');
     const step = {id: s.id, type: s.type, title: text(s.title, 80, `عنوان الخطوة ${i + 1}`), startHidden: s.startHidden === true, narration: narration(s.narration)};
     const snippets = s.snippets === undefined ? [] : s.snippets;
     need(Array.isArray(snippets) && snippets.length <= LIMITS.snippets, `حتى ${LIMITS.snippets} نصوص جاهزة لكل خطوة.`);
@@ -196,9 +197,21 @@ export function boardLayout(items) {
   return out;
 }
 
+/** The plan of a live class: the lesson's title (its topic) comes first, before the lesson's own steps. Saved plans are
+ *  not changed; a plan that already starts with it is returned as it is. */
+export function classPlan(plan) {
+  if (plan.steps[0]?.type === 'title') return plan;
+  const l = plan.lesson ? lessonOf(plan.lesson) : null, ids = new Set(plan.steps.map(s => s.id));
+  let id = 'lesson-title'; for (let n = 2; ids.has(id); n++) id = 'lesson-title-' + n;
+  const meta = [SUBJECTS[plan.subject], GRADE_NAMES[plan.grade] ? 'الصف ' + GRADE_NAMES[plan.grade] : ''].filter(Boolean).join(' — ');
+  const where = l ? [l.unit, l.chapter].filter(Boolean).join(' · ') : '';
+  return {...plan, steps: [{id, type: 'title', title: plan.title, startHidden: false, narration: {mode: 'live'}, snippets: [], meta, where}, ...plan.steps]};
+}
+
 /** What a student may receive for a step: no answer keys, only revealed board items. */
 export function publicStep(step, revealed = []) {
   const base = {id: step.id, type: step.type, title: step.title};
+  if (step.type === 'title') return {...base, meta: step.meta || '', where: step.where || ''};
   if (step.type === 'page') return {...base, source: step.source, page: step.page, image: step.source === 'upload' ? step.image : undefined, ...(step.book ? {book: step.book} : {})};
   if (step.type === 'interactive') return {...base, activity: step.activity};
   if (step.type === 'board') { const at = boardLayout(step.items); return {...base, items: step.items.filter(i => revealed.includes(i.id)).map(i => ({...i, place: at[i.id]}))}; } // each card with its place among all cards
