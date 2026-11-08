@@ -50,7 +50,7 @@ const assert = require('node:assert/strict'), fs = require('node:fs'), path = re
     await t.waitForFunction(b => document.querySelector('#gl-quick .gl-quick-out')?.textContent !== b, before);
     await t.locator('#gl-quick [data-narr=start]').click(); await t.waitForSelector('.gl-stage > .gl-narrator');
     await t.waitForTimeout(400);
-    const inter = await layout(); onScreen(inter, 600);
+    const inter = await layout(); onScreen(inter, 560); // the narrator and (since stage 072) the sections row share the height with the board
     const quick = await t.locator('#gl-quick button').evaluateAll(bs => bs.map(b => { const r = b.getBoundingClientRect(); return r.left >= 0 && r.right <= innerWidth && r.width > 0; }));
     assert.ok(quick.length >= 6 && quick.every(Boolean), 'every quick control is fully on screen');
     await t.screenshot({path: path.join(out, 'present-1366-interactive.png')});
@@ -61,7 +61,7 @@ const assert = require('node:assert/strict'), fs = require('node:fs'), path = re
     await t.locator('#gl-quick').getByRole('button', {name: /النص التالي/}).click();
     await t.waitForFunction(() => [...document.querySelectorAll('#gl-quick button')].some(b => b.textContent.includes('النص التالي (٢/')));
     onScreen(await layout(), 800);
-    await t.locator('#gl-steps li').nth(3).locator('button').click();
+    await t.locator('#gl-steps li').nth(4).locator('.gl-go').click();
     await t.locator('#gl-drawer-btn').click(); await t.locator('#gl-drawer').waitFor();
     assert.equal(await t.locator('#gl-drawer-btn').getAttribute('aria-expanded'), 'true');
     await t.locator('#gl-panel').getByRole('button', {name: 'افتح الإجابة للطلاب'}).click();

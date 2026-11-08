@@ -19,7 +19,7 @@ const assert = require('node:assert/strict'), fs = require('node:fs'), path = re
     await t.goto(base + '/start/teacher'); await t.locator('.gl-cur-subject[data-subject=science] li.is-ready button').first().click(); await t.waitForSelector('#pl-steps li');
     await t.getByRole('button', {name: 'بدء الحصة بهذا الترتيب'}).click(); await t.waitForURL(/\/teach\/live\/[A-Z0-9]{6}$/); await pastTitle(t);
     const lay = await t.evaluate(() => { const f = document.querySelector('footer.gl-bar-bottom').getBoundingClientRect(), b = document.querySelector('#gl-board').getBoundingClientRect(); return {railBeside: f.top < b.bottom && f.left > b.right - 2, board: b.width}; });
-    assert.ok(lay.railBeside && lay.board > 900, JSON.stringify(lay));
+    assert.ok(lay.railBeside && lay.board > 850, JSON.stringify(lay)); // since stage 072 the lesson sections take a row under the board
     results.push(`computer: the tools sit in a rail beside the board; the board is ${Math.round(lay.board)}px wide`);
     const sc = await browser.newContext({viewport: {width: 390, height: 844}, isMobile: true, hasTouch: true}); sc.setDefaultTimeout(15000);
     const s = await sc.newPage(); watch(s);

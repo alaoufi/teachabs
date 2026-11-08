@@ -870,7 +870,7 @@ body:has(#planner) .demo{margin-bottom:8px;padding:6px 10px}
 .gl-title-meta{font-size:max(12px,3cqw);margin:0;color:#24343b;font-weight:700}
 .gl-title-where{font-size:max(10px,2.2cqw);margin:0;color:var(--muted,#5b6b70)}
 
-.gl-sections{display:flex;align-items:center;gap:6px;flex:none;order:1;margin:6px auto 0;width:max-content;max-width:100%;box-sizing:border-box;align-self:center;padding:4px 6px;background:#fff;border:1px solid var(--line,#dfe6e2);border-radius:16px;box-shadow:0 2px 8px #0b1f2a14;z-index:4}
+.gl-sections{display:flex;flex-wrap:nowrap;min-height:0;align-items:center;gap:6px;flex:none;order:1;margin:6px auto 0;width:max-content;max-width:100%;box-sizing:border-box;align-self:center;padding:4px 6px;background:#fff;border:1px solid var(--line,#dfe6e2);border-radius:16px;box-shadow:0 2px 8px #0b1f2a14;z-index:4}
 .gl-sections .gl-steps-strip{flex:0 1 auto}
 .gl-sections .gl-steps-strip li{display:flex;align-items:center;border-radius:20px;background:#f4f7f5;padding-inline-end:2px}
 .gl-wrap .gl-sections .gl-steps-strip .gl-go{border-radius:20px;min-height:36px}
@@ -901,4 +901,8 @@ body:has(#planner) .demo{margin-bottom:8px;padding:6px 10px}
 @media(min-width:1200px){
  .gl-sections .gl-steps-strip li:not(.is-current) .gl-step-name{position:static;width:auto;height:auto;overflow:visible;clip-path:none}
  .gl-wrap .gl-sections .gl-steps-strip li:not(.is-current) .gl-go{padding:2px 10px 2px 6px}
+}
+/* on a computer the zoom buttons move to the empty corner beside the board, so they never cover the sections row */
+@media (min-width:1000px) and (orientation:landscape){
+ .gl-present .gl-stage:has(> .gl-sections)>.gl-zoom{top:2px;bottom:auto}
 }
