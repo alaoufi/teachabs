@@ -33,7 +33,7 @@ export function groupService(store) {
    *  Not storing a file is not a permission to display it (review, stage 071). While off, the platform keeps the lesson ↔ page
    *  index and links to the source page; the teacher may still photograph a page of their own copy. */
   const relayOn = () => process.env.BOOKS_RELAY === 'on';
-  const RELAY_OFF = 'عرض الكتاب داخل المنصة موقوف حتى يتأكد حق العرض. افتح الكتاب من مصدره، أو صوّر صفحة من نسختك بزر «📷 تصوير صفحة».';
+  const RELAY_OFF = 'عرض الكتاب داخل المنصة موقوف حتى يتأكد حق العرض. افتح الكتاب من مصدره، أو صوّر صفحة من نسختك بزر «📷 صورة».';
   /** The book from its source, only the parts asked for (byte ranges), to this one viewer; nothing is cached or stored. */
   async function relayBook(req, res, book) {
     need(relayOn(), RELAY_OFF, 403);
@@ -300,7 +300,7 @@ export function groupService(store) {
         const [, code, action] = lm, s = ownSession(teacher, code);
         if (!action && method === 'GET') return page(res, html, 'إدارة الحصة', v.teacherPage(code, s.plan.title, base), true, true); // the teacher's microphone and camera
         if (action === 'display' && method === 'GET') return page(res, html, 'شاشة العرض', v.displayPage(code, s.plan.title, base));
-        if (action === 'plan' && method === 'GET') return send(res, withBook(s.plan, code));
+        if (action === 'plan' && method === 'GET') return send(res, {...withBook(s.plan, code), booksShown: relayOn()}); // booksShown: the teacher's «📖 الكتاب» button
         if (action === 'book-page' && method === 'POST') { // a page of the ministry book, rendered on the teacher's device: this class only, in memory
           const body = await json(req, base, 1_000_000), step = s.plan.steps.find(x => x.id === body.step && x.type === 'page'), book = bookOf(body.book);
           need(relayOn(), RELAY_OFF, 403); need(step, 'خطوة المنهج غير موجودة.', 404); need(book && Number.isInteger(body.page) && body.page >= 1 && body.page <= book.pages, 'صفحة غير صالحة.'); need(validImage(body.image), 'صورة الصفحة غير صالحة.');

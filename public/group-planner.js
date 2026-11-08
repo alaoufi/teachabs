@@ -149,7 +149,7 @@ function stepEditor(step) {
       const b = bookOf(step.book) || BOOKS[0];
       box.append(field('الكتاب', el('select', {'aria-label': 'الكتاب', onchange: e => { step.book = e.target.value; step.page = 1; touch(); render(); }}, BOOKS.map(x => el('option', {value: x.id, selected: x.id === b.id}, x.title)))),
         field('رقم الصفحة المطبوع', el('input', {type: 'number', min: 1, max: b.pages - b.offset, value: step.page, 'aria-label': 'رقم الصفحة', onchange: e => { step.page = Math.max(1, Math.min(b.pages - b.offset, Number(e.target.value) || 1)); touch(); }})),
-        el('p', {class: 'gl-note', text: 'في الحصة اضغط «📖 كتاب الوزارة» فيفتح على هذه الصفحة، ثم اعرضها على السبورة. لا تُحفظ نسخة من الكتاب.'}));
+        el('p', {class: 'gl-note', text: 'في الحصة اضغط «📖 الكتاب» فيفتح على هذه الصفحة إن كان عرض الكتب في المنصة مسموحًا، أو «📷 صورة» لتصوّر الصفحة من نسختك. لا تُحفظ نسخة من الكتاب.'}));
     } else if (original) {
       box.append(field('الصفحة', el('select', {onchange: e => { step.page = e.target.value; touch(); render(); }}, Object.entries(ORIGINAL_PAGES).map(([k, p]) => el('option', {value: k, selected: k === step.page}, p.title)))));
       const preview = el('div', {class: 'pl-preview'}); preview.innerHTML = renderOriginalPage(step.page); box.append(preview);

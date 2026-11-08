@@ -101,8 +101,9 @@ function renderQuick(s) {
   if (s.type === 'page') {
     // the ministry book of this subject and grade, opening at the lesson's page; shown on the board for this class only
     const at = s.source === 'book' || s.book ? {book: s.book?.id || s.book, page: s.book?.page || s.page} : lessonBookPage(plan.lesson), book = at ? bookOf(at.book) : bookFor(plan.subject, plan.grade);
-    if (book) parts.push(el('button', {type: 'button', class: 'btn gl-mini', id: 'gl-ministry-book', title: `افتح ${book.title} على صفحة الدرس واعرضها على السبورة`, onclick: () => openMinistryBook(book, at?.page || 1)}, '📖 كتاب الوزارة'));
-    parts.push(el('button', {type: 'button', class: 'outline gl-mini', title: 'صوّر صفحة الكتاب أو اختر صورتها فتظهر على السبورة للجميع', onclick: () => $('gl-page-file').click()}, '📷 تصوير صفحة'));
+    // shown only while the platform may show the books (BOOKS_RELAY on the server); short labels keep this row on one line
+    if (book && plan.booksShown) parts.push(el('button', {type: 'button', class: 'btn gl-mini', id: 'gl-ministry-book', title: `كتاب الوزارة: افتح ${book.title} على صفحة الدرس واعرضها على السبورة`, 'aria-label': 'كتاب الوزارة', onclick: () => openMinistryBook(book, at?.page || 1)}, '📖 الكتاب'));
+    parts.push(el('button', {type: 'button', class: 'outline gl-mini', title: 'صوّر صفحة الكتاب أو اختر صورتها فتظهر على السبورة للجميع', 'aria-label': 'تصوير صفحة', onclick: () => $('gl-page-file').click()}, '📷 صورة'));
   }
   if (s.type !== 'interactive' || !s.narrator) {
     if (s.narration.mode === 'live') parts.push(el('span', {class: 'gl-live-voice', text: '🎙 اشرح بصوتك'}));

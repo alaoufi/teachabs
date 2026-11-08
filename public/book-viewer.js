@@ -44,7 +44,7 @@ export function openBookDialog({book, page, onShow}) {
   async function show(n) {
     at = Math.min(max, Math.max(1, n)); $('page').value = at; status.textContent = `جارٍ تحميل الصفحة ${ar.format(at)}…`;
     try { doc = doc || await openBook(book.id); await drawPage(doc, at, book.offset, canvas, Math.min(1400, Math.max(700, innerWidth * 1.2))); status.textContent = `الصفحة ${ar.format(at)} من ${ar.format(max)}`; }
-    catch (e) { status.textContent = e?.status === 403 ? 'عرض الكتاب داخل المنصة موقوف حتى يتأكد حق العرض. افتح الكتاب من مصدره، أو صوّر صفحة من نسختك بزر «📷 تصوير صفحة».' : 'تعذّر فتح الكتاب من مصدره الآن. حاول بعد قليل.'; }
+    catch (e) { status.textContent = e?.status === 403 ? 'عرض الكتاب داخل المنصة موقوف حتى يتأكد حق العرض. افتح الكتاب من مصدره، أو صوّر صفحة من نسختك بزر «📷 صورة».' : 'تعذّر فتح الكتاب من مصدره الآن. حاول بعد قليل.'; }
   }
   $('prev').onclick = () => show(at - 1); $('next').onclick = () => show(at + 1);
   $('page').onchange = e => show(Number(e.target.value) || 1);
@@ -68,7 +68,7 @@ if (root) {
     at = Math.min(max, Math.max(1, n)); input.value = at; status.textContent = `جارٍ تحميل الصفحة ${ar.format(at)}…`;
     history.replaceState(null, '', `?page=${at}`);
     try { doc = doc || await openBook(book.id); await drawPage(doc, at, book.offset, canvas, Math.round(Math.min(1600, root.clientWidth) * zoom * (devicePixelRatio > 1 ? 1.5 : 1))); canvas.style.width = Math.round(Math.min(1600, root.clientWidth) * zoom) + 'px'; status.textContent = `الصفحة ${ar.format(at)} من ${ar.format(max)}`; }
-    catch (e) { status.textContent = e?.status === 403 ? 'عرض الكتاب داخل المنصة موقوف حتى يتأكد حق العرض. افتح الكتاب من مصدره، أو صوّر صفحة من نسختك بزر «📷 تصوير صفحة».' : 'تعذّر فتح الكتاب من مصدره الآن. حاول بعد قليل.'; }
+    catch (e) { status.textContent = e?.status === 403 ? 'عرض الكتاب داخل المنصة موقوف حتى يتأكد حق العرض. افتح الكتاب من مصدره، أو صوّر صفحة من نسختك بزر «📷 صورة».' : 'تعذّر فتح الكتاب من مصدره الآن. حاول بعد قليل.'; }
   }
   document.getElementById('bk-prev').onclick = () => show(at - 1);
   document.getElementById('bk-next').onclick = () => show(at + 1);
