@@ -230,7 +230,11 @@ for (const id of Object.keys(READY_PREPS)) {
 /** The ready prep of a curriculum lesson: page, interactive explanation (when one fits), key points, questions, homework, evaluation. */
 export function prepPlan(id) {
   const g4 = Boolean(G4[id]), p = g4 ? LESSON_PREPS[id] : READY_PREPS[id], l = g4 ? G4[id] : lessonOf(id), A = arDigits, at = g4 ? null : lessonBookPage(id);
-  const choice = (qid, [prompt, options, answer]) => ({id: qid, kind: 'choice', prompt: A(prompt), options: options.map(A), answer});
+  // the preps list the right option first; the order is turned by a fixed amount for each question so the answer's place varies
+  const choice = (qid, [prompt, options, answer]) => {
+    const n = options.length, k = [...(id + qid)].reduce((h, c) => (h * 31 + c.charCodeAt(0)) % 9973, 7) % n, turned = options.map((_, i) => options[(i + k) % n]);
+    return {id: qid, kind: 'choice', prompt: A(prompt), options: turned.map(A), answer: (answer - k + n) % n};
+  };
   const steps = [g4 ? {id: 'curriculum', type: 'page', title: 'نقرأ صفحة الدرس', source: 'original', page: 'g4-' + id, narration: {mode: 'speech', text: A(p.say)}, snippets: p.sn.map(A)}
     : {id: 'curriculum', type: 'page', title: 'نقرأ صفحة الدرس من كتاب الوزارة', source: 'book', book: at.book, page: at.page, narration: {mode: 'speech', text: A(p.say)}, snippets: p.sn.map(A)}];
   if (p.act) steps.push({id: 'explain', type: 'interactive', title: ('نجرب: ' + ACTIVITIES[p.act].title).slice(0, 80), activity: p.act, snippets: p.pts.slice(1, 3).map(A), narration: {mode: 'live'}});

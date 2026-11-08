@@ -68,7 +68,7 @@ test('every ready prep of grades 1, 2, 3, 5 and 6 validates, opens its book page
   const {primaryLessons} = await import('../public/curriculum-primary.js');
   const {lessonBookPage} = await import('../public/book-catalog.js');
   const ops = {'+': (a, b) => a + b, '−': (a, b) => a - b, '×': (a, b) => a * b};
-  const byGrade = {}; let checked = 0;
+  const byGrade = {}, places = []; let checked = 0; const {arDigits} = await import('../public/lesson-preps.js');
   for (const [id, p] of Object.entries(READY_PREPS)) {
     const l = primaryLessons().find(x => x.id === id); assert.ok(l, id + ' is a curriculum lesson');
     byGrade[l.grade] = (byGrade[l.grade] || 0) + 1;
@@ -80,6 +80,10 @@ test('every ready prep of grades 1, 2, 3, 5 and 6 validates, opens its book page
       assert.ok(a >= 0 && a < opts.length, id); assert.equal(new Set(opts).size, opts.length, id + ' distinct options');
       const m = prompt.match(/^([\d,]+) ([+−×]) ([\d,]+) =$/);
       if (m) { assert.equal(num(opts[a]), ops[m[2]](num(m[1]), num(m[3])), `${id}: ${prompt}`); checked++; }
+      const three = prompt.match(/^(\d+) \+ (\d+) \+ (\d+) = ؟$/), gap = prompt.match(/^(\d+) ([+−]) ؟ = (\d+)، المفقود:$/), gap2 = prompt.match(/^؟ − (\d+) = (\d+)، المفقود:$/);
+      if (three) { assert.equal(num(opts[a]), num(three[1]) + num(three[2]) + num(three[3]), `${id}: ${prompt}`); checked++; }
+      if (gap) { assert.equal(num(opts[a]), gap[2] === '+' ? num(gap[3]) - num(gap[1]) : num(gap[1]) - num(gap[3]), `${id}: ${prompt}`); checked++; }
+      if (gap2) { assert.equal(num(opts[a]), num(gap2[1]) + num(gap2[2]), `${id}: ${prompt}`); checked++; }
     }
     const plan = validatePlan(LESSON_TEMPLATES['ready-' + id].plan());
     assert.equal(plan.lesson, id); assert.equal(plan.grade, l.grade); assert.deepEqual(plan.tools, p.aids);
@@ -87,10 +91,14 @@ test('every ready prep of grades 1, 2, 3, 5 and 6 validates, opens its book page
     assert.equal(page.source, 'book'); assert.equal(page.book, at.book); assert.equal(page.page, at.page);
     assert.doesNotMatch(JSON.stringify(plan.steps), /"(prompt|text|instructions)":"[^"]*[0-9]/, id + ': Arabic-Indic digits only');
     assert.deepEqual(ALL_AIDS[id], p.aids);
+    const qs = plan.steps.flatMap(s => s.questions || []).filter(x => x.kind === 'choice');
+    [...p.q.slice(0, 3), p.hw[1], p.hw[2]].forEach(([, opts, a], i) => assert.equal(qs[i].options[qs[i].answer], arDigits(opts[a]), id + ' answer kept after turning'));
+    places.push(...qs.map(x => x.answer));
   }
+  assert.ok([0, 1, 2].every(k => places.filter(x => x === k).length > places.length / 5), 'the right answer is not always in the same place');
   for (const g of Object.keys(byGrade)) assert.equal(byGrade[g], primaryLessons().filter(l => l.grade === Number(g)).length, `grade ${g}: every lesson has a prep`);
-  assert.ok(byGrade[1] === 52, 'grade 1 done');
-  assert.ok(checked >= 20, 'checked ' + checked);
+  assert.ok(byGrade[1] === 52 && byGrade[2] === 63, 'grades 1 and 2 done');
+  assert.ok(checked >= 100, 'checked ' + checked);
   assert.equal(toolsFor({subject: 'math', grade: 1, lesson: 'p1m26'}).forLesson[0].id, READY_PREPS.p1m26.aids[0]);
 });
 

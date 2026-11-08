@@ -151,7 +151,7 @@ function tchart(add, a, b) {
  */
 export const LIBRARY = [
   // ---- mathematics ----
-  {id: 'placevalue', kind: 'activity', icon: '🔢', title: 'لوحة المنازل التفاعلية', desc: 'يكتب المعلم عددًا فتظهر منازله وقيمها.', subjects: ['math'], grades: [3, 4, 5], lessons: ['m1-1', 'm1-2', 'm1-4', 'm1-5', 'm1-6']},
+  {id: 'placevalue', kind: 'activity', icon: '🔢', title: 'لوحة المنازل التفاعلية', desc: 'يكتب المعلم عددًا فتظهر منازله وقيمها.', subjects: ['math'], grades: [2, 3, 4, 5], lessons: ['m1-1', 'm1-2', 'm1-4', 'm1-5', 'm1-6']},
   {id: 'solids', kind: 'activity', icon: '📦', title: 'المجسمات وشبكاتها', desc: 'مكعب ومنشور وهرم وأسطوانة ومخروط تُفتح إلى شبكاتها، وعدّ الأوجه والأحرف والرؤوس.', subjects: ['math'], grades: [1, 2, 3, 4, 5, 6, 7, 8], lessons: []},
   {id: 'fractions', kind: 'activity', icon: '🍰', title: 'الكسور التفاعلية', desc: 'بسط ومقام بالشريط والدائرة، والكسور المتكافئة وغير الفعلية والمقارنة.', subjects: ['math'], grades: [2, 3, 4, 5, 6, 7], lessons: []},
   {id: 'numberline', kind: 'activity', icon: '↔️', title: 'خط الأعداد والأعداد الصحيحة', desc: 'الجمع والطرح بالقفزات، والأعداد السالبة.', subjects: ['math'], grades: [1, 2, 3, 4, 5, 6, 7], lessons: ['m2-4', 'm2-5', 'm2-6']},
@@ -169,9 +169,9 @@ export const LIBRARY = [
   {id: 'fractioncircle', kind: 'stamp', icon: '🍕', title: 'دائرة الكسور', desc: 'دائرة مقسمة لأثمان وربع مظلل.', subjects: ['math'], grades: [2, 3, 4, 5], lessons: []},
   {id: 'clock', kind: 'stamp', icon: '🕒', title: 'الساعة', desc: 'وجه ساعة لقراءة الوقت.', subjects: ['math'], grades: [1, 2, 3], lessons: []},
   {id: 'grid', kind: 'stamp', icon: '#️⃣', title: 'المستوى الإحداثي', desc: 'شبكة بمحورين للنقاط والتمثيل بالخطوط.', subjects: ['math'], grades: [4, 5, 6], lessons: ['m3-4']},
-  {id: 'bargraph', kind: 'stamp', icon: '📊', title: 'محاور التمثيل بالأعمدة', desc: 'محوران وخطوط شبكة لرسم الأعمدة.', subjects: ['math'], grades: [3, 4, 5], lessons: ['m3-1', 'm3-2', 'm3-3']},
+  {id: 'bargraph', kind: 'stamp', icon: '📊', title: 'محاور التمثيل بالأعمدة', desc: 'محوران وخطوط شبكة لرسم الأعمدة.', subjects: ['math'], grades: [2, 3, 4, 5], lessons: ['m3-1', 'm3-2', 'm3-3']},
   {id: 'piechart', kind: 'stamp', icon: '🥧', title: 'قطاعات دائرية', desc: 'دائرة بأربعة قطاعات ملونة.', subjects: ['math'], grades: [4, 5, 6], lessons: ['m3-5']},
-  {id: 'spinner', kind: 'stamp', icon: '🎯', title: 'القرص الدوار', desc: 'أربعة ألوان متساوية لدرس الاحتمال.', subjects: ['math'], grades: [3, 4, 5, 6], lessons: ['m3-6']},
+  {id: 'spinner', kind: 'stamp', icon: '🎯', title: 'القرص الدوار', desc: 'أربعة ألوان متساوية لدرس الاحتمال.', subjects: ['math'], grades: [2, 3, 4, 5, 6], lessons: ['m3-6']},
   {id: 'dice', kind: 'stamp', icon: '🎲', title: 'حجر النرد', desc: 'للاحتمال والعد.', subjects: ['math'], grades: ALL, lessons: ['m3-6']},
   {id: 'shapes', kind: 'stamp', icon: '🔺', title: 'الأشكال الهندسية', desc: 'مثلث ومربع ومستطيل ودائرة بأسمائها.', subjects: ['math'], grades: [1, 2, 3, 4], lessons: []},
   {id: 'ruler', kind: 'stamp', icon: '📏', title: 'المسطرة', desc: 'عشرة سنتيمترات للقياس.', subjects: ['math', 'science'], grades: ALL, lessons: []},
@@ -191,7 +191,7 @@ export const LIBRARY = [
   {id: 'heart', kind: 'activity', icon: '❤️', title: 'القلب والدورة الدموية', desc: 'حجرات القلب الأربع ورحلة الدم بين الجسم والرئتين.', subjects: ['science'], grades: [5, 6, 7, 8, 9], lessons: ['s3-5-1']},
   {id: 'atom', kind: 'activity', icon: '⚛️', title: 'تركيب الذرة', desc: 'البروتونات والنيوترونات والإلكترونات لأول عشرين عنصرًا.', subjects: ['science'], grades: [7, 8, 9], lessons: []},
   {id: 'thermometer', kind: 'stamp', icon: '🌡', title: 'ميزان الحرارة', desc: 'بالدرجات السيليزية من ٠ إلى ١٠٠.', subjects: ['science', 'math'], grades: [2, 3, 4, 5, 6], lessons: []},
-  {id: 'foodchain', kind: 'stamp', icon: '🔗', title: 'السلسلة الغذائية', desc: 'منتج ومستهلكون بأسهم انتقال الطاقة.', subjects: ['science'], grades: [3, 4, 5], lessons: ['s2-3-1', 's2-3-2', 's2-3-3']},
+  {id: 'foodchain', kind: 'stamp', icon: '🔗', title: 'السلسلة الغذائية', desc: 'منتج ومستهلكون بأسهم انتقال الطاقة.', subjects: ['science'], grades: [2, 3, 4, 5], lessons: ['s2-3-1', 's2-3-2', 's2-3-3']},
   {id: 'vertebrates', kind: 'stamp', icon: '🦴', title: 'فقاريات ولافقاريات', desc: 'جدول بعمودين لتصنيف الحيوانات.', subjects: ['science'], grades: [1, 2, 3, 4, 5], lessons: ['s1-1-2', 's1-2-1', 's1-2-2', 's1-2-3']},
   {id: 'plate', kind: 'stamp', icon: '🍽', title: 'طبق الغذاء الصحي', desc: 'الخضروات والفواكه والحبوب والبروتين.', subjects: ['science'], grades: ALL, lessons: ['s3-5-1', 's3-5-2']},
   // ---- languages, social studies and Islamic studies ----
