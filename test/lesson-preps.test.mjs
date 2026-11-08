@@ -83,6 +83,8 @@ test('every ready prep of grades 1, 2, 3, 5 and 6 validates, opens its book page
       const three = prompt.match(/^(\d+) \+ (\d+) \+ (\d+) = ؟$/), gap = prompt.match(/^(\d+) ([+−]) ؟ = (\d+)، المفقود:$/), gap2 = prompt.match(/^؟ − (\d+) = (\d+)، المفقود:$/);
       if (three) { assert.equal(num(opts[a]), num(three[1]) + num(three[2]) + num(three[3]), `${id}: ${prompt}`); checked++; }
       if (gap) { assert.equal(num(opts[a]), gap[2] === '+' ? num(gap[3]) - num(gap[1]) : num(gap[1]) - num(gap[3]), `${id}: ${prompt}`); checked++; }
+      const expr = prompt.match(/^([\d.,()+−×÷ ]+) = ؟?$/), js = expr && expr[1].replace(/,/g, '').replace(/−/g, '-').replace(/×/g, '*').replace(/÷/g, '/');
+      if (js && /[-+*/]/.test(js) && /^[\d. ()+\-*/]+$/.test(js)) { assert.ok(Math.abs(Function('return ' + js)() - num(opts[a])) < 1e-9, `${id}: ${prompt}`); checked++; } // decimals, division, brackets, order of operations
       if (gap2) { assert.equal(num(opts[a]), num(gap2[1]) + num(gap2[2]), `${id}: ${prompt}`); checked++; }
     }
     const plan = validatePlan(LESSON_TEMPLATES['ready-' + id].plan());
@@ -97,7 +99,7 @@ test('every ready prep of grades 1, 2, 3, 5 and 6 validates, opens its book page
   }
   assert.ok([0, 1, 2].every(k => places.filter(x => x === k).length > places.length / 5), 'the right answer is not always in the same place');
   for (const g of Object.keys(byGrade)) assert.equal(byGrade[g], primaryLessons().filter(l => l.grade === Number(g)).length, `grade ${g}: every lesson has a prep`);
-  assert.ok(byGrade[1] === 52 && byGrade[2] === 63 && byGrade[3] === 47, 'grades 1, 2 and 3 done');
+  assert.ok(byGrade[1] === 52 && byGrade[2] === 63 && byGrade[3] === 47 && byGrade[5] === 54, 'grades 1, 2, 3 and 5 done');
   assert.ok(checked >= 100, 'checked ' + checked);
   assert.equal(toolsFor({subject: 'math', grade: 1, lesson: 'p1m26'}).forLesson[0].id, READY_PREPS.p1m26.aids[0]);
 });
