@@ -1,7 +1,7 @@
 // Optional browser verification for stage 042: the term-1 curriculum on «دروسي», and the first science lesson
 // (cells) and first math lesson (place value) run live: teacher at 1366x768, display screen and a student phone.
 const {chromium} = require(process.env.PLAYWRIGHT_MODULE || 'playwright');
-const {pick, openStepMenus} = require('./ui-helpers.cjs');
+const {pick, openStepMenus, pastTitle} = require('./ui-helpers.cjs');
 const assert = require('node:assert/strict'), fs = require('node:fs'), path = require('node:path');
 (async () => {
   const {openStore} = await import('../store.mjs'), {createApp} = await import('../server.mjs');
@@ -27,14 +27,14 @@ const assert = require('node:assert/strict'), fs = require('node:fs'), path = re
 
     // ---- cells ----
     await sci.locator('li.is-ready button').first().click(); await t.waitForURL(/\/teach\/plans\/[0-9a-f-]{36}$/); await t.waitForSelector('#pl-steps li');
-    await t.getByRole('button', {name: 'بدء الحصة بهذا الترتيب'}).click(); await t.waitForURL(/\/teach\/live\/[A-Z0-9]{6}$/);
+    await t.getByRole('button', {name: 'بدء الحصة بهذا الترتيب'}).click(); await t.waitForURL(/\/teach\/live\/[A-Z0-9]{6}$/); await pastTitle(t);
     const code = t.url().split('/').pop();
     const display = await tc.newPage(); watch(display); await display.goto(base + `/teach/live/${code}/display`);
     const sc = await browser.newContext({viewport: {width: 390, height: 844}, isMobile: true, hasTouch: true}); sc.setDefaultTimeout(15000);
     const s = await sc.newPage(); watch(s);
     await s.goto(base + '/join?code=' + code); await s.getByLabel('اسم الطالب الأول').fill('ريم'); await s.getByRole('button', {name: 'دخول الحصة'}).click();
     await s.waitForSelector('#gl-content .gl-page');
-    await t.locator('#gl-steps li[data-type=interactive] button').click(); await s.waitForSelector('#gl-content .cells-scene');
+    await t.locator('#gl-steps li[data-type=interactive] .gl-go').click(); await s.waitForSelector('#gl-content .cells-scene');
     const quick = t.locator('#gl-quick');
     for (let i = 0; i < 3; i++) await quick.getByRole('button', {name: /تكبير/}).click();
     await s.waitForFunction(() => document.querySelector('#gl-content .cells-scene .c-crumb.is-on text')?.textContent === 'الخلية');
@@ -70,11 +70,11 @@ const assert = require('node:assert/strict'), fs = require('node:fs'), path = re
     const inter = t.locator('#pl-steps li').nth(2); await inter.locator('summary').click();
     assert.equal(await inter.locator('.pl-seg').count(), 7);
     assert.equal(await inter.locator('.pl-seg').first().locator('input[type=number]').inputValue(), '7', 'large ranges use a number box, not a giant menu');
-    await t.getByRole('button', {name: 'بدء الحصة بهذا الترتيب'}).click(); await t.waitForURL(/\/teach\/live\/[A-Z0-9]{6}$/);
+    await t.getByRole('button', {name: 'بدء الحصة بهذا الترتيب'}).click(); await t.waitForURL(/\/teach\/live\/[A-Z0-9]{6}$/); await pastTitle(t);
     const code2 = t.url().split('/').pop();
     await s.goto(base + '/join?code=' + code2); await s.getByLabel('اسم الطالب الأول').fill('ريم'); await s.getByRole('button', {name: 'دخول الحصة'}).click();
     await s.waitForSelector('#gl-content .gl-page');
-    await t.locator('#gl-steps li[data-type=interactive] button').click(); await s.waitForSelector('#gl-content .pv-scene');
+    await t.locator('#gl-steps li[data-type=interactive] .gl-go').click(); await s.waitForSelector('#gl-content .pv-scene');
     assert.match(await s.locator('#gl-content .pv-scene').textContent(), /٤٠٬٠٠٠/);
     await quick.locator('select[aria-label="المنزلة"]').selectOption('thousands');
     await quick.getByRole('button', {name: '+ ١٬٠٠٠'}).click();

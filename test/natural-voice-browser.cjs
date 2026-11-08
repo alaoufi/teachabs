@@ -1,7 +1,7 @@
 // Optional browser verification for stage 053: explanations try the natural server voice first (man or woman, chosen by
 // the teacher) and fall back to the device voice when there is none. The server voice is simulated here.
 const {chromium} = require(process.env.PLAYWRIGHT_MODULE || 'playwright');
-const {pick, openStepMenus} = require('./ui-helpers.cjs');
+const {pick, openStepMenus, pastTitle} = require('./ui-helpers.cjs');
 const assert = require('node:assert/strict');
 (async () => {
   const {openStore} = await import('../store.mjs'), {createApp} = await import('../server.mjs');
@@ -23,7 +23,7 @@ const assert = require('node:assert/strict');
     await t.goto(base + '/start/teacher'); await t.locator('.gl-cur-subject[data-subject=science] li.is-ready button').first().click(); await t.waitForSelector('#pl-steps li');
     await t.locator('select[aria-label="صوت المتحدث"]').selectOption('female');
     await t.getByRole('button', {name: 'حفظ الدرس'}).click(); await t.waitForFunction(() => document.querySelector('#pl-status').textContent.includes('حُفظ'));
-    await t.getByRole('button', {name: 'بدء الحصة بهذا الترتيب'}).click(); await t.waitForURL(/\/teach\/live\/[A-Z0-9]{6}$/);
+    await t.getByRole('button', {name: 'بدء الحصة بهذا الترتيب'}).click(); await t.waitForURL(/\/teach\/live\/[A-Z0-9]{6}$/); await pastTitle(t);
     const sc = await browser.newContext({viewport: {width: 390, height: 844}, isMobile: true, hasTouch: true}); sc.setDefaultTimeout(15000); await sc.addInitScript(spy); await sc.route(/\/speech\?/, fakeVoice);
     const s = await sc.newPage(); s.on('pageerror', e => errors.push(e.message));
     await s.goto(base + '/start/student'); await s.waitForFunction(() => window.__voice); await s.locator('#gl-enter').click(); await s.waitForSelector('#gl-content .gl-page');
@@ -33,7 +33,7 @@ const assert = require('node:assert/strict');
     await t.waitForFunction(() => window.__played.some(x => /\/teach\/live\/[A-Z0-9]{6}\/speech\?step=.*&v=female/.test(x)));
     results.push('the curriculum explanation played in the natural woman\'s voice on the student\'s and the teacher\'s device');
     await t.locator('#gl-quick .gl-speaker').click(); await t.waitForFunction(() => document.querySelector('#gl-quick .gl-speaker')?.textContent.includes('رجل'));
-    await t.locator('#gl-steps li[data-type=interactive] button').click();
+    await t.locator('#gl-steps li[data-type=interactive] .gl-go').click();
     await s.waitForFunction(() => window.__played.some(x => /segment=0&v=male/.test(x)));
     results.push('the teacher switched to a man\'s voice; the narrator of the interactive explanation spoke with it');
     natural = false; // no key on the server: back to the device voice

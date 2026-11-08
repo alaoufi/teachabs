@@ -2,7 +2,7 @@
 // «🧭 إدارة الفصل» — 🎲 a random student (no repeats until everyone had a turn), 👀 attention lock on the students'
 // screens, 🚦 a work mode the students see. Two students on phones.
 const {chromium} = require(process.env.PLAYWRIGHT_MODULE || 'playwright');
-const {pick, openStepMenus} = require('./ui-helpers.cjs');
+const {pick, openStepMenus, pastTitle} = require('./ui-helpers.cjs');
 const assert = require('node:assert/strict'), fs = require('node:fs'), path = require('node:path');
 (async () => {
   const {openStore} = await import('../store.mjs'), {createApp} = await import('../server.mjs');
@@ -17,7 +17,7 @@ const assert = require('node:assert/strict'), fs = require('node:fs'), path = re
     const tc = await browser.newContext({viewport: {width: 1366, height: 768}}); tc.setDefaultTimeout(15000); await openStepMenus(tc); await tc.addInitScript(() => localStorage.setItem('gl-autostart', '0'));
     const t = await tc.newPage(); watch(t); t.on('dialog', d => d.accept().catch(() => {}));
     await t.goto(base + '/start/teacher'); await t.locator('.gl-cur-subject[data-subject=science] li.is-ready button').first().click(); await t.waitForSelector('#pl-steps li');
-    await t.getByRole('button', {name: 'بدء الحصة بهذا الترتيب'}).click(); await t.waitForURL(/\/teach\/live\/[A-Z0-9]{6}$/);
+    await t.getByRole('button', {name: 'بدء الحصة بهذا الترتيب'}).click(); await t.waitForURL(/\/teach\/live\/[A-Z0-9]{6}$/); await pastTitle(t);
     const students = [];
     for (let i = 0; i < 2; i++) {
       const sc = await browser.newContext({viewport: {width: 390, height: 844}, isMobile: true, hasTouch: true}); sc.setDefaultTimeout(15000);

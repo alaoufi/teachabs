@@ -1,6 +1,7 @@
 // Optional browser verification for stage 062: on a phone with a parent's account, «أنا الطالب» shows the parent's
 // children; tapping one enters the running class under the child's first name. Another phone enters by name.
 const {chromium} = require(process.env.PLAYWRIGHT_MODULE || 'playwright');
+const {pastTitle} = require('./ui-helpers.cjs');
 const assert = require('node:assert/strict'), fs = require('node:fs'), path = require('node:path');
 (async () => {
   const {openStore} = await import('../store.mjs'), {createApp} = await import('../server.mjs');
@@ -14,7 +15,7 @@ const assert = require('node:assert/strict'), fs = require('node:fs'), path = re
     const tc = await browser.newContext({viewport: {width: 1366, height: 900}}); tc.setDefaultTimeout(15000); await tc.addInitScript(() => localStorage.setItem('gl-autostart', '0'));
     const t = await tc.newPage(); t.on('pageerror', e => errors.push(e.message)); t.on('dialog', d => d.accept().catch(() => {}));
     await t.goto(base + '/start/teacher'); await t.locator('.gl-cur-subject[data-subject=science] li.is-ready button').first().click(); await t.waitForSelector('#pl-steps li');
-    await t.getByRole('button', {name: 'بدء الحصة بهذا الترتيب'}).click(); await t.waitForURL(/\/teach\/live\/[A-Z0-9]{6}$/);
+    await t.getByRole('button', {name: 'بدء الحصة بهذا الترتيب'}).click(); await t.waitForURL(/\/teach\/live\/[A-Z0-9]{6}$/); await pastTitle(t);
     const pc = await browser.newContext({viewport: {width: 390, height: 844}, isMobile: true, hasTouch: true}); pc.setDefaultTimeout(15000);
     assert.equal((await pc.request.post(base + '/demo/start', {form: {role: 'parent'}, headers: {origin: base}, maxRedirects: 0})).status(), 303);
     const p = await pc.newPage(); p.on('pageerror', e => errors.push(e.message));

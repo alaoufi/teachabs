@@ -2,7 +2,7 @@
 // of the board); in class «النص التالي» shows them one by one in their places, never on top of each other, and the
 // teacher circles or frames them; the student sees the same.
 const {chromium} = require(process.env.PLAYWRIGHT_MODULE || 'playwright');
-const {pick, openStepMenus} = require('./ui-helpers.cjs');
+const {pick, openStepMenus, pastTitle} = require('./ui-helpers.cjs');
 const assert = require('node:assert/strict'), fs = require('node:fs'), path = require('node:path');
 (async () => {
   const {openStore} = await import('../store.mjs'), {createApp} = await import('../server.mjs');
@@ -35,11 +35,11 @@ const assert = require('node:assert/strict'), fs = require('node:fs'), path = re
     assert.ok(saved && saved.y > 300, 'the dragged place was saved: ' + JSON.stringify(saved));
     results.push('planner: the four texts sit in their automatic places without overlap; card 4 dragged to a new place and saved');
 
-    await t.getByRole('button', {name: 'بدء الحصة بهذا الترتيب'}).click(); await t.waitForURL(/\/teach\/live\/[A-Z0-9]{6}$/);
+    await t.getByRole('button', {name: 'بدء الحصة بهذا الترتيب'}).click(); await t.waitForURL(/\/teach\/live\/[A-Z0-9]{6}$/); await pastTitle(t);
     const sc = await browser.newContext({viewport: {width: 390, height: 844}, isMobile: true, hasTouch: true}); sc.setDefaultTimeout(15000);
     const s = await sc.newPage(); watch(s);
     await s.goto(base + '/start/student'); await s.waitForFunction(() => window.__voice); await s.locator('#gl-enter').click();
-    await t.locator('#gl-steps li[data-type=board] button').click(); await s.waitForFunction(() => document.querySelector('#gl-content').dataset.type === 'board');
+    await t.locator('#gl-steps li[data-type=board] .gl-go').click(); await s.waitForFunction(() => document.querySelector('#gl-content').dataset.type === 'board');
     assert.equal(await s.locator('#gl-content .gl-item').count(), 0, 'all texts start hidden');
     for (let n = 1; n <= 4; n++) {
       await t.locator('#gl-quick').getByRole('button', {name: /النص التالي/}).click();

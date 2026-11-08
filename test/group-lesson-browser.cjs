@@ -1,7 +1,7 @@
 // Optional browser verification of the group lesson: plan → live sequence with a display screen and three students.
 // Uses Chromium's synthetic microphone for the recorded narration; this is not a test of a real voice.
 const {chromium} = require(process.env.PLAYWRIGHT_MODULE || 'playwright');
-const {pick, openStepMenus} = require('./ui-helpers.cjs');
+const {pick, openStepMenus, pastTitle} = require('./ui-helpers.cjs');
 const assert = require('node:assert/strict'), fs = require('node:fs'), path = require('node:path');
 (async () => {
   const {openStore} = await import('../store.mjs'), {createApp} = await import('../server.mjs');
@@ -35,7 +35,7 @@ const assert = require('node:assert/strict'), fs = require('node:fs'), path = re
     await shot(t, 'group-planner');
     results.push('planner: six steps in the requested order, recorded narration, prepared item, saved');
 
-    await t.getByRole('button', {name: 'بدء الحصة بهذا الترتيب'}).click(); await t.waitForURL(/\/teach\/live\/[A-Z0-9]{6}$/);
+    await t.getByRole('button', {name: 'بدء الحصة بهذا الترتيب'}).click(); await t.waitForURL(/\/teach\/live\/[A-Z0-9]{6}$/); await pastTitle(t);
     const code = t.url().split('/').pop();
     await t.waitForSelector('#gl-steps li.is-current');
     const display = await tc.newPage(); watch(display); await display.goto(base + `/teach/live/${code}/display`);
@@ -70,7 +70,7 @@ const assert = require('node:assert/strict'), fs = require('node:fs'), path = re
     results.push('teacher hid and re-showed the step');
 
     // 2) Interactive explanation: predict, reveal, individual exploration.
-    await t.locator('#gl-steps li[data-type=interactive] button').click();
+    await t.locator('#gl-steps li[data-type=interactive] .gl-go').click();
     await students[0].waitForSelector('#gl-content .gl-scene svg');
     await t.locator('#gl-panel').getByRole('button', {name: 'إخفاء الظل ليتوقع الطلاب'}).click();
     await students[0].waitForFunction(() => !document.querySelector('#gl-content polygon.shadow') && document.querySelector('.gl-facts').textContent.includes('توقّع'));
@@ -86,7 +86,7 @@ const assert = require('node:assert/strict'), fs = require('node:fs'), path = re
     results.push('interactive: predict/reveal, teacher moved the sun, individual exploration on/off');
 
     // 3) Prepared board items revealed one by one.
-    await t.locator('#gl-steps li[data-type=board] button').click();
+    await t.locator('#gl-steps li[data-type=board] .gl-go').click();
     await students[0].waitForFunction(() => document.querySelector('#gl-content').dataset.type === 'board');
     assert.equal(await students[0].locator('.gl-item').count(), 0);
     await t.locator('.gl-reveal li').nth(0).getByRole('button', {name: 'إظهار'}).click();
@@ -97,7 +97,7 @@ const assert = require('node:assert/strict'), fs = require('node:fs'), path = re
     results.push('prepared board items: hidden at first, revealed one, then all');
 
     // 4) Questions: answers private to teacher, then shown as chosen.
-    await t.locator('#gl-steps li[data-type=questions] button').click();
+    await t.locator('#gl-steps li[data-type=questions] .gl-go').click();
     await t.locator('#gl-panel').getByRole('button', {name: 'افتح الإجابة للطلاب'}).click();
     const choices = [1, 1, 0];
     for (const [i, p] of students.entries()) {

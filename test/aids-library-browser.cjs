@@ -2,7 +2,7 @@
 // sees each lesson with its aids, starts «الغذاء والتغذية» from its ready prep (aids pinned, interactive step included),
 // starts the class, and the student receives the lesson page; the pinned aid is one tap away in class.
 const {chromium} = require(process.env.PLAYWRIGHT_MODULE || 'playwright');
-const {openStepMenus} = require('./ui-helpers.cjs');
+const {openStepMenus, pastTitle} = require('./ui-helpers.cjs');
 const assert = require('node:assert/strict'), fs = require('node:fs'), path = require('node:path');
 (async () => {
   const {openStore} = await import('../store.mjs'), {createApp} = await import('../server.mjs');
@@ -30,7 +30,7 @@ const assert = require('node:assert/strict'), fs = require('node:fs'), path = re
     assert.equal(await t.locator('.pl-tool-chip').count(), 4, 'the lesson\'s aids are pinned');
     assert.match(await t.locator('#pl-steps').textContent(), /الجهاز الهضمي/);
     results.push('«ابدأ من الدرس الجاهز»: the prep opened with its 4 aids pinned and its interactive step (digestive system)');
-    await t.getByRole('button', {name: 'بدء الحصة بهذا الترتيب'}).click(); await t.waitForURL(/\/teach\/live\/[A-Z0-9]{6}$/);
+    await t.getByRole('button', {name: 'بدء الحصة بهذا الترتيب'}).click(); await t.waitForURL(/\/teach\/live\/[A-Z0-9]{6}$/); await pastTitle(t);
     const sc = await browser.newContext({viewport: {width: 390, height: 844}, isMobile: true, hasTouch: true}); sc.setDefaultTimeout(15000);
     const s = await sc.newPage(); watch(s); await s.goto(base + '/start/student'); await s.waitForFunction(() => window.__voice); await s.locator('#gl-enter').click();
     await s.waitForFunction(() => document.querySelector('#gl-content .gl-page')?.textContent.includes('الكربوهيدرات'));

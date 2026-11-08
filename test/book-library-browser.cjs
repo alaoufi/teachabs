@@ -2,7 +2,7 @@
 // the lesson's printed page (PDF.js draws it from a stand-in source through the relay); «اعرضها على السبورة» shows it to
 // the student; the teacher writes on it. The book viewer page turns pages. A generated PDF stands in for the real book.
 const {chromium} = require(process.env.PLAYWRIGHT_MODULE || 'playwright');
-const {pick, openStepMenus} = require('./ui-helpers.cjs');
+const {pick, openStepMenus, pastTitle} = require('./ui-helpers.cjs');
 const assert = require('node:assert/strict'), fs = require('node:fs'), path = require('node:path');
 (async () => {
   const {fakeBookSource} = await import('./fake-book.mjs'), src = await fakeBookSource(60); process.env.BOOKS_SOURCE_ORIGIN = src.origin; process.env.BOOKS_RELAY = 'on';
@@ -18,7 +18,7 @@ const assert = require('node:assert/strict'), fs = require('node:fs'), path = re
     const tc = await browser.newContext({viewport: {width: 1366, height: 900}}); tc.setDefaultTimeout(20000); await openStepMenus(tc); await tc.addInitScript(() => localStorage.setItem('gl-autostart', '0'));
     const t = await tc.newPage(); watch(t); t.on('dialog', d => d.accept().catch(() => {}));
     await t.goto(base + '/start/teacher'); await t.locator('.gl-cur-subject[data-subject=math] li.is-ready button').first().click(); await t.waitForSelector('#pl-steps li');
-    await t.getByRole('button', {name: 'بدء الحصة بهذا الترتيب'}).click(); await t.waitForURL(/\/teach\/live\/[A-Z0-9]{6}$/);
+    await t.getByRole('button', {name: 'بدء الحصة بهذا الترتيب'}).click(); await t.waitForURL(/\/teach\/live\/[A-Z0-9]{6}$/); await pastTitle(t);
     const sc = await browser.newContext({viewport: {width: 390, height: 844}, isMobile: true, hasTouch: true}); sc.setDefaultTimeout(20000);
     const s = await sc.newPage(); watch(s);
     await s.goto(base + '/start/student'); await s.waitForFunction(() => window.__voice); await s.locator('#gl-enter').click(); await s.waitForSelector('#gl-content .gl-page');
@@ -49,7 +49,7 @@ const assert = require('node:assert/strict'), fs = require('node:fs'), path = re
     await t.locator('li[data-lesson="p5m07"] form:has(input[value="cur-p5m07"]) button').click(); await t.waitForSelector('#pl-steps li');
     assert.ok(await t.locator('input[type=radio][name^=src-]').first().isChecked(), 'the curriculum step uses the ministry book');
     assert.equal(await t.locator('input[aria-label="رقم الصفحة"]').inputValue(), '38');
-    await t.getByRole('button', {name: 'بدء الحصة بهذا الترتيب'}).click(); await t.waitForURL(/\/teach\/live\/[A-Z0-9]{6}$/);
+    await t.getByRole('button', {name: 'بدء الحصة بهذا الترتيب'}).click(); await t.waitForURL(/\/teach\/live\/[A-Z0-9]{6}$/); await pastTitle(t);
     const code2 = t.url().slice(-6);
     await s.goto(base + '/join?code=' + code2); await s.getByLabel('اسم الطالب الأول').fill('ريم'); await s.getByRole('button', {name: 'دخول الحصة'}).click(); await s.waitForFunction(() => window.__voice); await s.locator('#gl-enter').click();
     await s.waitForSelector('#gl-content .gl-book-wait');

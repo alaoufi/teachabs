@@ -2,7 +2,7 @@
 // «كتابة» and ✕ (asks first); live voice between teacher and student (fake microphones); the teacher decides who is
 // heard; the teacher's board stays fixed on a phone.
 const {chromium} = require(process.env.PLAYWRIGHT_MODULE || 'playwright');
-const {pick, openStepMenus} = require('./ui-helpers.cjs');
+const {pick, openStepMenus, pastTitle} = require('./ui-helpers.cjs');
 const assert = require('node:assert/strict'), fs = require('node:fs'), path = require('node:path');
 (async () => {
   const {openStore} = await import('../store.mjs'), {createApp} = await import('../server.mjs');
@@ -21,7 +21,7 @@ const assert = require('node:assert/strict'), fs = require('node:fs'), path = re
     const t = await tc.newPage(); watch(t); t.on('dialog', d => d.accept().catch(() => {}));
     await t.goto(base + '/teach/plans');
     await t.locator('.gl-cur-subject[data-subject=science] li.is-ready button').first().click(); await t.waitForSelector('#pl-steps li');
-    await t.getByRole('button', {name: 'بدء الحصة بهذا الترتيب'}).click(); await t.waitForURL(/\/teach\/live\/[A-Z0-9]{6}$/);
+    await t.getByRole('button', {name: 'بدء الحصة بهذا الترتيب'}).click(); await t.waitForURL(/\/teach\/live\/[A-Z0-9]{6}$/); await pastTitle(t);
     const code = t.url().split('/').pop();
 
     const sc = await browser.newContext({viewport: {width: 390, height: 844}, isMobile: true, hasTouch: true, permissions: ['microphone']}); sc.setDefaultTimeout(15000);
@@ -62,7 +62,7 @@ const assert = require('node:assert/strict'), fs = require('node:fs'), path = re
     results.push('teacher control: «مايك الطلاب: مغلق» closes and disables the student microphone; opening it again re-enables it');
 
     // ---- writing sheet opens when the teacher opens the questions ----
-    await t.locator('#gl-steps li[data-type=questions] button').click();
+    await t.locator('#gl-steps li[data-type=questions] .gl-go').click();
     await t.locator('#gl-quick').getByRole('button', {name: /افتح/}).click();
     await s.waitForSelector('#gl-sheet:not([hidden]) #gl-answer fieldset');
     await s.locator('#gl-answer fieldset').first().locator('.gl-choice').first().click();

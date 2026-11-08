@@ -3,7 +3,7 @@
 // pinning an interactive activity adds its step. In class «🧰 أدوات الدرس» lays the pinned table on the board, the
 // whole library lays another tool, and the student sees both.
 const {chromium} = require(process.env.PLAYWRIGHT_MODULE || 'playwright');
-const {openStepMenus} = require('./ui-helpers.cjs');
+const {openStepMenus, pastTitle} = require('./ui-helpers.cjs');
 const assert = require('node:assert/strict'), fs = require('node:fs'), path = require('node:path');
 (async () => {
   const {openStore} = await import('../store.mjs'), {createApp} = await import('../server.mjs');
@@ -37,7 +37,7 @@ const assert = require('node:assert/strict'), fs = require('node:fs'), path = re
     assert.ok(saved.includes('multtable') && saved.includes('matter'), JSON.stringify(saved));
     results.push('planner: the library opened on «الرياضيات · الصف الرابع · القيمة المنزلية» with the lesson\'s tools first; pinned the multiplication table and «حالات المادة» (its step was added); saved');
 
-    await t.getByRole('button', {name: 'بدء الحصة بهذا الترتيب'}).click(); await t.waitForURL(/\/teach\/live\/[A-Z0-9]{6}$/);
+    await t.getByRole('button', {name: 'بدء الحصة بهذا الترتيب'}).click(); await t.waitForURL(/\/teach\/live\/[A-Z0-9]{6}$/); await pastTitle(t);
     const sc = await browser.newContext({viewport: {width: 390, height: 844}, isMobile: true, hasTouch: true}); sc.setDefaultTimeout(15000);
     const s = await sc.newPage(); watch(s); await s.goto(base + '/start/student'); await s.waitForFunction(() => window.__voice); await s.locator('#gl-enter').click(); await s.waitForSelector('#gl-content .gl-page');
     await t.locator('.gl-fly[data-fly=lesson] .gl-fly-btn').click();

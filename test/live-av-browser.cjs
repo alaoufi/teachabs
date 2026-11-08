@@ -3,7 +3,7 @@
 // student (even when connection messages arrive late and out of order), the student's voice reaches the teacher, the clear control panel works including «⛔ إيقاف الكل», and the
 // lesson itself (curriculum page with its audio explanation, the interactive explanation) follows the teacher live.
 const {chromium} = require(process.env.PLAYWRIGHT_MODULE || 'playwright');
-const {pick, openStepMenus} = require('./ui-helpers.cjs');
+const {pick, openStepMenus, pastTitle} = require('./ui-helpers.cjs');
 const assert = require('node:assert/strict'), fs = require('node:fs'), path = require('node:path');
 (async () => {
   const {openStore} = await import('../store.mjs'), {createApp} = await import('../server.mjs');
@@ -24,7 +24,7 @@ const assert = require('node:assert/strict'), fs = require('node:fs'), path = re
     await t.addInitScript(() => { window.__spoken = []; window.speechSynthesis && (speechSynthesis.speak = u => { window.__spoken.push(u.text); setTimeout(() => u.onend?.(), 10); }); }); t.on('dialog', d => d.accept().catch(() => {}));
     await t.goto(base + '/start/teacher');
     await t.locator('.gl-cur-subject[data-subject=science] li.is-ready button').first().click(); await t.waitForSelector('#pl-steps li');
-    await t.getByRole('button', {name: 'بدء الحصة بهذا الترتيب'}).click(); await t.waitForURL(/\/teach\/live\/[A-Z0-9]{6}$/);
+    await t.getByRole('button', {name: 'بدء الحصة بهذا الترتيب'}).click(); await t.waitForURL(/\/teach\/live\/[A-Z0-9]{6}$/); await pastTitle(t);
     await t.waitForSelector('#gl-steps li.is-current');
 
     const sc = await browser.newContext({viewport: {width: 390, height: 844}, isMobile: true, hasTouch: true, permissions: ['microphone']}); sc.setDefaultTimeout(30000);
@@ -62,7 +62,7 @@ const assert = require('node:assert/strict'), fs = require('node:fs'), path = re
     await s.waitForFunction(() => window.__spoken.some(x => x.includes('درسنا اليوم')));
     await t.waitForFunction(() => window.__spoken.some(x => x.includes('درسنا اليوم')), null, {timeout: 5000}); // the teacher hears it with the class
     results.push('🔊 the prepared explanation of the curriculum page played on the student\'s phone and on the teacher\'s device');
-    await t.locator('#gl-steps li[data-type=interactive] button').click(); await s.waitForSelector('#gl-content .cells-scene');
+    await t.locator('#gl-steps li[data-type=interactive] .gl-go').click(); await s.waitForSelector('#gl-content .cells-scene');
     // the prepared explanation of the activity starts by itself, and the teacher hears it too
     await s.waitForFunction(() => document.querySelector('.gl-narrator .gl-caption')?.textContent.length > 10);
     const first = await s.locator('.gl-narrator .gl-caption').textContent();

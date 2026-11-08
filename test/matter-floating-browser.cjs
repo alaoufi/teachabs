@@ -1,7 +1,7 @@
 // Optional browser verification for stage 040: the states-of-matter lesson, the narrator strip under the board,
 // and the floating student board (stays on top while scrolling, can fill the screen).
 const {chromium} = require(process.env.PLAYWRIGHT_MODULE || 'playwright');
-const {pick, openStepMenus} = require('./ui-helpers.cjs');
+const {pick, openStepMenus, pastTitle} = require('./ui-helpers.cjs');
 const assert = require('node:assert/strict'), fs = require('node:fs'), path = require('node:path');
 (async () => {
   const {openStore} = await import('../store.mjs'), {createApp} = await import('../server.mjs');
@@ -25,7 +25,7 @@ const assert = require('node:assert/strict'), fs = require('node:fs'), path = re
     assert.equal(await inter.locator('.pl-seg').count(), 7);
     assert.match(await inter.locator('.pl-seg').nth(3).locator('.pl-q-head b').textContent(), /١٠٠°س/);
     results.push('lesson created from the states-of-matter template; planner shows the matter activity and its 7-segment tour');
-    await t.getByRole('button', {name: 'بدء الحصة بهذا الترتيب'}).click(); await t.waitForURL(/\/teach\/live\/[A-Z0-9]{6}$/);
+    await t.getByRole('button', {name: 'بدء الحصة بهذا الترتيب'}).click(); await t.waitForURL(/\/teach\/live\/[A-Z0-9]{6}$/); await pastTitle(t);
     const code = t.url().split('/').pop();
     const display = await tc.newPage(); watch(display); await display.goto(base + `/teach/live/${code}/display`);
     const sc = await browser.newContext({viewport: {width: 390, height: 844}, isMobile: true, hasTouch: true}); sc.setDefaultTimeout(15000);
@@ -33,7 +33,7 @@ const assert = require('node:assert/strict'), fs = require('node:fs'), path = re
     await s.goto(base + '/join?code=' + code); await s.getByLabel('اسم الطالب الأول').fill('نورة'); await s.getByRole('button', {name: 'دخول الحصة'}).click(); await s.waitForFunction(() => window.__voice); await s.locator('#gl-enter').click(); // the entry card opens the board
     await s.waitForSelector('#gl-content .gl-page svg');
     assert.equal(await s.locator('body > header').isVisible(), false, 'site header hidden for students');
-    await t.locator('#gl-steps li[data-type=interactive] button').click(); await s.waitForSelector('#gl-content .matter-scene');
+    await t.locator('#gl-steps li[data-type=interactive] .gl-go').click(); await s.waitForSelector('#gl-content .matter-scene');
     const phase = p => p.evaluate(() => document.querySelector('#gl-content .m-phase')?.textContent);
     assert.equal(await phase(s), 'سائل (ماء)');
     // Teacher heats the water to boiling with the slider; everyone sees boiling.
@@ -74,7 +74,7 @@ const assert = require('node:assert/strict'), fs = require('node:fs'), path = re
     await t.locator('#gl-panel').getByRole('button', {name: 'إيقاف الاستكشاف الفردي'}).click();
     results.push('student explored alone: cooled the water to ice on their own phone');
     // Floating board while answering: stays on top after scrolling; full screen on demand.
-    await t.locator('#gl-steps li').nth(3).locator('button').click();
+    await t.locator('#gl-steps li').nth(4).locator('.gl-go').click();
     await t.locator('#gl-panel').getByRole('button', {name: 'افتح الإجابة للطلاب'}).click();
     await s.waitForSelector('#gl-answer fieldset:not([disabled])');
     // The board stays fixed over everything; the answers open in the «كتابة» sheet over it.

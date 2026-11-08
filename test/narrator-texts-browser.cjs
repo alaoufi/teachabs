@@ -1,7 +1,7 @@
 // Optional browser verification for stage 038: narrator tour, explanatory text bank, saving work off the server, 3D board.
 // The recorded narration uses Chromium's synthetic microphone; it is not a test of a real voice.
 const {chromium} = require(process.env.PLAYWRIGHT_MODULE || 'playwright');
-const {pick, openStepMenus} = require('./ui-helpers.cjs');
+const {pick, openStepMenus, pastTitle} = require('./ui-helpers.cjs');
 const assert = require('node:assert/strict'), fs = require('node:fs'), path = require('node:path');
 (async () => {
   const {openStore} = await import('../store.mjs'), {createApp} = await import('../server.mjs');
@@ -70,7 +70,7 @@ const assert = require('node:assert/strict'), fs = require('node:fs'), path = re
 
     // Live class with the narrator.
     await t.goto(planUrl); await t.waitForSelector('#pl-steps li');
-    await t.getByRole('button', {name: 'بدء الحصة بهذا الترتيب'}).click(); await t.waitForURL(/\/teach\/live\/[A-Z0-9]{6}$/);
+    await t.getByRole('button', {name: 'بدء الحصة بهذا الترتيب'}).click(); await t.waitForURL(/\/teach\/live\/[A-Z0-9]{6}$/); await pastTitle(t);
     const code = t.url().split('/').pop();
     const display = await tc.newPage(); watch(display); await display.goto(base + `/teach/live/${code}/display`);
     const sc = await browser.newContext({viewport: {width: 390, height: 844}, isMobile: true, hasTouch: true}); sc.setDefaultTimeout(15000);
@@ -78,7 +78,7 @@ const assert = require('node:assert/strict'), fs = require('node:fs'), path = re
     await s.addInitScript(() => { window.__played = 0; const play = HTMLMediaElement.prototype.play; HTMLMediaElement.prototype.play = function () { window.__played++; return play.call(this); }; });
     await s.goto(base + '/join?code=' + code); await s.getByLabel('اسم الطالب الأول').fill('ليان'); await s.getByRole('button', {name: 'دخول الحصة'}).click();
     await s.waitForSelector('#gl-content .gl-page svg');
-    await t.locator('#gl-steps li[data-type=interactive] button').click(); await s.waitForSelector('#gl-content .gl-scene svg');
+    await t.locator('#gl-steps li[data-type=interactive] .gl-go').click(); await s.waitForSelector('#gl-content .gl-scene svg');
     await t.locator('.gl-narr-panel select').selectOption('students');
     await t.getByRole('button', {name: '▶ ابدأ الجولة'}).click();
     await s.waitForFunction(() => document.querySelector('.gl-narrator .gl-caption')?.textContent.startsWith('مرحبًا يا أبطال'));

@@ -1,7 +1,7 @@
 // Optional browser verification of the group board tools: prepared texts, keyboard text, pen/brush/marker,
 // sizes and colours, moving text, eraser, undo, smooth zoom/pan that students follow, and keyboard shortcuts.
 const {chromium} = require(process.env.PLAYWRIGHT_MODULE || 'playwright');
-const {pick, openStepMenus} = require('./ui-helpers.cjs');
+const {pick, openStepMenus, pastTitle} = require('./ui-helpers.cjs');
 const assert = require('node:assert/strict'), fs = require('node:fs'), path = require('node:path');
 (async () => {
   const {openStore} = await import('../store.mjs'), {createApp} = await import('../server.mjs');
@@ -25,7 +25,7 @@ const assert = require('node:assert/strict'), fs = require('node:fs'), path = re
     await t.locator('#pl-steps li').nth(0).getByRole('button', {name: '+ نص جاهز'}).click();
     await snippetInputs.nth(4).fill('ينتقل الضوء في خطوط مستقيمة');
     await t.getByRole('button', {name: 'حفظ الدرس'}).click(); await t.waitForFunction(() => document.querySelector('#pl-status').textContent.includes('حُفظ'));
-    await t.getByRole('button', {name: 'بدء الحصة بهذا الترتيب'}).click(); await t.waitForURL(/\/teach\/live\/[A-Z0-9]{6}$/);
+    await t.getByRole('button', {name: 'بدء الحصة بهذا الترتيب'}).click(); await t.waitForURL(/\/teach\/live\/[A-Z0-9]{6}$/); await pastTitle(t);
     const code = t.url().split('/').pop();
     await t.waitForSelector('#gl-steps li.is-current');
     const display = await tc.newPage(); watch(display); await display.goto(base + `/teach/live/${code}/display`);
@@ -123,7 +123,7 @@ const assert = require('node:assert/strict'), fs = require('node:fs'), path = re
     results.push('PageDown/ArrowRight move between steps; ink and prepared texts belong to their step');
 
     // Prepared board cards are dragged into place; students see the same layout.
-    await t.locator('#gl-steps li[data-type=board] button').click(); // the prepared board step
+    await t.locator('#gl-steps li[data-type=board] .gl-go').click(); // the prepared board step
     await s.waitForFunction(() => document.querySelector('#gl-content').dataset.type === 'board');
     await t.getByRole('button', {name: 'إظهار الكل'}).click();
     await s.waitForFunction(() => document.querySelectorAll('.gl-item').length === 3);

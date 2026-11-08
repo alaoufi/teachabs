@@ -2,7 +2,7 @@
 // rail beside the board on a computer; ↗ arrow and ／ line reach the student; the 🔴 laser pointer shows a passing
 // trail on the student's screen and is never stored.
 const {chromium} = require(process.env.PLAYWRIGHT_MODULE || 'playwright');
-const {pick, openStepMenus} = require('./ui-helpers.cjs');
+const {pick, openStepMenus, pastTitle} = require('./ui-helpers.cjs');
 const assert = require('node:assert/strict'), fs = require('node:fs'), path = require('node:path');
 (async () => {
   const {openStore} = await import('../store.mjs'), {createApp} = await import('../server.mjs');
@@ -17,7 +17,7 @@ const assert = require('node:assert/strict'), fs = require('node:fs'), path = re
     const tc = await browser.newContext({viewport: {width: 1366, height: 768}}); await openStepMenus(tc); tc.setDefaultTimeout(15000); await tc.addInitScript(() => localStorage.setItem('gl-autostart', '0'));
     const t = await tc.newPage(); watch(t); t.on('dialog', d => d.accept().catch(() => {}));
     await t.goto(base + '/start/teacher'); await t.locator('.gl-cur-subject[data-subject=science] li.is-ready button').first().click(); await t.waitForSelector('#pl-steps li');
-    await t.getByRole('button', {name: 'بدء الحصة بهذا الترتيب'}).click(); await t.waitForURL(/\/teach\/live\/[A-Z0-9]{6}$/);
+    await t.getByRole('button', {name: 'بدء الحصة بهذا الترتيب'}).click(); await t.waitForURL(/\/teach\/live\/[A-Z0-9]{6}$/); await pastTitle(t);
     const lay = await t.evaluate(() => { const f = document.querySelector('footer.gl-bar-bottom').getBoundingClientRect(), b = document.querySelector('#gl-board').getBoundingClientRect(); return {railBeside: f.top < b.bottom && f.left > b.right - 2, board: b.width}; });
     assert.ok(lay.railBeside && lay.board > 900, JSON.stringify(lay));
     results.push(`computer: the tools sit in a rail beside the board; the board is ${Math.round(lay.board)}px wide`);

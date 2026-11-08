@@ -2,7 +2,7 @@
 // aloud by the app (window.App.speak, the phone's Arabic voice). Simulated here: the teacher and the student hear the
 // interactive explanation and the curriculum page explanation through the app.
 const {chromium} = require(process.env.PLAYWRIGHT_MODULE || 'playwright');
-const {pick, openStepMenus} = require('./ui-helpers.cjs');
+const {pick, openStepMenus, pastTitle} = require('./ui-helpers.cjs');
 const assert = require('node:assert/strict');
 (async () => {
   const {openStore} = await import('../store.mjs'), {createApp} = await import('../server.mjs');
@@ -18,7 +18,7 @@ const assert = require('node:assert/strict');
     const tc = await browser.newContext({viewport: {width: 1366, height: 768}}); await openStepMenus(tc); tc.setDefaultTimeout(15000); await tc.addInitScript(appBridge);
     const t = await tc.newPage(); t.on('pageerror', e => errors.push(e.message)); t.on('dialog', d => d.accept().catch(() => {}));
     await t.goto(base + '/start/teacher'); await t.locator('.gl-cur-subject[data-subject=science] li.is-ready button').first().click(); await t.waitForSelector('#pl-steps li');
-    await t.getByRole('button', {name: 'بدء الحصة بهذا الترتيب'}).click(); await t.waitForURL(/\/teach\/live\/[A-Z0-9]{6}$/);
+    await t.getByRole('button', {name: 'بدء الحصة بهذا الترتيب'}).click(); await t.waitForURL(/\/teach\/live\/[A-Z0-9]{6}$/); await pastTitle(t);
     const sc = await browser.newContext({viewport: {width: 390, height: 844}, isMobile: true, hasTouch: true}); sc.setDefaultTimeout(15000); await sc.addInitScript(appBridge);
     const s = await sc.newPage(); s.on('pageerror', e => errors.push(e.message));
     await s.goto(base + '/start/student'); await s.waitForFunction(() => window.__voice); await s.locator('#gl-enter').click(); await s.waitForSelector('#gl-content .gl-page');
@@ -26,7 +26,7 @@ const assert = require('node:assert/strict');
     await s.waitForFunction(() => window.__said.some(x => x.includes('درسنا اليوم')));
     await t.waitForFunction(() => window.__said.some(x => x.includes('درسنا اليوم')));
     results.push('curriculum page: the explanation was read aloud by the app on the student\'s and the teacher\'s phone');
-    await t.locator('#gl-steps li[data-type=interactive] button').click();
+    await t.locator('#gl-steps li[data-type=interactive] .gl-go').click();
     await s.waitForFunction(() => document.querySelector('.gl-narrator .gl-caption')?.textContent.length > 10);
     const first = await s.locator('.gl-narrator .gl-caption').textContent();
     await s.waitForFunction(x => window.__said.includes(x), first); await t.waitForFunction(x => window.__said.includes(x), first);
