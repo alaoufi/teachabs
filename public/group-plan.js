@@ -206,6 +206,15 @@ export function publicStep(step, revealed = []) {
   return {...base, criteria: step.criteria};
 }
 
+/** Deletes option j of a choice question and keeps the answer key on the same option: a later answer moves up by one. If the
+ *  answer itself is deleted, no option is marked (-1), so the plan cannot be saved until the teacher picks the right one. */
+export function removeOption(q, j) {
+  if (q.options.length <= 2 || j < 0 || j >= q.options.length) return q;
+  q.options.splice(j, 1);
+  q.answer = j < q.answer ? q.answer - 1 : j === q.answer ? -1 : q.answer;
+  return q;
+}
+
 export const RATING = ['', 'يحتاج دعمًا', 'مقبول', 'جيد', 'متميز'];
 
 /** Ready lesson templates for grade 4 (original content). Cells and place value follow the 1447 AH Ministry book order; light and matter are not in term 1. */

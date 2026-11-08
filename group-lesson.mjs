@@ -29,8 +29,14 @@ export function groupService(store) {
   const withBook = (plan, code) => { const b = bookPages.get(code); if (!b) return plan; return {...plan, steps: plan.steps.map(s => s.id === b.step ? {...s, source: 'upload', image: b.image, rights: true, book: {id: b.book, page: b.page}} : s)}; };
   /** Teachers, and administration with academic affairs or libraries permissions, may open the books. */
   const booksAllowed = u => u && (u.role === 'teacher' || (u.role === 'admin' && (p => p.permissions.includes('education.read') || p.permissions.includes('libraries.read')))(store.admin.profile(u.id)));
+  /** Showing the books inside the platform stays off until the right to display them is confirmed: BOOKS_RELAY=on turns it on.
+   *  Not storing a file is not a permission to display it (review, stage 071). While off, the platform keeps the lesson ↔ page
+   *  index and links to the source page; the teacher may still photograph a page of their own copy. */
+  const relayOn = () => process.env.BOOKS_RELAY === 'on';
+  const RELAY_OFF = 'عرض الكتاب داخل المنصة موقوف حتى يتأكد حق العرض. افتح الكتاب من مصدره، أو صوّر صفحة من نسختك بزر «📷 تصوير صفحة».';
   /** The book from its source, only the parts asked for (byte ranges), to this one viewer; nothing is cached or stored. */
   async function relayBook(req, res, book) {
+    need(relayOn(), RELAY_OFF, 403);
     const url = process.env.BOOKS_SOURCE_ORIGIN ? book.pdf.replace(/^https:\/\/[^/]+/, process.env.BOOKS_SOURCE_ORIGIN) : book.pdf;
     const ctl = new AbortController(); req.on('close', () => ctl.abort());
     let r; try { r = await fetch(url, {headers: req.headers.range ? {range: req.headers.range} : {}, signal: ctl.signal}); } catch { throw new UserError('تعذّر الوصول إلى مصدر الكتاب الآن.', 502); }
@@ -207,11 +213,11 @@ export function groupService(store) {
       if (bm) {
         if (!u) return redirect('/login');
         need(method === 'GET', 'إجراء غير متاح.', 405); need(booksAllowed(u), 'الكتب للمعلمين والشؤون التعليمية.', 403);
-        if (!bm[1]) return page(res, html, 'مكتبة الكتب المدرسية', v.booksPage(g.books(), u.role === 'teacher'));
+        if (!bm[1]) return page(res, html, 'مكتبة الكتب المدرسية', v.booksPage(g.books(), u.role === 'teacher', relayOn()));
         const book = bookOf(bm[1]); need(book, 'الكتاب غير موجود.', 404);
         if (bm[2]) return relayBook(req, res, book);
         const at = Number(url.searchParams.get('page')) || 1;
-        return page(res, html, book.title, v.bookViewerPage(book, Math.min(book.pages - book.offset, Math.max(1, at)), g.bookLessons(book.id)));
+        return page(res, html, book.title, v.bookViewerPage(book, Math.min(book.pages - book.offset, Math.max(1, at)), g.bookLessons(book.id), relayOn()));
       }
 
       // ---------- «مكتبة الوسائل الدراسية»: teachers, academic affairs and the libraries section
@@ -297,7 +303,7 @@ export function groupService(store) {
         if (action === 'plan' && method === 'GET') return send(res, withBook(s.plan, code));
         if (action === 'book-page' && method === 'POST') { // a page of the ministry book, rendered on the teacher's device: this class only, in memory
           const body = await json(req, base, 1_000_000), step = s.plan.steps.find(x => x.id === body.step && x.type === 'page'), book = bookOf(body.book);
-          need(step, 'خطوة المنهج غير موجودة.', 404); need(book && Number.isInteger(body.page) && body.page >= 1 && body.page <= book.pages, 'صفحة غير صالحة.'); need(validImage(body.image), 'صورة الصفحة غير صالحة.');
+          need(relayOn(), RELAY_OFF, 403); need(step, 'خطوة المنهج غير موجودة.', 404); need(book && Number.isInteger(body.page) && body.page >= 1 && body.page <= book.pages, 'صفحة غير صالحة.'); need(validImage(body.image), 'صورة الصفحة غير صالحة.');
           bookPages.set(code, {step: step.id, book: book.id, page: body.page, image: body.image});
           const next = {...s.state, pageVer: (s.state.pageVer || 0) + 1, seq: s.state.seq + 1}; g.saveState(code, next); broadcast(code);
           return send(res, {ok: true});

@@ -13,7 +13,7 @@
 import {curriculumLessons} from './curriculum-g4.js';
 import {primaryLessons} from './curriculum-primary.js';
 
-export const BOOK_SOURCE = {name: 'منصة الدلفين (نسخة من كتب وزارة التعليم)', official: 'بوابة عين — وزارة التعليم', officialUrl: 'https://ien.edu.sa'};
+export const BOOK_SOURCE = {name: 'منصة الدلفين (نسخة غير رسمية من كتب وزارة التعليم)', official: 'بوابة عين — وزارة التعليم', officialUrl: 'https://ien.edu.sa'};
 const GRADE = ['', 'الأول', 'الثاني', 'الثالث', 'الرابع', 'الخامس', 'السادس'];
 const SUBJECT = {science: 'العلوم', math: 'الرياضيات'};
 const V = {

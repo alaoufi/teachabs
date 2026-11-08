@@ -19,12 +19,12 @@ test('the catalogue: 12 elementary science and math books, sources and lesson pa
 });
 
 test('books in the database, the relay, access, and a class book page kept in memory only', async t => {
-  const src = await fakeBookSource(30); process.env.BOOKS_SOURCE_ORIGIN = src.origin;
+  const src = await fakeBookSource(30); process.env.BOOKS_SOURCE_ORIGIN = src.origin; process.env.BOOKS_RELAY = 'on';
   const {openStore} = await import('../store.mjs'), {createApp} = await import('../server.mjs');
   const {LESSON_TEMPLATES, validatePlan} = await import('../public/group-plan.js'), {initialState} = await import('../group-session.mjs');
   const store = openStore(':memory:'), app = createApp(store);
   await new Promise(r => app.listen(0, '127.0.0.1', r));
-  t.after(async () => { delete process.env.BOOKS_SOURCE_ORIGIN; app.closeAllConnections(); await new Promise(r => app.close(r)); store.close(); await src.close(); });
+  t.after(async () => { delete process.env.BOOKS_SOURCE_ORIGIN; delete process.env.BOOKS_RELAY; app.closeAllConnections(); await new Promise(r => app.close(r)); store.close(); await src.close(); });
   const base = 'http://127.0.0.1:' + app.address().port;
   const get = (p, id, headers = {}) => fetch(base + p, {headers: {cookie: id ? 'ks=' + store.session(id) : '', ...headers}, redirect: 'manual'});
   // the catalogue is in the database, with no stored file
@@ -75,4 +75,25 @@ test('every elementary lesson (grades 1–6, term 1) is linked to its book page 
   }
   for (const l of all.filter(l => l.grade !== 4)) { const p = validatePlan(curriculumPlan(l.id)); assert.equal(p.steps[0].source, 'book'); assert.equal(p.steps[0].page, l.page); assert.equal(p.grade, l.grade); }
   assert.equal(lessonBookPage('p5m07').page, 38); assert.equal(lessonBookPage('p6s04').page, 62); assert.equal(lessonBookPage('p1s01').book, 'g1-t1-science');
+});
+
+// Review (stage 071): the right to show the books inside the platform is not confirmed, so showing them is off by default.
+test('by default the platform does not show or relay the books; it keeps the index and labels the source honestly', async t => {
+  const src = await fakeBookSource(30); process.env.BOOKS_SOURCE_ORIGIN = src.origin; delete process.env.BOOKS_RELAY;
+  const {openStore} = await import('../store.mjs'), {createApp} = await import('../server.mjs');
+  const {LESSON_TEMPLATES, validatePlan} = await import('../public/group-plan.js'), {initialState} = await import('../group-session.mjs');
+  const store = openStore(':memory:'), app = createApp(store);
+  await new Promise(r => app.listen(0, '127.0.0.1', r));
+  t.after(async () => { delete process.env.BOOKS_SOURCE_ORIGIN; app.closeAllConnections(); await new Promise(r => app.close(r)); store.close(); await src.close(); });
+  const base = 'http://127.0.0.1:' + app.address().port, tour = store.tour(), cookie = 'ks=' + store.session(tour.teacher);
+  const get = p => fetch(base + p, {headers: {cookie}, redirect: 'manual'});
+  const file = await get('/teach/books/g4-t1-math/file'); assert.equal(file.status, 403); assert.equal(src.hits.length, 0, 'nothing fetched from the source');
+  const list = await (await get('/teach/books')).text();
+  assert.match(list, /موقوف حتى يتأكد حق العرض/); assert.match(list, /نسخة غير رسمية/); assert.doesNotMatch(list, /١٤٤٨/);
+  assert.match(list, /ولم نتحقق من أنها أحدث طبعة/);
+  const viewer = await (await get('/teach/books/g4-t1-science?page=26')).text();
+  assert.doesNotMatch(viewer, /book-viewer\.js/); assert.match(viewer, /href="https:\/\/learnatdolphin\.com\/textbooks\/primary-4\/term-1\/science\/"/); assert.match(viewer, /الخلايا — ص ٢٦/);
+  const plan = validatePlan(LESSON_TEMPLATES['g4-m1-2'].plan()), code = store.group.startSession(tour.teacher, plan, initialState(plan));
+  const post = await fetch(base + `/teach/live/${code}/book-page`, {method: 'POST', headers: {cookie, origin: base, 'content-type': 'application/json'}, body: JSON.stringify({step: 'curriculum', book: 'g4-t1-math', page: 18, image: 'data:image/jpeg;base64,' + Buffer.alloc(300).toString('base64')})});
+  assert.equal(post.status, 403);
 });

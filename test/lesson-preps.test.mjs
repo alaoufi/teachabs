@@ -119,3 +119,13 @@ test('«دروسي» of grade 1 starts a lesson from its ready prep, at its book
   const saved = store.group.plan(teacher, id); assert.equal(saved.plan.lesson, 'p1m26'); assert.equal(saved.plan.steps[0].source, 'book');
   assert.match(await (await fetch(base + '/teach/aids?grade=1', {headers: {cookie}})).text(), /value="ready-p1m26"/);
 });
+
+test('«دروسي» keeps the extra trial templates to the two that are not term-1 lessons', async t => {
+  const {openStore} = await import('../store.mjs'), {createApp} = await import('../server.mjs');
+  const store = openStore(':memory:'), app = createApp(store);
+  await new Promise(r => app.listen(0, '127.0.0.1', r));
+  t.after(async () => { app.closeAllConnections(); await new Promise(r => app.close(r)); store.close(); });
+  const tour = store.tour(), page = await (await fetch('http://127.0.0.1:' + app.address().port + '/teach/plans', {headers: {cookie: 'ks=' + store.session(tour.teacher)}})).text();
+  const extra = page.split('gl-templates')[1].split('</div>')[0];
+  assert.deepEqual([...extra.matchAll(/name="template" value="([^"]+)"/g)].map(m => m[1]), ['light', 'matter']);
+});

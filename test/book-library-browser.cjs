@@ -5,7 +5,7 @@ const {chromium} = require(process.env.PLAYWRIGHT_MODULE || 'playwright');
 const {pick, openStepMenus} = require('./ui-helpers.cjs');
 const assert = require('node:assert/strict'), fs = require('node:fs'), path = require('node:path');
 (async () => {
-  const {fakeBookSource} = await import('./fake-book.mjs'), src = await fakeBookSource(60); process.env.BOOKS_SOURCE_ORIGIN = src.origin;
+  const {fakeBookSource} = await import('./fake-book.mjs'), src = await fakeBookSource(60); process.env.BOOKS_SOURCE_ORIGIN = src.origin; process.env.BOOKS_RELAY = 'on';
   const {openStore} = await import('../store.mjs'), {createApp} = await import('../server.mjs');
   const store = openStore(':memory:'), app = createApp(store);
   await new Promise(r => app.listen(0, '127.0.0.1', r));

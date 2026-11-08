@@ -1,5 +1,5 @@
 // Planner: the teacher orders the lesson steps before class and prepares content, questions and narration.
-import {STEP_TYPES, NARRATION, SUBJECTS, ORIGINAL_PAGES, LIMITS, renderOriginalPage, validatePlan, boardLayout, gradeName} from './group-plan.js';
+import {STEP_TYPES, NARRATION, SUBJECTS, ORIGINAL_PAGES, LIMITS, renderOriginalPage, validatePlan, boardLayout, gradeName, removeOption} from './group-plan.js';
 import {el} from './group-view.js';
 import {openTextPicker, downloadJSON, safeName} from './text-library.js';
 import {ACTIVITIES, activityOf, segmentLabel} from './activities.js';
@@ -124,7 +124,7 @@ function questionsEditor(step) {
       q.options.forEach((o, j) => card.append(el('div', {class: 'pl-option'},
         el('input', {type: 'radio', name: 'ans-' + q.id, checked: q.answer === j, 'aria-label': `الخيار ${j + 1} هو الصحيح`, onchange: () => { q.answer = j; touch(); }}),
         textInput(o, 100, v => { q.options[j] = v; }, {'aria-label': `الخيار ${j + 1}`}),
-        q.options.length > 2 ? el('button', {type: 'button', class: 'quiet', onclick: () => { q.options.splice(j, 1); if (q.answer >= q.options.length) q.answer = 0; touch(); render(); }}, 'حذف') : null)));
+        q.options.length > 2 ? el('button', {type: 'button', class: 'quiet', onclick: () => { removeOption(q, j); touch(); render(); }}, 'حذف') : null)));
       if (q.options.length < 4) card.append(el('button', {type: 'button', class: 'quiet', onclick: () => { q.options.push(''); touch(); render(); }}, '+ خيار'));
       card.append(el('p', {class: 'pl-hint', text: 'حدد الدائرة بجانب الإجابة الصحيحة.'}));
     }
