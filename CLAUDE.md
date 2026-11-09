@@ -15,6 +15,9 @@
 - **Figma:** الموصل مربوط بحساب المالك (خطة Starter).
   - عند أي رابط figma.com أو عمل تصميم: `create_session` ثم مهارة `figma-design-to-code` قبل `get_design_context`.
   - ناتج Figma مرجع يُكيَّف مع المشروع: JavaScript بلا إطار، RTL، CSP `script-src 'self'`، بلا خطوط أو صور من مصادر خارجية.
+- **ملف Figma للمشروع:** https://www.figma.com/design/5UwR7htPZ2GGD3zv7bI5h9 («احتراف التدريس — نظام تصميم الفصل والسبورة»).
+  - مجموعة المتغيرات `Classroom colors` تطابق `:root` في `public/group-lesson.css` و`style.css` (صيغة الويب `var(--...)`).
+  - أي تغيير لون: حدّثه في Figma وفي `:root` معًا، ولا تكتب ألوانًا مباشرة في CSS الفصل؛ استعمل `var(--gl-*)`.
 - **التحقق البصري:** Playwright (`test/*-browser.cjs`) على مقاسات الجوال والتابلت والكمبيوتر قبل النشر.
 
 ## الاختبار والنشر
