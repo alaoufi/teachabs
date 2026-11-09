@@ -1,5 +1,6 @@
 // The «مكتبة الأدوات» window: filters by subject, grade and lesson; each tool can be pinned to the lesson (planner) or
 // used at once (class). Shared by the planner and the teacher's class page.
+import {open as openMotion} from './motion.js';
 import {el} from './group-view.js';
 import {SUBJECTS} from './group-plan.js';
 import {toolsFor, STAMPS} from './tool-library.js';
@@ -57,6 +58,6 @@ export function openLibrary(opts) {
   fillLessons(); draw();
   dlg.append(head, body); document.body.append(dlg);
   dlg.addEventListener('close', () => dlg.remove());
-  dlg.showModal();
+  dlg.showModal(); openMotion(dlg);
   return dlg;
 }

@@ -136,7 +136,7 @@ async function render() {
       if (key !== renderKey) { renderKey = key; renderStep($('gl-content'), content, {shadow: view.activity, display: view.display, places: view.places}); }
       if (view.step.id !== shownStep) { shownStep = view.step.id; const c = $('gl-content'); c.classList.remove('gl-enter'); void c.offsetWidth; c.classList.add('gl-enter'); tools.resetForStep(); }
     }
-    renderInk($('gl-ink'), view.strokes || []);
+    renderInk($('gl-ink'), view.strokes || [], {fade: true}); // tools and text from the teacher fade in here
     renderExtras($('gl-board'), view);
     tools.remoteCamera(view.camera);
     await narrator(view.narrator);

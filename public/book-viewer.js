@@ -1,6 +1,7 @@
 // The ministry book on this device: PDF.js (Apache-2.0, in /vendor/pdfjs) reads only the parts of the book a page needs,
 // through the platform's relay (/teach/books/<id>/file), and draws the page here. Nothing is stored. Used by the book
 // viewer page and by the class («📖 كتاب الوزارة»), where the drawn page is shown on the board for this class only.
+import {open as openMotion} from './motion.js';
 import * as pdfjs from './vendor/pdfjs/pdf.min.mjs';
 pdfjs.GlobalWorkerOptions.workerSrc = '/vendor/pdfjs/pdf.worker.min.mjs';
 
@@ -36,7 +37,7 @@ export function openBookDialog({book, page, onShow}) {
   const dlg = document.createElement('dialog'); dlg.className = 'bk-dialog'; dlg.setAttribute('aria-label', 'كتاب الوزارة'); dlg.dir = 'rtl';
   dlg.innerHTML = `<div class="bk-bar"><b class="bk-title"></b><button type="button" class="outline" data-k="prev">◀</button><label>ص <input type="number" min="1" inputmode="numeric" data-k="page"></label><button type="button" class="outline" data-k="next">▶</button>
 <button type="button" class="btn" data-k="show">اعرضها على السبورة</button><button type="button" class="quiet" data-k="close" aria-label="إغلاق">✕</button></div><p class="gl-status" role="status" aria-live="polite"></p><div class="bk-stage"><canvas></canvas></div>`;
-  document.body.append(dlg); dlg.showModal();
+  document.body.append(dlg); dlg.showModal(); openMotion(dlg);
   const $ = k => dlg.querySelector(`[data-k=${k}]`), canvas = dlg.querySelector('canvas'), status = dlg.querySelector('.gl-status');
   dlg.querySelector('.bk-title').textContent = book.title;
   let at = page || 1, doc = null, busy = false;

@@ -8,6 +8,7 @@ import {renderNarrator, setSpeaking} from './group-view.js';
 import {openTextPicker} from './text-library.js';
 import {speakingMs} from './narrator-scripts.js';
 import {formatNumber} from './science-shadow-model.js';
+import {open as openMotion, slideIn} from './motion.js';
 import {activityOf, segmentLabel, bigOf, textOf, quickParams} from './activities.js';
 import {teacherVoice} from './group-voice.js';
 import {bookOf, bookFor, lessonBookPage} from './book-catalog.js';
@@ -124,8 +125,9 @@ function renderQuick(s) {
 }
 
 function openDrawer(open) {
-  const d = $('gl-drawer'); d.hidden = !open; $('gl-drawer-btn').setAttribute('aria-expanded', String(open));
+  const d = $('gl-drawer'), was = !d.hidden; d.hidden = !open; $('gl-drawer-btn').setAttribute('aria-expanded', String(open));
   app.classList.toggle('drawer-open', open);
+  if (open && !was && getComputedStyle(d).position === 'fixed') slideIn(d, {fromRight: getComputedStyle(d).direction === 'ltr'}); // a docked panel stays still
 }
 
 function renderBoard() {
@@ -518,7 +520,7 @@ $('gl-voice-help-close').addEventListener('click', () => { $('gl-voice-help').hi
 function closeFlies(except) { for (const f of document.querySelectorAll('.gl-fly')) if (f !== except) { f.querySelector('.gl-fly-menu').hidden = true; f.querySelector('.gl-fly-btn').setAttribute('aria-expanded', 'false'); f.classList.remove('is-open'); } }
 for (const f of document.querySelectorAll('.gl-fly')) {
   const btn = f.querySelector('.gl-fly-btn'), menu = f.querySelector('.gl-fly-menu');
-  btn.addEventListener('click', e => { e.stopPropagation(); const open = menu.hidden; closeFlies(f); menu.hidden = !open; btn.setAttribute('aria-expanded', String(open)); f.classList.toggle('is-open', open); });
+  btn.addEventListener('click', e => { e.stopPropagation(); const open = menu.hidden; closeFlies(f); menu.hidden = !open; btn.setAttribute('aria-expanded', String(open)); f.classList.toggle('is-open', open); if (open) openMotion(menu, {y: 4}); });
   menu.addEventListener('click', e => { if (e.target.closest('button')) closeFlies(); }); // the tool's own click has already run
 }
 document.addEventListener('pointerdown', e => { if (!e.target.closest('.gl-fly')) closeFlies(); });

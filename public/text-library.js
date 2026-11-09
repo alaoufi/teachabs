@@ -1,6 +1,7 @@
 // Explanatory text bank: ready texts from the repository plus the teacher's own saved texts.
 // The teacher picks a text, edits it, then uses it or saves the edit as a new text for later lessons.
 // A copy of the teacher's texts is kept in this browser and can be downloaded, so nothing depends on the trial server.
+import {open as openMotion} from './motion.js';
 import {EXPLAIN_TEXTS, TEXT_TOPICS, TEXT_LESSONS} from './explain-texts.js';
 import {el} from './group-view.js';
 
@@ -102,7 +103,7 @@ export function openTextPicker({title = 'النصوص التوضيحية', useLa
         el('div', {class: 'tl-actions tl-files'}, exportBtn, importBtn, importInput))));
   document.body.append(dialog);
   dialog.addEventListener('close', () => dialog.remove());
-  dialog.showModal(); search.focus();
+  dialog.showModal(); search.focus(); openMotion(dialog);
   refresh();
   return new Promise(resolve => dialog.addEventListener('close', resolve));
 }

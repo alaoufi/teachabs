@@ -4,6 +4,7 @@ import {formatNumber} from './science-shadow-model.js';
 import {activityOf, tweenValues} from './activities.js';
 import {TOOLS, TEXT_SIZES, smoothPath, straightPath, cameraTransform, wrapText} from './group-ink.js';
 import {STAMPS} from './tool-library.js';
+import {enter, grow, fadeIn} from './motion.js';
 
 export const el = (tag, attrs = {}, ...children) => {
   const node = document.createElement(tag);
@@ -54,14 +55,15 @@ export function renderNarrator(board, info) {
 }
 export function setSpeaking(board, on) { board.parentElement.querySelector(':scope > .gl-narrator')?.classList.toggle('is-speaking', on); }
 
-export function renderInk(svg, items = []) {
+export function renderInk(svg, items = [], {fade = false} = {}) {
   const markers = document.createElementNS(SVG, 'g'), ink = document.createElementNS(SVG, 'g');
   markers.setAttribute('class', 'gl-markers');
   // Reuse the drawing of every line that did not change, so a busy board redraws instantly on each update.
-  const old = svg.__inkNodes || new Map(), next = new Map();
+  const old = svg.__inkNodes || new Map(), next = new Map(), arrived = [], first = !svg.__inkNodes;
   for (const item of items) {
     const sig = JSON.stringify(item), had = item.id && old.get(item.id);
     const node = had && had.sig === sig ? had.node : inkNode(item);
+    if (fade && !first && !had && (item.kind === 'stamp' || item.kind === 'text')) arrived.push(node);
     node.classList.remove('is-pending', 'is-erasing', 'is-moving'); node.removeAttribute('transform');
     if (item.kind === 'stamp') node.setAttribute('transform', `translate(${item.x} ${item.y})`);
     if (item.id) next.set(item.id, {sig, node});
@@ -72,6 +74,7 @@ export function renderInk(svg, items = []) {
   for (const n of svg.querySelectorAll(':scope > .gl-live-remote.is-done')) n.remove();
   // Keep a stroke that is being drawn right now when a live update redraws the board.
   svg.replaceChildren(markers, ink, ...svg.querySelectorAll(':scope > .is-live, :scope > .gl-laser, :scope > .gl-live-remote'));
+  if (arrived.length) fadeIn(arrived);
 }
 
 /** The teacher's writing as it happens (students and the display): the line grows with each small batch of points. */
@@ -127,8 +130,10 @@ export function renderStep(container, content, {teacher = false, revealed = null
   if (content.type !== 'interactive') { container.replaceChildren(); delete container.dataset.step; }
   container.dataset.type = content.type;
   if (content.type === 'title') { // the class's first view: the lesson's topic
-    container.append(el('div', {class: 'gl-title-card'}, el('span', {class: 'gl-title-kicker', text: 'موضوع الدرس'}), el('h2', {class: 'gl-title-main', text: content.title}),
-      content.meta ? el('p', {class: 'gl-title-meta', text: content.meta}) : null, content.where ? el('p', {class: 'gl-title-where', text: content.where}) : null));
+    const card = el('div', {class: 'gl-title-card'}, el('span', {class: 'gl-title-kicker', text: 'موضوع الدرس'}), el('h2', {class: 'gl-title-main', text: content.title}),
+      content.meta ? el('p', {class: 'gl-title-meta', text: content.meta}) : null, content.where ? el('p', {class: 'gl-title-where', text: content.where}) : null);
+    container.append(card);
+    if (container._titled !== content.id) { container._titled = content.id; enter(card.children, {y: 14, stagger: 0.12, delay: 0.15}); }
     return;
   }
   if (content.type === 'page') {
@@ -173,11 +178,21 @@ export function renderStep(container, content, {teacher = false, revealed = null
       container.append(card);
     });
     if (!content.items.length) container.append(el('p', {class: 'gl-wait-inline', text: 'سيعرض المعلم النصوص هنا.'}));
+    // the teacher reveals the cards one by one: only a card that has just appeared moves in (never on the step's first view,
+    // which the step's own entrance already shows, and never a card the teacher is dragging)
+    const visible = content.items.filter(i => !(teacher && revealed && !revealed.includes(i.id))).map(i => i.id), before = container._board?.step === content.id ? container._board.visible : null;
+    container._board = {step: content.id, visible};
+    if (before) enter(visible.filter(id => !before.includes(id)).map(id => container.querySelector(`.gl-item[data-item="${CSS.escape(id)}"]`)).filter(n => n && !n.classList.contains('is-dragging')), {y: 16});
     return;
   }
   if (content.type === 'questions') {
     container.append(title);
-    if (display) container.append(renderDisplay(display));
+    if (display) {
+      const box = renderDisplay(display); container.append(box);
+      const key = display.mode + ':' + (display.question || '') + ':' + content.id;
+      if (display.mode === 'summary' && container._shownDisplay !== key) grow(box.querySelectorAll('.gl-bar'), {from: getComputedStyle(container).direction === 'rtl' ? 'right' : 'left'});
+      container._shownDisplay = key;
+    }
     else container.append(el('ol', {class: 'gl-qlist'}, content.questions.map(q => el('li', {text: q.prompt}))));
     return;
   }

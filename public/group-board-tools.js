@@ -2,6 +2,7 @@
 // mode 'teacher' sends ink and camera to the class; mode 'viewer' only zooms locally (students) or follows (display).
 import {TOOLS, TEXT_SIZES, BOARD, clampCamera, zoomAround, LIMITS, shapePoints} from './group-ink.js';
 import {inkNode, applyCamera, laserTrail} from './group-view.js';
+import {settle} from './motion.js';
 
 export function attachBoardTools({mode, send = () => {}, items = () => [], canInk = () => false, onStatus = () => {}, onNext, onPrev, onUndo, onLaser = () => {}, onLiveInk = () => {}}) {
   const $ = id => document.getElementById(id);
@@ -233,7 +234,7 @@ export function attachBoardTools({mode, send = () => {}, items = () => [], canIn
       // Prepared board cards can be dragged anywhere on the board.
       e.preventDefault(); const card = e.target.closest('.gl-item[data-item]'), r = card.getBoundingClientRect(), ir = ink.getBoundingClientRect();
       const origin = [(r.left - ir.left) / ir.width * BOARD.width, (r.top - ir.top) / ir.height * BOARD.height];
-      card.classList.add('is-dragging'); gesture = {type: 'card', card, start: point, origin, width: r.width / ir.width * 100};
+      settle(card); card.classList.add('is-dragging'); gesture = {type: 'card', card, start: point, origin, width: r.width / ir.width * 100};
     } else if (state.camera.z > 1 || tool === 'hand') {
       e.preventDefault(); gesture = {type: 'pan', last: {x: e.clientX, y: e.clientY}}; board.classList.add('is-panning');
     }
