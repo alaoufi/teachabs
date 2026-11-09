@@ -1,42 +1,25 @@
-# احتراف التدريس — تعليمات دائمة لـ Claude
+# احتراف التدريس — تعليمات Claude
 
-## النطاق
-- Claude مسؤول عن الفصل والسبورة والدروس والتحضير والحضور.
-- قسم الإدارة يملكه Codex («فزاع») في `alaoufi/khatwa-learning`. لا تعدّل كوده ولا قاعدة بياناته؛ أرسل طلبًا مكتوبًا.
-- اكتب للمستخدم بالعربية. لا أسرار ولا بيانات شخصية في المستودع.
-- المناهج السعودية الحكومية فقط. لا تنسب كتابًا إلى مصدر أو طبعة أو إذن غير مؤكد.
-- قبل أي مرحلة: فرع احتياطي مرقّم `backup/rollback-0NN-...`. لا تغيّر التصميم المعتمد أو الوظائف القائمة دون ضرورة.
+## النطاق والقواعد
+- Claude: الفصل والسبورة والدروس والتحضير والحضور. الإدارة لفزاع (Codex) في `alaoufi/khatwa-learning`: لا تعدّلها، أرسل طلبًا مكتوبًا.
+- اكتب للمستخدم بالعربية، باختصار. لا أسرار ولا بيانات شخصية. مناهج سعودية حكومية فقط، ولا تنسب كتابًا لمصدر غير مؤكد.
+- قبل كل مرحلة: فرع احتياطي `backup/rollback-0NN-...`.
+- موافقة دائمة: تحسينات التصميم (خط، ألوان، أزرار، إطارات، حركة، ترتيب) تُنفَّذ دون سؤال، بلا حذف وظيفة أو تغيير سلوك.
 
-## موافقة دائمة من المالك
-- تحسينات التصميم الاحترافي (الخط، الألوان، الأزرار، الإطارات، الحركة، الترتيب) معتمدة دائمًا: نفّذها مباشرة دون سؤال، مع فرع احتياطي مرقّم واختبار كامل ونشر.
-- لا تحذف وظيفة ولا تغيّر سلوكًا قائمًا باسم التصميم.
+## الكفاءة (حد الاستخدام الأسبوعي عائق عند المالك) — دون نقص في الجودة
+- اقرأ الجزء المطلوب من الملف فقط (`grep` / `sed -n`)، ولا تفتح ملفات كاملة كبيرة.
+- لا صور شاشة إلا للتحقق من تغيير مقصود في الشكل (صورة واحدة).
+- الفحص مرة واحدة في نهاية المرحلة: `npm run -s check`. لا APK ولا صور Figma إلا عند الطلب.
+- ردود قصيرة: النتيجة وما يحتاج قرارًا فقط.
 
-## أدوات التصميم والحركة (استعملها دائمًا في عمل الواجهة)
-- **GSAP:** المهارات في `.claude/skills/gsap-*`. اقرأ `gsap-core` و`gsap-performance` قبل أي حركة.
-  - كل حركة تمر عبر `public/motion.js` فقط (enter / grow / fadeIn / open / slideIn / settle).
-  - transform وopacity فقط، مدد قصيرة، `clearProps` في النهاية، واحترام `prefers-reduced-motion`.
-  - لا تحريك لطبقة الحبر أو كاميرا السبورة أو ما تحت مؤشر المعلم.
-- **Figma:** الموصل مربوط بحساب المالك (خطة Starter).
-  - عند أي رابط figma.com أو عمل تصميم: `create_session` ثم مهارة `figma-design-to-code` قبل `get_design_context`.
-  - ناتج Figma مرجع يُكيَّف مع المشروع: JavaScript بلا إطار، RTL، CSP `script-src 'self'`، بلا خطوط أو صور من مصادر خارجية.
-- **ملف Figma للمشروع:** https://www.figma.com/design/5UwR7htPZ2GGD3zv7bI5h9 («احتراف التدريس — نظام تصميم الفصل والسبورة»).
-  - مجموعة المتغيرات `Classroom colors` تطابق `:root` في `public/group-lesson.css` و`style.css` (صيغة الويب `var(--...)`).
-  - أي تغيير لون: حدّثه في Figma وفي `:root` معًا، ولا تكتب ألوانًا مباشرة في CSS الفصل؛ استعمل `var(--gl-*)`.
-- **الخط:** Noto Sans Arabic (متغير الوزن، OFL) محفوظ في `public/vendor/fonts/` ومعرّف في آخر `group-lesson.css` (`--gl-font`).
-- **الأيقونات:** Lucide (ISC) عبر `public/icons.js` والملف `public/vendor/icons/lucide.svg`. لإضافة أيقونة: أضفها لجدول `ICONS` ثم `node build-icons.mjs`.
-- **فحوص الجودة قبل كل نشر:** `npm run test:a11y` (axe، صفر مشاكل خطيرة) و`npm run test:visual` (بعد تغيير مقصود: `npm run test:visual:update` ثم راجع الصور). `npm run lighthouse` عند الحاجة.
-- **التحقق البصري:** Playwright (`test/*-browser.cjs`) على مقاسات الجوال والتابلت والكمبيوتر قبل النشر.
+## الأدوات
+- الحركة: GSAP عبر `public/motion.js` فقط (transform/opacity، `clearProps`، احترام تقليل الحركة، لا تحريك للحبر أو الكاميرا). المهارات في `.claude/skills/gsap-*`.
+- الألوان: متغيرات `--gl-*` في `:root` بأعلى `public/group-lesson.css`، مطابقة لملف Figma https://www.figma.com/design/5UwR7htPZ2GGD3zv7bI5h9 (مجموعة `Classroom colors`). لا ألوان مباشرة.
+- الخط: Noto Sans Arabic في `public/vendor/fonts/`. الأيقونات: Lucide عبر `public/icons.js` (أضف للجدول ثم `node build-icons.mjs`).
+- Figma: `create_session` ثم مهارة `figma-design-to-code` قبل `get_design_context`؛ الناتج مرجع يُكيَّف (JS بلا إطار، RTL، CSP `script-src 'self'`).
 
-## الكفاءة دون المساس بالجودة أو السرعة (طلب المالك)
-- الجودة أولًا: لا يُلغى أي فحص لتوفير الاستهلاك. قبل كل نشر: `npm test` واختبارات المتصفح كلها، و`test:a11y` و`test:visual`.
-- التوفير يكون من الهدر فقط:
-  - شغّل الاختبارات بالتوازي مرة واحدة في نهاية المرحلة، واقرأ سجل ما فشل فقط.
-  - صورة شاشة واحدة للتحقق من تغيير مقصود في الشكل، والباقي على اختبار الصور الآلي.
-  - لا تبنِ APK ولا تطلب صور Figma إلا عند الحاجة أو الطلب.
-  - اقرأ من الملف الجزء المطلوب فقط، وابحث قبل أن تفتح ملفات كاملة.
-- السرعة: المهام المستقلة الكبيرة توزَّع على وكلاء أو جلسات متوازية بفروع منفصلة، ثم تُدمج وتُختبر.
-
-## الاختبار والنشر
-- **الفحص الكامل بأمر واحد:** `export PATH=/opt/node24/bin:$PATH && npm run -s check`، ويشمل اختبارات الوحدة واختبارات المتصفح كلها بالتوازي، ويطبع سطرًا لكل فحص وذيل السجل لما فشل فقط. لفحوص محددة: `npm run -s check -- live-ink a11y`.
+## الفحص والنشر
+- `export PATH=/opt/node24/bin:$PATH && npm run -s check` (وحدة + 33 فحص متصفح بالتوازي، يشمل axe والصور). فحوص محددة: `npm run -s check -- a11y visual`. بعد تغيير مقصود في الشكل: `npm run test:visual:update`.
 - الملفات الثابتة الجديدة تُسجَّل في `server.mjs`.
-- الفرع `codex/board-first`، ثم الدمج إلى `main`، ثم النشر على Render.
+- `git push -q origin codex/board-first` ثم `git push -q origin codex/board-first:main` ثم نشر Render (`srv-dbm5a215efls73chq600`، مساحة `tea-dbm46bp42hec73dk4e6g`) والتحقق من https://abdulrahman-edu-trial.onrender.com.
+- APK: `cd android && ANDROID_HOME=/opt/android-sdk ./build.sh`؛ رفع الإصدار في `AndroidManifest.xml` و`res/values/strings.xml` و`MainActivity.java`.
