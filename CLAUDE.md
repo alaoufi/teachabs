@@ -23,6 +23,8 @@
   - مجموعة المتغيرات `Classroom colors` تطابق `:root` في `public/group-lesson.css` و`style.css` (صيغة الويب `var(--...)`).
   - أي تغيير لون: حدّثه في Figma وفي `:root` معًا، ولا تكتب ألوانًا مباشرة في CSS الفصل؛ استعمل `var(--gl-*)`.
 - **الخط:** Noto Sans Arabic (متغير الوزن، OFL) محفوظ في `public/vendor/fonts/` ومعرّف في آخر `group-lesson.css` (`--gl-font`).
+- **الأيقونات:** Lucide (ISC) عبر `public/icons.js` والملف `public/vendor/icons/lucide.svg`. لإضافة أيقونة: أضفها لجدول `ICONS` ثم `node build-icons.mjs`.
+- **فحوص الجودة قبل كل نشر:** `npm run test:a11y` (axe، صفر مشاكل خطيرة) و`npm run test:visual` (بعد تغيير مقصود: `npm run test:visual:update` ثم راجع الصور). `npm run lighthouse` عند الحاجة.
 - **التحقق البصري:** Playwright (`test/*-browser.cjs`) على مقاسات الجوال والتابلت والكمبيوتر قبل النشر.
 
 ## الاختبار والنشر

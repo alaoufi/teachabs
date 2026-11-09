@@ -6,6 +6,7 @@ import {attachBoardTools} from './group-board-tools.js';
 import {formatNumber} from './science-shadow-model.js';
 import {activityOf} from './activities.js';
 import {studentVoice} from './group-voice.js';
+import {useIcons} from './icons.js';
 
 const app = document.getElementById('gl-app'), code = app.dataset.code, role = app.dataset.role, student = role === 'student';
 const $ = x => document.getElementById(x);
@@ -253,3 +254,5 @@ if (student) {
 
 // Inside the Android app: say once if the phone has no Arabic voice, so the teacher knows why the explanation is silent.
 setTimeout(() => { if (window.App?.voice?.() === 'none') status('جوالك لا يحوي صوتًا عربيًا لقراءة الشرح؛ يبقى مكتوبًا. للتثبيت: الإعدادات ← تحويل النص إلى كلام ← اللغة العربية.', true); }, 4000);
+
+useIcons(document.querySelector('.gl-wrap') || document.body);

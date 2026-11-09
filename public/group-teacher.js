@@ -12,6 +12,7 @@ import {open as openMotion, slideIn} from './motion.js';
 import {activityOf, segmentLabel, bigOf, textOf, quickParams} from './activities.js';
 import {teacherVoice} from './group-voice.js';
 import {bookOf, bookFor, lessonBookPage} from './book-catalog.js';
+import {useIcons} from './icons.js';
 
 const app = document.getElementById('gl-app'), code = app.dataset.code, base = '/teach/live/' + code;
 const $ = x => document.getElementById(x);
@@ -601,3 +602,5 @@ function renderLessonTools() {
 }
 $('gl-open-library').addEventListener('click', () => openLibrary({subject: plan.subject, grade: plan.grade, lesson: plan.lesson || '', onUse: useTool, useLabel}));
 plansReady.then(renderLessonTools);
+
+useIcons(document.querySelector('.gl-wrap') || document.body);
