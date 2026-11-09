@@ -1,0 +1,24 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm run -s check:*)",
+      "Bash(npm run check:*)",
+      "Bash(npm test:*)",
+      "Bash(npm run test:a11y:*)",
+      "Bash(npm run test:visual:*)",
+      "Bash(node build-icons.mjs)",
+      "Bash(git status:*)",
+      "Bash(git diff:*)",
+      "Bash(git log:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git push -q origin codex/board-first:*)",
+      "Bash(git branch backup/*)",
+      "Bash(grep:*)",
+      "Bash(sed -n:*)",
+      "Bash(ls:*)",
+      "Bash(wc:*)",
+      "Bash(curl -s https://abdulrahman-edu-trial.onrender.com/*)"
+    ]
+  }
+}
