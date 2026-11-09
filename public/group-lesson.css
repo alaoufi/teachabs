@@ -1014,3 +1014,29 @@ body:has(#planner) .demo{margin-bottom:8px;padding:6px 10px}
 .sc-period{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;background:var(--gl-surface-warm);border:1px solid var(--line);border-radius:14px;padding:10px 14px}
 .sc-period>div{display:grid;gap:2px}.sc-period small{color:var(--muted)}
 .sc-today-link{margin:8px auto 0}
+
+/* ---- stage 078b: design pass (one Arabic typeface, calmer board frame, consistent controls) ---- */
+@font-face{font-family:"Noto Sans Arabic";font-style:normal;font-display:swap;font-weight:100 900;src:url(/vendor/fonts/noto-sans-arabic-arabic-wght-normal.woff2) format("woff2");
+ unicode-range:U+0600-06FF,U+0750-077F,U+0870-088E,U+0890-0891,U+0897-08E1,U+08E3-08FF,U+200C-200E,U+2010-2011,U+204F,U+2E41,U+FB50-FDFF,U+FE70-FE74,U+FE76-FEFC}
+@font-face{font-family:"Noto Sans Arabic";font-style:normal;font-display:swap;font-weight:100 900;src:url(/vendor/fonts/noto-sans-arabic-latin-wght-normal.woff2) format("woff2");
+ unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD}
+:root{--gl-font:"Noto Sans Arabic","Segoe UI",Tahoma,Arial,sans-serif}
+html{font-family:var(--gl-font)}
+.gl-wrap button,.gl-wrap input,.gl-wrap select,.gl-wrap textarea{font-family:inherit}
+/* the board: the same raised frame, slimmer and lighter so the lesson gets the room */
+.gl-board{border-width:10px;border-radius:18px;
+ background:linear-gradient(var(--gl-surface-cream),var(--gl-surface-cream)) padding-box,linear-gradient(150deg,#f6f8f9 0%,#c4ccd3 22%,#98a3ad 50%,#e2e7eb 64%,#aab4bd 100%) border-box;
+ box-shadow:0 1px 0 1px #ffffff inset,0 1px 2px #0000001f,0 12px 20px -10px #0b1f2a40,0 30px 50px -30px #0b1f2a4d,0 0 0 1px #4c56601a}
+.gl-stage::after{background:linear-gradient(#b8c0c7,#8c96a0 55%,#76808a)}
+@media(max-width:760px){.gl-board{border-width:6px;border-radius:14px}}
+/* the top bar's quiet actions read as buttons of the same family; ending the class is marked, not shouted */
+.gl-wrap .gl-bar-top .quiet.gl-mini{display:inline-flex;align-items:center;min-height:36px;padding:2px 12px;border:1px solid var(--gl-control-line);border-radius:11px;background:var(--gl-surface);color:var(--ink);font-weight:600;font-size:14px}
+.gl-wrap .gl-bar-top .quiet.gl-mini:hover{background:var(--gl-mint-mist)}
+.gl-wrap .gl-bar-top #gl-live{color:var(--gl-danger-ink);border-color:#e4c0b2}
+.gl-wrap .gl-bar-top #gl-live:hover{background:#f8e7dd}
+/* a lesson section and its 👁 are one control */
+.gl-sections .gl-steps-strip li{border:1px solid var(--gl-line-soft);background:var(--gl-surface)}
+.gl-wrap .gl-sections .gl-steps-strip li .gl-go{border-color:transparent;background:transparent}
+.gl-sections .gl-steps-strip li.is-current{border-color:var(--gl-brand)}
+.gl-wrap .gl-sections .gl-steps-strip li.is-current .gl-go{color:var(--gl-surface)}
+.gl-wrap .gl-sections .gl-eye{opacity:.7}.gl-wrap .gl-sections .gl-eye:hover,.gl-wrap .gl-sections .gl-eye[aria-pressed=true]{opacity:1}
