@@ -15,7 +15,8 @@
     "test:a11y": "node test/a11y-browser.cjs",
     "test:visual": "node test/visual-browser.cjs",
     "test:visual:update": "UPDATE_VISUAL=1 node test/visual-browser.cjs",
-    "lighthouse": "npx -y lighthouse@12.8.2 http://127.0.0.1:${PORT:-3000}/start/teacher --chrome-flags=\"--headless=new --no-sandbox\" --output=html --output-path=./lighthouse-report.html"
+    "lighthouse": "npx -y lighthouse@12.8.2 http://127.0.0.1:${PORT:-3000}/start/teacher --chrome-flags=\"--headless=new --no-sandbox\" --output=html --output-path=./lighthouse-report.html",
+    "check": "node scripts/check.mjs"
   },
   "dependencies": {
     "@excalidraw/excalidraw": "0.18.1",

@@ -37,6 +37,6 @@
 - السرعة: المهام المستقلة الكبيرة توزَّع على وكلاء أو جلسات متوازية بفروع منفصلة، ثم تُدمج وتُختبر.
 
 ## الاختبار والنشر
-- `export PATH=/opt/node24/bin:$PATH && npm test`، ثم اختبارات المتصفح بـ `PLAYWRIGHT_MODULE=/opt/node22/lib/node_modules/playwright`.
+- **الفحص الكامل بأمر واحد:** `export PATH=/opt/node24/bin:$PATH && npm run -s check`، ويشمل اختبارات الوحدة واختبارات المتصفح كلها بالتوازي، ويطبع سطرًا لكل فحص وذيل السجل لما فشل فقط. لفحوص محددة: `npm run -s check -- live-ink a11y`.
 - الملفات الثابتة الجديدة تُسجَّل في `server.mjs`.
 - الفرع `codex/board-first`، ثم الدمج إلى `main`، ثم النشر على Render.
