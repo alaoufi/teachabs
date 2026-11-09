@@ -19,3 +19,4 @@ android/local.properties
 *.aab
 releases/
 backups/
+lighthouse-report.html

@@ -36,6 +36,7 @@ const assert = require('node:assert/strict'), fs = require('node:fs'), path = re
     const third = t.locator('#gl-steps li').nth(2);
     await third.locator('.gl-eye').click(); await t.waitForFunction(() => document.querySelectorAll('#gl-steps li')[2].classList.contains('is-hidden-step'));
     assert.equal(await third.locator('.gl-eye').getAttribute('aria-pressed'), 'true');
+    await s.locator('#gl-content .gl-title-main').waitFor({state: 'visible', timeout: 3000}); // the title may still be fading in (stage 077)
     assert.ok(await s.locator('#gl-content .gl-title-main').isVisible(), 'the students still see the current section');
     await t.locator('#gl-next').click(); await s.waitForSelector('#gl-content .gl-page'); // section 2: the curriculum page
     await t.locator('#gl-next').click(); await t.waitForFunction(() => document.querySelector('#gl-steps li.is-current')?.dataset.type === 'board');

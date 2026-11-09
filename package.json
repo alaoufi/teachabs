@@ -11,7 +11,11 @@
     "test": "node --test test/*.test.mjs",
     "invite": "node invite.mjs",
     "build:board": "node build-board.mjs",
-    "admin:bootstrap": "node admin-bootstrap.mjs"
+    "admin:bootstrap": "node admin-bootstrap.mjs",
+    "test:a11y": "node test/a11y-browser.cjs",
+    "test:visual": "node test/visual-browser.cjs",
+    "test:visual:update": "UPDATE_VISUAL=1 node test/visual-browser.cjs",
+    "lighthouse": "npx -y lighthouse@12.8.2 http://127.0.0.1:${PORT:-3000}/start/teacher --chrome-flags=\"--headless=new --no-sandbox\" --output=html --output-path=./lighthouse-report.html"
   },
   "dependencies": {
     "@excalidraw/excalidraw": "0.18.1",
@@ -21,5 +25,11 @@
     "mathlive": "0.111.4",
     "react": "18.3.1",
     "react-dom": "18.3.1"
+  },
+  "devDependencies": {
+    "axe-core": "4.14.0",
+    "lucide-static": "1.70.0",
+    "pixelmatch": "5.3.0",
+    "pngjs": "7.0.0"
   }
 }

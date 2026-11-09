@@ -437,7 +437,7 @@ body:has(.gl-show) main{width:100%;max-width:none;margin:0;padding:0}
 .gl-cur-subject{border:1px solid var(--line);border-radius:14px;background:var(--gl-surface-warm);padding:4px 12px 8px}
 .gl-cur-subject>summary{cursor:pointer;font-weight:800;font-size:17px;min-height:40px;display:flex;align-items:center;gap:8px}
 .gl-cur-subject>summary small{font-weight:600;color:var(--muted);font-size:13px}
-.gl-cur-unit h4{margin:8px 0 2px;font-size:15px;color:var(--forest)}.gl-cur-unit h5{margin:4px 0 0;font-size:13.5px;color:var(--gl-muted)}
+.gl-cur-unit h3{margin:8px 0 2px;font-size:15px;color:var(--forest)}.gl-cur-unit h4{margin:4px 0 0;font-size:13.5px;color:var(--gl-muted)}
 .gl-cur-unit ol{margin:2px 0;padding-inline-start:22px;display:grid;gap:2px}
 .gl-cur-unit li{display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:14px;line-height:1.35;padding:2px 4px;border-radius:8px}
 .gl-cur-unit li.is-ready{background:#e6f4ee;font-weight:700}
@@ -522,7 +522,7 @@ body:has(.gl-solo){overflow:hidden}
 .gl-present .gl-bar-top a,.gl-present .gl-bar-top button{white-space:nowrap}
 @media(max-width:760px){
  .gl-present .gl-bar-title,.gl-present .gl-bar-actions{flex:none}
- .gl-present .gl-bar-title h1{display:none}
+ .gl-present .gl-bar-title h1{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap;margin:0}
  .gl-present .gl-stage::after{position:static;margin:-2px auto 0}
 }
 
@@ -952,7 +952,7 @@ body:has(#planner) .demo{margin-bottom:8px;padding:6px 10px}
  .gl-present .gl-bar-top,.gl-present .gl-bar-actions,.gl-present .gl-bar-title,.gl-present nav.gl-bar-steps,.gl-present .gl-quick,.gl-present .gl-quick .gl-narr-quick,.gl-present .gl-quick .gl-row{flex-wrap:nowrap}
  .gl-present .gl-bar-top,.gl-present nav.gl-bar-steps{overflow-x:auto;overflow-y:hidden;scrollbar-width:none}
  .gl-present .gl-bar-title,.gl-present .gl-bar-actions{flex:none}
- .gl-present .gl-bar-title h1,.gl-present .gl-status-dot:not(.is-error),.gl-present .gl-bar-steps .gl-vis{display:none}
+ .gl-present .gl-status-dot:not(.is-error),.gl-present .gl-bar-steps .gl-vis{display:none}.gl-present .gl-bar-title h1{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap;margin:0}
  .gl-wrap.gl-present .gl-mini,.gl-present .gl-code-chip,.gl-present .gl-avbtn{min-height:30px;font-size:12px;padding:1px 8px}
  .gl-present .gl-code-chip .gl-code{font-size:13px;letter-spacing:1px}
  /* the drawing tools: a narrow rail beside the board */
@@ -991,7 +991,7 @@ body:has(#planner) .demo{margin-bottom:8px;padding:6px 10px}
 @media (orientation:landscape) and (min-width:1000px) and (max-width:1439px) and (min-height:641px){
  .gl-present .gl-bar-top{flex-wrap:nowrap;overflow-x:auto;overflow-y:hidden;scrollbar-width:none}
  .gl-present .gl-bar-title,.gl-present .gl-bar-actions{flex-wrap:nowrap;flex:none}
- .gl-present .gl-bar-title h1{display:none}
+ .gl-present .gl-bar-title h1{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap;margin:0}
  .gl-present .gl-status-dot:not(.is-error){display:none}
 }
 /* a phone hint on a tablet reads wrong: a portrait tablet already has a full-width board */
@@ -1040,3 +1040,4 @@ html{font-family:var(--gl-font)}
 .gl-sections .gl-steps-strip li.is-current{border-color:var(--gl-brand)}
 .gl-wrap .gl-sections .gl-steps-strip li.is-current .gl-go{color:var(--gl-surface)}
 .gl-wrap .gl-sections .gl-eye{opacity:.7}.gl-wrap .gl-sections .gl-eye:hover,.gl-wrap .gl-sections .gl-eye[aria-pressed=true]{opacity:1}
+/* stage 080: where the bar has no room for the class title it stays in the page for screen readers (visually hidden, not removed) */
