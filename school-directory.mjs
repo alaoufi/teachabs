@@ -48,7 +48,7 @@ export function memoryDirectory(data) {
   const enrolled = (studentId, p) => rows('enrollments').some(e => e.student_id === studentId && e.class_id === p.class_id && e.year_id === p.year_id && e.active);
   const describe = (p, date) => {
     const c = by('classes', p.class_id), g = by('grades', c?.grade_id), s = by('subjects', p.subject_id), ls = rows('lessonSessions').find(x => x.period_id === p.id && x.occurrence_date === date && x.active !== 0);
-    return {periodId: p.id, date, classId: p.class_id, className: c?.name || '', grade: g?.grade ?? null, subjectId: p.subject_id, subject: subjectCode(p.subject_id), subjectName: s?.name || '',
+    return {periodId: p.id, date, classId: p.class_id, className: c?.name || '', grade: g?.grade ?? null, gradeId: c?.grade_id || null, subjectId: p.subject_id, subject: subjectCode(p.subject_id), subjectName: s?.name || '',
       teacherId: p.teacher_id, order: p.period_order, startMinute: p.start_minute, endMinute: p.end_minute, starts: hhmm(p.start_minute), ends: hhmm(p.end_minute),
       opensAt: momentOf(date, p.start_minute - EARLY_MINUTES), endsAt: momentOf(date, p.end_minute), lesson: ls ? (data.lessonLinks?.[ls.lesson_id] || null) : null};
   };
@@ -90,18 +90,22 @@ export function memoryDirectory(data) {
       const list = occurrences(mine, at, 14), now = list.find(o => o.opensAt <= at && at < o.endsAt) || null;
       return {student: {id: s.id, firstName: String(s.name).trim().split(/\s+/)[0]}, now, next: list.find(o => o !== now && o.opensAt > at) || null};
     },
-    /** Whether this student may be in this occurrence now: active profile, enrolled in the period's class, period live. */
-    studentMayAttend(studentId, periodId, date, at = Date.now()) {
-      const s = by('students', studentId), p = by('periods', periodId);
-      if (!s || s.status !== 'active' || !p || !livePeriod(p, date) || !enrolled(s.id, p)) return false;
-      return momentOf(date, p.start_minute - EARLY_MINUTES) <= at && at < momentOf(date, p.end_minute) && riyadh(momentOf(date, p.start_minute)).weekday === p.weekday;
+    /** Mirrors the administration's studentPeriodEntry: the parent's own active student, enrolled in the period's class,
+     *  the period live, and now within [start − 10 min, end). Returns the canonical identity and occurrence, or throws 403. */
+    studentEntry(parentId, studentId, periodId, date, at = Date.now()) {
+      const s = ownedStudent(parentId, studentId), p = by('periods', periodId);
+      need(p && livePeriod(p, date) && new Date(date + 'T00:00:00Z').getUTCDay() === p.weekday && enrolled(s.id, p), 'هذه الحصة ليست لفصلك.', 403);
+      need(momentOf(date, p.start_minute - EARLY_MINUTES) <= at && at < momentOf(date, p.end_minute), 'الدخول غير متاح في هذا الوقت.', 403);
+      return {eligible: true, studentId: s.id, periodId: p.id, classId: p.class_id, teacherId: p.teacher_id, date};
     },
-    /** Whether this student belongs to this occurrence's class at all (active profile, enrolled, period live); used after
-     *  the period ends, when only the homework stays open. */
-    studentEnrolledIn(studentId, periodId, date) {
-      const s = by('students', studentId), p = by('periods', periodId);
-      return Boolean(s && s.status === 'active' && p && livePeriod(p, date) && enrolled(s.id, p));
+    /** Whether the parent's student is still enrolled in this class this term (for an open homework after the period). */
+    studentInClass(parentId, studentId, classId, at = Date.now()) {
+      let s; try { s = ownedStudent(parentId, studentId); } catch { return false; }
+      const {date} = riyadh(at);
+      return rows('periods').some(p => p.class_id === classId && enrolled(s.id, p) && livePeriod(p, date));
     },
+    /** Whether the period is still assigned to this teacher (on every teacher request in the room, without the clock). */
+    teacherAssigned(teacherId, periodId, date) { const p = by('periods', periodId); return Boolean(p && p.teacher_id === teacherId && livePeriod(p, date)); },
     /** A teacher's periods today (from the moment on): [{periodId, className, subject, starts, ends, lesson, …}]. */
     teacherToday(teacherId, at = Date.now()) {
       const {date} = riyadh(at);
@@ -116,7 +120,5 @@ export function memoryDirectory(data) {
       need(at < momentOf(date, p.end_minute), 'انتهى وقت الحصة.', 409);
       return describe(p, date);
     },
-    /** For a class room: is this occurrence still running? */
-    occurrenceOpen: (periodId, date, at = Date.now()) => { const p = by('periods', periodId); return Boolean(p && livePeriod(p, date) && at < momentOf(date, p.end_minute)); }
   };
 }

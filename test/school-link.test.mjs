@@ -131,3 +131,48 @@ test('without the link the school pages say so, and the code entry keeps working
   assert.doesNotMatch(await (await fetch(base + '/teach/plans', {headers: {cookie: 'ks=' + store.session(tour.teacher)}})).text(), /href="\/teach\/today"/);
   assert.equal((await fetch(base + '/school', {headers: {cookie: 'ks=' + store.session(tour.teacher)}, redirect: 'manual'})).status, 403, 'parents only');
 });
+
+// Stage 076: the assignment changes during class, a prep outside the period's subject or grade, a student revoked while the
+// stream is open, and the one-to-one links between classroom and administration identifiers.
+test('assignment change, prep checks, revocation during the stream, links', async t => {
+  const {openStore} = await import('../store.mjs'), {createApp} = await import('../server.mjs');
+  let clock = at(8, 0); const store = openStore(':memory:'), a = store.tour(), b = store.tour(), data = school({a, b}), directory = memoryDirectory(data);
+  const app = createApp(store, {directory, now: () => clock, recheckMs: 40}); await new Promise(r => app.listen(0, '127.0.0.1', r));
+  t.after(async () => { app.closeAllConnections(); await new Promise(r => app.close(r)); store.close(); });
+  const base = 'http://127.0.0.1:' + app.address().port, ks = id => 'ks=' + store.session(id);
+  const post = (p, cookie, body) => fetch(base + p, {method: 'POST', headers: {cookie, origin: base, 'content-type': 'application/x-www-form-urlencoded'}, body: new URLSearchParams(body), redirect: 'manual'});
+  const cmd = (code, cookie, body) => fetch(base + '/teach/live/' + code + '/command', {method: 'POST', headers: {cookie, origin: base, 'content-type': 'application/json'}, body: JSON.stringify(body)});
+  const text = async r => (await r.text()).replace(/<[^>]+>/g, ' ');
+
+  // a prep must follow the period's subject and its class's grade (4/a science, grade 4)
+  assert.match(await text(await post('/teach/today/start', ks(a.teacher), {period: 'p-1', plan: 'ready:p5m07'})), /لمادة أخرى/, 'grade 5 maths for a science period');
+  assert.match(await text(await post('/teach/today/start', ks(a.teacher), {period: 'p-1', plan: 'ready:p1s01'})), /لصف آخر/, 'grade 1 science for grade 4');
+  const mine = store.group.createPlan(a.teacher, {...(await import('../public/group-plan.js')).LESSON_TEMPLATES['ready-p3s01'].plan(), grade: 4});
+  assert.match(await text(await post('/teach/today/start', ks(a.teacher), {period: 'p-1', plan: 'plan:' + mine})), /لا يتبع مادة الحصة أو صفها/, 'a grade-3 lesson relabelled as grade 4');
+  const code = (await post('/teach/today/start', ks(a.teacher), {period: 'p-1', plan: 'ready:s1-1-1'})).headers.get('location').split('/').pop();
+  assert.match(code, /^[A-Z0-9]{6}$/);
+
+  // the student is in; her open stream is closed as soon as she is suspended
+  const nora = (await post('/school/enter', ks(a.parent), {student: a.child, subject: 'science'})).headers.get('set-cookie').split(';')[0];
+  const stream = await fetch(base + '/class/' + code + '/events', {headers: {cookie: nora}}), reader = stream.body.getReader();
+  let got = ''; const until = async re => { while (!re.test(got)) { const {value, done} = await reader.read(); if (done) return got + '<closed>'; got += new TextDecoder().decode(value); } return got; };
+  await until(/event: view/);
+  data.students[0].status = 'suspended';
+  assert.match(await until(/event: revoked/), /event: revoked/, 'disconnected while the stream was open');
+  data.students[0].status = 'active';
+
+  // the administration moves the period to another teacher: the first loses the room, the new one takes it over
+  data.assignments[0].teacher_id = b.teacher; data.periods[0].teacher_id = b.teacher;
+  assert.equal((await cmd(code, ks(a.teacher), {op: 'go', by: 1})).status, 403, 'no longer assigned');
+  const take = await post('/teach/today/start', ks(b.teacher), {period: 'p-1', plan: 'ready:s1-1-1'});
+  assert.equal(take.headers.get('location'), '/teach/live/' + code, 'the same room, now led by the assigned teacher');
+  assert.equal((await cmd(code, ks(b.teacher), {op: 'go', by: 1})).status, 200);
+  assert.equal(store.group.session(code).teacher, b.teacher);
+
+  // links are one-to-one in both directions; never a second code for an id nor a second id for a code
+  store.group.link('subject', 'sub-1', 'science');
+  assert.throws(() => store.group.link('subject', 'sub-1', 'math'));
+  assert.throws(() => store.group.link('subject', 'sub-9', 'science'));
+  assert.throws(() => store.group.link('room', 'x', 'y'), 'only known kinds');
+  assert.deepEqual(store.group.links().subject, {'sub-1': 'science'});
+});

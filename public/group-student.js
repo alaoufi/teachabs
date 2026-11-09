@@ -231,6 +231,7 @@ events.addEventListener('view', ev => {
   const next = JSON.parse(ev.data);
   queue = queue.then(() => ready).then(async () => { view = next; status(student ? 'متصل بالحصة.' : 'شاشة العرض متصلة.'); await render(); }).catch(e => status(e.message, true));
 });
+events.addEventListener('revoked', () => { events.close(); status('لم يعد دخولك لهذه الحصة متاحًا (انتهى وقتها أو تغيّر فصلك). عد إلى «حصتي الآن».', true); $('gl-board').hidden = true; if (student) voice.setMic(false).catch(() => {}); });
 events.addEventListener('removed', () => { events.close(); status('أخرجك المعلم من الحصة.', true); $('gl-board').hidden = true; if (student) voice.setMic(false).catch(() => {}); });
 events.onerror = async () => {
   status('انقطع الاتصال. تجري إعادة المحاولة…', true);

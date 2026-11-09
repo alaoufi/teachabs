@@ -6,7 +6,7 @@ import {speech, ttsReady} from './tts.mjs';
 import {initialState, teacherCommand, teacherView, publicView, voiceOf, studentHand, speechText, speakerOf, classExtras, checkAnswer, checkEvaluation, contentFor, narrationFor, segmentAudio, MAX_STUDENTS} from './group-session.mjs';
 import {UserError} from './store.mjs';
 import * as v from './group-views.mjs';
-import {BOOKS, bookOf, lessonBookPage, allLessons} from './public/book-catalog.js';
+import {BOOKS, bookOf, lessonBookPage, allLessons, lessonOf} from './public/book-catalog.js';
 import {curriculumPlan} from './public/group-plan.js';
 import {curriculumLessons} from './public/curriculum-g4.js';
 import {Readable} from 'node:stream';
@@ -25,7 +25,7 @@ const PAGE_CSP = "default-src 'self'; script-src 'self'; style-src 'self'; img-s
 
 /** options.directory: the school's administration data (school-directory.mjs), or null when the link is not set up.
  *  options.now: the clock (tests move it through a school day). */
-export function groupService(store, {directory = null, now = Date.now} = {}) {
+export function groupService(store, {directory = null, now = Date.now, recheckMs = 30_000} = {}) {
   const g = store.group, listeners = new Map();
   g.seedBooks(BOOKS, Object.fromEntries(allLessons().map(l => [l.id, lessonBookPage(l.id)]).filter(([, at]) => at)));
   // a ministry book page shown in a class: kept in memory for that class only, never saved
@@ -63,16 +63,34 @@ export function groupService(store, {directory = null, now = Date.now} = {}) {
 
   const firstName = n => String(n).trim().split(/\s+/)[0].slice(0, 30); // only the first name is shown in class
   /** The administration's answer, or the reason it refuses, as a user error. */
-  const dir = fn => { need(directory, 'الربط مع بيانات المدرسة غير مفعّل بعد.', 503); try { return fn(directory); } catch (e) { if (e instanceof DirectoryError) throw new UserError(e.message, e.status); throw e; } };
-  /** A school room admits only a student of that class, during that period (or for its open homework); checked on every
-   *  request, so a removed, suspended or moved student, or one whose period ended, is turned away even when reconnecting. */
-  function schoolAdmit(s, me) {
+  const dir = async fn => { need(directory, 'الربط مع بيانات المدرسة غير مفعّل بعد.', 503); try { return await fn(directory); } catch (e) { if (e instanceof DirectoryError) throw new UserError(e.message, e.status); throw e; } };
+  /** A school room admits only the administration's eligible student for that exact occurrence (the period and its date),
+   *  read afresh with the parent account that admitted them, on every request and every reconnection: a suspended, moved or
+   *  removed student, a changed assignment or an ended period is turned away. Only an open homework outlives the period, for
+   *  students still in that class. A browser never supplies the student, the class or the eligibility. */
+  async function schoolAdmit(s, me) {
     if (!s.period_id) return; // trial and guest rooms keep entering by code and first name
     need(directory, 'الربط مع بيانات المدرسة غير مفعّل بعد.', 503);
-    need(me?.child, 'هذه حصة مدرسية: ادخل بحساب ولي الأمر.', 403);
-    const during = directory.studentMayAttend(me.child, s.period_id, s.occurrence_date, now());
-    const homework = s.state.homework === 'open' && directory.studentEnrolledIn(me.child, s.period_id, s.occurrence_date);
-    need(during || homework, directory.studentEnrolledIn(me.child, s.period_id, s.occurrence_date) ? 'انتهى وقت هذه الحصة.' : 'هذه الحصة ليست لفصلك.', 403);
+    need(me?.parent && me?.student_ref, 'هذه حصة مدرسية: ادخل من «حصتي الآن» بحساب ولي الأمر.', 403);
+    try {
+      const e = await directory.studentEntry(me.parent, me.student_ref, s.period_id, s.occurrence_date, now());
+      need(e.studentId === me.student_ref && e.periodId === s.period_id && e.classId === s.class_id, 'هذه الحصة ليست لفصلك.', 403);
+    } catch (e) {
+      if (!(e instanceof DirectoryError)) throw e;
+      if (s.state.homework === 'open' && await directory.studentInClass(me.parent, me.student_ref, s.class_id, now())) return;
+      throw new UserError(e.status === 403 && await directory.studentInClass(me.parent, me.student_ref, s.class_id, now()) ? 'انتهى وقت هذه الحصة.' : e.message, e.status);
+    }
+  }
+  /** A school room is led by the teacher the administration assigns to the period now; checked on every teacher request. */
+  async function schoolTeacher(s, teacher) {
+    if (!s.period_id) return;
+    need(directory && await directory.teacherAssigned(teacher.id, s.period_id, s.occurrence_date), 'لم تعد هذه الحصة مسندة إليك.', 403);
+  }
+  /** A prep must be for the period's subject and its class's grade; its curriculum lesson too (never by matching names). */
+  function planFits(plan, o) {
+    need(o.subject && plan.subject === o.subject, 'هذا التحضير لمادة أخرى غير مادة الحصة.', 409);
+    if (o.grade) need(plan.grade === o.grade, 'هذا التحضير لصف آخر غير صف الفصل.', 409);
+    if (plan.lesson) { const l = lessonOf(plan.lesson) || curriculumLessons().find(x => x.id === plan.lesson); need(l && l.subject === o.subject && (!o.grade || (l.grade ?? 4) === o.grade), 'درس التحضير لا يتبع مادة الحصة أو صفها.', 409); }
   }
   /** The ready lesson of a curriculum lesson: other grades as 'ready-<id>', grade 4 through its curriculum entry. */
   const readyTemplate = id => LESSON_TEMPLATES['ready-' + id] || LESSON_TEMPLATES[curriculumLessons().find(l => l.id === id)?.template] || null;
@@ -110,6 +128,15 @@ export function groupService(store, {directory = null, now = Date.now} = {}) {
     res.write('event: view\ndata: ' + JSON.stringify({...(kind === 'teacher' ? teacherView(d.s.state, d.s.plan, d.students, d.responses) : publicView(d.s.state, d.s.plan, kind === 'student' ? id : null, d.responses, d.names)), ...(d.s.state.live ? classExtras(d.s.state, d.s.plan) : {}), natural: ttsReady()}) + '\n\n');
   }
 
+  /** A school student's open stream is re-checked with the administration; when the student is no longer admitted (moved,
+   *  suspended, the assignment removed, the period over) the stream is closed and the page asks them to re-enter. */
+  function watchAdmission(res, code, me) {
+    const timer = setInterval(async () => {
+      const s = g.session(code); if (!s) return;
+      try { await schoolAdmit(s, me); } catch { clearInterval(timer); try { res.write('event: revoked\ndata: {}\n\n'); res.end(); } catch {} }
+    }, recheckMs); timer.unref?.();
+    res.on('close', () => clearInterval(timer));
+  }
   // ---- natural voice: the narrator's text as MP3 in the class's chosen voice (404 → the page uses the device's voice) ----
   async function sendSpeech(res, text, speaker) {
     if (!text || !ttsReady()) throw new UserError('لا يوجد صوت طبيعي لهذا الشرح.', 404);
@@ -173,7 +200,7 @@ export function groupService(store, {directory = null, now = Date.now} = {}) {
         need(CODE.test(code), 'تأكد من رمز الحصة المكوّن من ستة أحرف وأرقام.');
         need(name.length >= 2 && name.length <= 30, 'اكتب اسمك الأول (من حرفين إلى ٣٠ حرفًا).');
         const s = g.session(code); need(s && (s.state.live || s.state.homework === 'open'), 'الحصة غير متاحة أو انتهت.', 404);
-        schoolAdmit(s, {child}); // a school room: only an enrolled student of that class, during the period
+        need(!s.period_id, 'هذه حصة مدرسية: ادخلها من «حصتي الآن» بحساب ولي الأمر.', 403); // never by code, name or a local child alone
         const joined = g.join(code, name, MAX_STUDENTS, child); need(joined, 'اكتمل عدد الطلاب في هذه الحصة.', 409);
         res.setHeader('Set-Cookie', `gl_${code}=${joined.token}; Path=/class/${code}; Max-Age=1209600; HttpOnly; SameSite=Lax${base.startsWith('https:') ? '; Secure' : ''}`);
         broadcast(code); return redirect('/class/' + code);
@@ -194,21 +221,23 @@ export function groupService(store, {directory = null, now = Date.now} = {}) {
         if (!u) return redirect('/login');
         need(u.role === 'parent', 'هذه الصفحة لحساب ولي الأمر.', 403);
         if (!directory) return page(res, html, 'حصتي الآن', v.schoolPage({off: true}));
-        const kids = dir(d => d.childrenOf(u.id, now()));
+        const kids = await dir(d => d.childrenOf(u.id, now()));
         if (method === 'GET') {
           const pick = String(url.searchParams.get('student') || ''), chosen = kids.find(k => k.studentId === pick) || (kids.length === 1 ? kids[0] : null);
-          const subjects = chosen ? dir(d => d.studentSubjects(u.id, chosen.studentId, now())) : [];
+          const subjects = chosen ? await dir(d => d.studentSubjects(u.id, chosen.studentId, now())) : [];
           return page(res, html, 'حصتي الآن', v.schoolPage({kids, chosen, subjects}));
         }
         need(method === 'POST', 'إجراء غير متاح.', 405);
         const data = await fields(req), studentId = String(data.student || ''), subject = String(data.subject || '');
-        const r = dir(d => d.studentNow(u.id, studentId, subject, now())), chosen = kids.find(k => k.studentId === r.student.id);
-        const subjects = dir(d => d.studentSubjects(u.id, r.student.id, now()));
+        const r = await dir(d => d.studentNow(u.id, studentId, subject, now())), chosen = kids.find(k => k.studentId === r.student.id) || kids.find(k => k.studentId === studentId) || kids[0];
+        const subjects = await dir(d => d.studentSubjects(u.id, studentId || r.student.id, now()));
         if (!r.now) return page(res, html, 'حصتي الآن', v.schoolPage({kids, chosen, subjects, subject, next: r.next}));
         const room = g.occurrenceRoom(r.now.periodId, r.now.date);
         if (!room || !room.live) return page(res, html, 'حصتي الآن', v.schoolPage({kids, chosen, subjects, subject, waiting: r.now}));
-        const s = g.session(room.code); schoolAdmit(s, {child: r.student.id});
-        const joined = g.join(room.code, r.student.firstName, MAX_STUDENTS, r.student.id); need(joined, 'اكتمل عدد الطلاب في هذه الحصة.', 409);
+        const s = g.session(room.code), e = await dir(d => d.studentEntry(u.id, studentId || r.student.id, s.period_id, s.occurrence_date, now()));
+        need(e.classId === s.class_id, 'هذه الحصة ليست لفصلك.', 403);
+        const name = firstName(chosen?.firstName || r.student.firstName || 'طالب');
+        const joined = g.join(room.code, name, MAX_STUDENTS, null, u.id, e.studentId); need(joined, 'اكتمل عدد الطلاب في هذه الحصة.', 409);
         setStudentCookie(res, base, room.code, joined.token); broadcast(room.code); return redirect('/class/' + room.code);
       }
       const cls = path.match(/^\/class\/([A-Z0-9]{6})(?:\/(events|content|narration|answer|rtc|hand|speech))?$/);
@@ -216,9 +245,9 @@ export function groupService(store, {directory = null, now = Date.now} = {}) {
         const [, code, action] = cls; need(CODE.test(code), 'رمز الحصة غير صالح.', 404);
         const s = g.session(code), me = s && g.student(code, studentToken(req, code));
         if (!me) { if (!action && method === 'GET') return redirect('/join?code=' + code); throw new UserError('انضم إلى الحصة أولًا.', 401); }
-        schoolAdmit(s, me);
+        await schoolAdmit(s, me);
         if (!action && method === 'GET') return page(res, html, 'الحصة', v.studentPage(code, me.name, s.plan.title), true); // the student may open the microphone
-        if (action === 'events' && method === 'GET') return subscribe(req, res, code, 'student', me.id);
+        if (action === 'events' && method === 'GET') { subscribe(req, res, code, 'student', me.id); if (s.period_id) watchAdmission(res, code, me); return; }
         if (action === 'rtc' && method === 'POST') {
           const m = await rtcMessage(req, base);
           need(s.state.live, 'انتهت الحصة.', 409);
@@ -300,15 +329,15 @@ export function groupService(store, {directory = null, now = Date.now} = {}) {
       if (path === '/teach/today') {
         need(method === 'GET', 'إجراء غير متاح.', 405);
         if (!directory) return page(res, html, 'حصص اليوم', v.todayPage({off: true}));
-        const list = dir(d => d.teacherToday(teacher.id, now())).map(o => ({...o, room: g.occurrenceRoom(o.periodId, o.date)}));
+        const list = (await dir(d => d.teacherToday(teacher.id, now()))).map(o => ({...o, room: g.occurrenceRoom(o.periodId, o.date)}));
         return page(res, html, 'حصص اليوم', v.todayPage({list, plans: g.plans(teacher.id), at: now()}));
       }
       if (path === '/teach/today/start') {
         need(method === 'POST', 'إجراء غير متاح.', 405);
         const data = await fields(req), periodId = String(data.period || ''), {date} = riyadh(now());
-        const o = dir(d => d.teacherOccurrence(teacher.id, periodId, date, now()));
+        const o = await dir(d => d.teacherOccurrence(teacher.id, periodId, date, now()));
         const had = g.occurrenceRoom(o.periodId, o.date);
-        if (had) { need(had.teacher === teacher.id, 'هذه الحصة بدأها معلم آخر.', 409); return redirect('/teach/live/' + had.code); }
+        if (had) { if (had.teacher !== teacher.id) g.reassignRoom(had.code, teacher.id); return redirect('/teach/live/' + had.code); } // the room follows the administration's current assignment
         // the prep: a saved plan of this teacher, or the ready lesson of the period's lesson, or that lesson's book page
         const choice = String(data.plan || '');
         let plan;
@@ -316,7 +345,7 @@ export function groupService(store, {directory = null, now = Date.now} = {}) {
         else if (choice.startsWith('ready:') && readyTemplate(choice.slice(6))) plan = readyTemplate(choice.slice(6)).plan();
         else if (choice.startsWith('lesson:')) { plan = curriculumPlan(choice.slice(7)); need(plan, 'الدرس غير موجود في المنهج.', 404); }
         else throw new UserError('اختر تحضير الحصة.');
-        const clean = classPlan(validatePlan(plan));
+        const clean = classPlan(validatePlan(plan)); planFits(clean, o);
         const code = g.startSession(teacher.id, clean, initialState(clean), {periodId: o.periodId, date: o.date, classId: o.classId});
         return redirect('/teach/live/' + code);
       }
@@ -364,7 +393,7 @@ export function groupService(store, {directory = null, now = Date.now} = {}) {
       }
       const lm = path.match(/^\/teach\/live\/([A-Z0-9]{6})(?:\/(events|plan|command|evaluate|remove|display|display-events|rtc|page-image|book-page|speech|laser))?$/);
       if (lm) {
-        const [, code, action] = lm, s = ownSession(teacher, code);
+        const [, code, action] = lm, s = ownSession(teacher, code); await schoolTeacher(s, teacher);
         if (!action && method === 'GET') return page(res, html, 'إدارة الحصة', v.teacherPage(code, s.plan.title, base), true, true); // the teacher's microphone and camera
         if (action === 'display' && method === 'GET') return page(res, html, 'شاشة العرض', v.displayPage(code, s.plan.title, base));
         if (action === 'plan' && method === 'GET') return send(res, {...withBook(s.plan, code), booksShown: relayOn()}); // booksShown: the teacher's «📖 الكتاب» button

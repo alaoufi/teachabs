@@ -18,6 +18,13 @@ export function createGroupStore({db, one, all, run, transaction}) {
   // the occurrence date), never to the period alone, since a period repeats every week. IDs are the administration's TEXT ids.
   for (const col of ['period_id TEXT', 'occurrence_date TEXT', 'class_id TEXT']) try { db.exec('ALTER TABLE group_sessions ADD COLUMN ' + col); } catch {}
   db.exec('CREATE UNIQUE INDEX IF NOT EXISTS group_session_occurrence ON group_sessions(period_id,occurrence_date) WHERE period_id IS NOT NULL');
+  // stage 076: the parent account that admitted a school student, so every request re-checks with the administration
+  try { db.exec('ALTER TABLE group_students ADD COLUMN parent TEXT'); } catch {}
+  try { db.exec('ALTER TABLE group_students ADD COLUMN student_ref TEXT'); } catch {} // the administration's students.id (TEXT, no local copy)
+  // stage 076: explicit links between the classroom's own identifiers and the administration's (never by matching names):
+  // kind 'user' (a classroom account ↔ the administration's users.id), 'subject' (subjects.id ↔ science|math|…),
+  // 'lesson' (lessons.id ↔ a curriculum lesson such as p5m07), 'grade' (education_grades.id ↔ 1…9). One-to-one each way.
+  db.exec(`CREATE TABLE IF NOT EXISTS classroom_links(kind TEXT NOT NULL CHECK(kind IN('user','subject','lesson','grade')),admin_id TEXT NOT NULL,code TEXT NOT NULL,PRIMARY KEY(kind,admin_id),UNIQUE(kind,code))`);
   // «مكتبة الكتب المدرسية»: book metadata and source links only (no book files); the printed page of each lesson
   db.exec(`CREATE TABLE IF NOT EXISTS school_books(id TEXT PRIMARY KEY,track TEXT NOT NULL,stage TEXT NOT NULL,grade INTEGER NOT NULL,term INTEGER NOT NULL,subject TEXT NOT NULL,title TEXT NOT NULL,edition TEXT NOT NULL,pages INTEGER NOT NULL,page_offset INTEGER NOT NULL,offset_checked INTEGER NOT NULL,source TEXT NOT NULL,pdf TEXT NOT NULL,checked TEXT NOT NULL,stored INTEGER NOT NULL DEFAULT 0 CHECK(stored=0));
   CREATE TABLE IF NOT EXISTS book_lessons(lesson TEXT PRIMARY KEY,book TEXT NOT NULL REFERENCES school_books(id),page INTEGER NOT NULL);`);
@@ -65,6 +72,11 @@ export function createGroupStore({db, one, all, run, transaction}) {
         return code;
       });
     },
+    /** A link between a classroom identifier and the administration's (one-to-one; a second link for either side fails). */
+    link: (kind, adminId, code) => run('INSERT INTO classroom_links(kind,admin_id,code) VALUES(?,?,?)', kind, adminId, code),
+    links: () => { const out = {user: {}, subject: {}, lesson: {}, grade: {}}; for (const r of all('SELECT kind,admin_id,code FROM classroom_links')) out[r.kind][r.admin_id] = r.code; return out; },
+    /** The room passes to the teacher the administration now assigns to the period (the room stays the occurrence's). */
+    reassignRoom: (code, teacher) => run('UPDATE group_sessions SET teacher=?,updated=? WHERE code=?', teacher, Date.now(), code).changes === 1,
     /** The room of a scheduled occurrence, if its teacher opened it. */
     occurrenceRoom: (periodId, date) => one('SELECT code,teacher,json_extract(state,\'$.live\') live FROM group_sessions WHERE period_id=? AND occurrence_date=?', periodId, date) || null,
     session: code => parse(one('SELECT * FROM group_sessions WHERE code=?', code)),
@@ -73,19 +85,19 @@ export function createGroupStore({db, one, all, run, transaction}) {
     latestTrialLive: since => one("SELECT s.code FROM group_sessions s JOIN users u ON u.id=s.teacher WHERE u.scope<>'' AND json_extract(s.state,'$.live')=1 AND s.updated>? ORDER BY s.updated DESC LIMIT 1", since)?.code || null,
     saveSessionPlan: (code, plan) => run('UPDATE group_sessions SET plan=?,updated=? WHERE code=?', JSON.stringify(plan), Date.now(), code),
     saveState: (code, state) => run('UPDATE group_sessions SET state=?,updated=? WHERE code=?', JSON.stringify(state), Date.now(), code),
-    join(code, name, max, child = null) {
+    join(code, name, max, child = null, parent = null, studentRef = null) {
       return transaction(() => {
         // the same child entering again (another device, a new tab) keeps their place and answers
-        const again = child && one('SELECT id FROM group_students WHERE code=? AND child=? AND removed=0', code, child);
-        if (again) { const token = randomBytes(32).toString('hex'); run('UPDATE group_students SET token=? WHERE id=?', sha(token), again.id); return {id: again.id, token}; }
+        const again = (child && one('SELECT id FROM group_students WHERE code=? AND child=? AND removed=0', code, child)) || (studentRef && one('SELECT id FROM group_students WHERE code=? AND student_ref=? AND removed=0', code, studentRef));
+        if (again) { const token = randomBytes(32).toString('hex'); run('UPDATE group_students SET token=?,parent=coalesce(?,parent) WHERE id=?', sha(token), parent, again.id); return {id: again.id, token}; }
         const count = one('SELECT COUNT(*) n FROM group_students WHERE code=? AND removed=0', code).n;
         if (count >= max) return null;
         const id = randomUUID(), token = randomBytes(32).toString('hex');
-        run('INSERT INTO group_students(id,code,name,token,joined,removed,child) VALUES(?,?,?,?,?,0,?)', id, code, name, sha(token), Date.now(), child);
+        run('INSERT INTO group_students(id,code,name,token,joined,removed,child,parent,student_ref) VALUES(?,?,?,?,?,0,?,?,?)', id, code, name, sha(token), Date.now(), child, parent, studentRef);
         return {id, token};
       });
     },
-    student: (code, token) => typeof token === 'string' && /^[a-f0-9]{64}$/.test(token) ? one('SELECT id,name,child FROM group_students WHERE code=? AND token=? AND removed=0', code, sha(token)) : undefined,
+    student: (code, token) => typeof token === 'string' && /^[a-f0-9]{64}$/.test(token) ? one('SELECT id,name,child,parent,student_ref FROM group_students WHERE code=? AND token=? AND removed=0', code, sha(token)) : undefined,
     students: code => all('SELECT id,name FROM group_students WHERE code=? AND removed=0 ORDER BY joined', code),
     removeStudent: (code, id) => run('UPDATE group_students SET removed=1 WHERE code=? AND id=?', code, id).changes === 1,
     respond: (code, student, step, item, kind, data) => run('INSERT INTO group_responses VALUES(?,?,?,?,?,?,?) ON CONFLICT(code,student,step,item,kind) DO UPDATE SET data=excluded.data,updated=excluded.updated', code, student, step, item, kind, JSON.stringify(data), Date.now()),
