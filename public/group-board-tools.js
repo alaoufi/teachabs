@@ -4,7 +4,7 @@ import {TOOLS, TEXT_SIZES, BOARD, clampCamera, zoomAround, LIMITS, shapePoints} 
 import {inkNode, applyCamera, laserTrail} from './group-view.js';
 import {settle} from './motion.js';
 
-export function attachBoardTools({mode, send = () => {}, items = () => [], canInk = () => false, onStatus = () => {}, onNext, onPrev, onUndo, onLaser = () => {}, onLiveInk = () => {}}) {
+export function attachBoardTools({mode, enabled = () => true, send = () => {}, items = () => [], canInk = () => false, onStatus = () => {}, onNext, onPrev, onUndo, onLaser = () => {}, onLiveInk = () => {}}) {
   const $ = id => document.getElementById(id);
   const board = $('gl-board'), camera = $('gl-camera'), ink = $('gl-ink'), teacher = mode === 'teacher';
   const state = {tool: 'select', color: '#173e34', size: 'm', camera: {z: 1, x: 0, y: 0}, remote: {z: 1, x: 0, y: 0}, following: true, lastLocal: 0, pendingText: null};
@@ -18,6 +18,7 @@ export function attachBoardTools({mode, send = () => {}, items = () => [], canIn
 
   // ---- camera ----
   function setCamera(c, {animate = false, share = true} = {}) {
+    if (share && !enabled('zoom')) return;
     state.camera = clampCamera(c);
     applyCamera(camera, state.camera, {animate});
     board.classList.toggle('is-zoomed', state.camera.z > 1);
@@ -58,7 +59,7 @@ export function attachBoardTools({mode, send = () => {}, items = () => [], canIn
 
   // ---- tool selection ----
   function setTool(tool) {
-    if (!teacher) return;
+    if (!teacher || !enabled(tool==='laser'?'laser':tool==='hand'?'zoom':'drawing')) return;
     state.tool = tool; state.pendingText = tool === 'text' ? state.pendingText : null;
     for (const b of document.querySelectorAll('.gl-tool')) b.setAttribute('aria-pressed', String(b.dataset.tool === tool));
     board.dataset.tool = tool;
@@ -201,11 +202,12 @@ export function attachBoardTools({mode, send = () => {}, items = () => [], canIn
   const queueDraw = () => { if (!frame) frame = requestAnimationFrame(drawLive); };
   // ---- pointer handling ----
   board.addEventListener('pointerdown', e => {
-    if (e.target.closest('.gl-zoom, .gl-textbox')) return;
+    if (e.target.closest('.gl-zoom, .gl-textbox') || !enabled('board')) return;
     pointers.set(e.pointerId, {x: e.clientX, y: e.clientY});
-    if (pointers.size === 2) { startPinch(); return; }
+    if (pointers.size === 2) { if(enabled('zoom'))startPinch(); return; }
     if (pointers.size > 2) return;
     const point = toBoard(e), tool = spaceDown || e.button === 1 ? 'hand' : (teacher ? state.tool : 'hand');
+    if(!enabled(tool==='laser'?'laser':tool==='hand'?'zoom':'drawing')) return;
     const inking = teacher && canInk();
     if (!teacher && state.camera.z <= 1) return; // let the page scroll when not zoomed
     board.setPointerCapture(e.pointerId);

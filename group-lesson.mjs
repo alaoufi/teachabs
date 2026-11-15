@@ -1,3 +1,4 @@
+import {classroomState,checkClassroomCommand,stepEnabled} from './classroom-policy.mjs';
 // Group lesson service: planner, live teacher console, display screen and student seats.
 import {TOOLS, colorAllowed} from './public/group-ink.js';
 import {validatePlan, defaultPlan, PlanError, LIMITS, LESSON_TEMPLATES, classPlan} from './public/group-plan.js';
@@ -27,6 +28,16 @@ const PAGE_CSP = "default-src 'self'; script-src 'self'; style-src 'self'; img-s
  *  options.now: the clock (tests move it through a school day). */
 export function groupService(store, {directory = null, now = Date.now, recheckMs = 30_000} = {}) {
   const g = store.group, listeners = new Map();
+  const featuresFor = s => store.admin.classroomFeaturesForTeacher(s.teacher);
+  const feature = (s,key) => need(featuresFor(s)[key] !== false, 'أوقفت الإدارة هذا المكوّن.', 403);
+  const effective = s => ({...s,state:classroomState(s.state,s.plan,featuresFor(s))});
+  function allowedStep(s,id) { need(stepEnabled(featuresFor(s),s.plan.steps.find(x=>x.id===id)), 'أخفت الإدارة هذه الفقرة.', 403); }
+  function viewFor(d,kind,id) {
+    const features=featuresFor(d.s), state=classroomState(d.s.state,d.s.plan,features);
+    if(kind==='display'&&!features.display) state.shown=false;
+    const data={...(kind==='teacher'?teacherView(state,d.s.plan,d.students,d.responses):publicView(state,d.s.plan,kind==='student'?id:null,d.responses,d.names)),...(state.live?classExtras(state,d.s.plan):{}),natural:ttsReady(),features};
+    return data;
+  }
   g.seedBooks(BOOKS, Object.fromEntries(allLessons().map(l => [l.id, lessonBookPage(l.id)]).filter(([, at]) => at)));
   // a ministry book page shown in a class: kept in memory for that class only, never saved
   const bookPages = new Map();
@@ -114,7 +125,7 @@ export function groupService(store, {directory = null, now = Date.now, recheckMs
     const ids = new Set(d.students.map(x => x.id));
     for (const l of set) {
       if (l.kind === 'student' && !ids.has(l.id)) { l.res.write('event: removed\ndata: {}\n\n'); l.res.end(); set.delete(l); continue; }
-      const data = {...(l.kind === 'teacher' ? teacherView(d.s.state, d.s.plan, d.students, d.responses) : publicView(d.s.state, d.s.plan, l.kind === 'student' ? l.id : null, d.responses, d.names)), ...(d.s.state.live ? classExtras(d.s.state, d.s.plan) : {}), natural: ttsReady()}; // natural: the server has the man/woman voice
+      const data = viewFor(d,l.kind,l.id);
       l.res.write('event: view\ndata: ' + JSON.stringify(data) + '\n\n');
     }
   }
@@ -125,7 +136,7 @@ export function groupService(store, {directory = null, now = Date.now, recheckMs
     const timer = setInterval(() => res.write(': heartbeat\n\n'), 15000); timer.unref();
     res.on('close', () => { clearInterval(timer); listeners.get(code)?.delete(entry); });
     const d = views(code);
-    res.write('event: view\ndata: ' + JSON.stringify({...(kind === 'teacher' ? teacherView(d.s.state, d.s.plan, d.students, d.responses) : publicView(d.s.state, d.s.plan, kind === 'student' ? id : null, d.responses, d.names)), ...(d.s.state.live ? classExtras(d.s.state, d.s.plan) : {}), natural: ttsReady()}) + '\n\n');
+    res.write('event: view\ndata: ' + JSON.stringify(viewFor(d,kind,id)) + '\n\n');
   }
 
   /** A school student's open stream is re-checked with the administration; when the student is no longer admitted (moved,
@@ -173,6 +184,7 @@ export function groupService(store, {directory = null, now = Date.now, recheckMs
   }
 
   return {
+    refreshClassroom(scope) { for(const code of listeners.keys()) { const s=g.session(code); if(s && store.user(s.teacher).scope===scope) broadcast(code); } },
     matches: path => path === '/join' || path === '/start/student' || path === '/school' || path.startsWith('/school/') || path.startsWith('/teach/') || path === '/teach' || path.startsWith('/class/'),
     async handle(ctx) {
       const {req, res, url} = ctx, path = url.pathname;
@@ -243,7 +255,7 @@ export function groupService(store, {directory = null, now = Date.now, recheckMs
       const cls = path.match(/^\/class\/([A-Z0-9]{6})(?:\/(events|content|narration|answer|rtc|hand|speech))?$/);
       if (cls) {
         const [, code, action] = cls; need(CODE.test(code), 'رمز الحصة غير صالح.', 404);
-        const s = g.session(code), me = s && g.student(code, studentToken(req, code));
+        const raw = g.session(code), s = raw && effective(raw), me = s && g.student(code, studentToken(req, code));
         if (!me) { if (!action && method === 'GET') return redirect('/join?code=' + code); throw new UserError('انضم إلى الحصة أولًا.', 401); }
         await schoolAdmit(s, me);
         if (!action && method === 'GET') return page(res, html, 'الحصة', v.studentPage(code, me.name, s.plan.title), true); // the student may open the microphone
@@ -255,7 +267,7 @@ export function groupService(store, {directory = null, now = Date.now, recheckMs
           relay(code, 'teacher', {from: me.id, name: me.name, type: m.type, data: m.data, cid: m.cid});
           return send(res, {ok: true});
         }
-        if (action === 'speech' && method === 'GET') { // only what is shown in class now
+        if (action === 'speech' && method === 'GET') { feature(s,'narration'); // only what is shown in class now
           const step = url.searchParams.get('step') || '', seg = url.searchParams.get('segment');
           const n = seg === null ? narrationFor(s.state, s.plan, step) : segmentAudio(s.state, s.plan, step, Number(seg));
           return sendSpeech(res, n.mode === 'speech' ? n.text : null, speakerOf(s.state));
@@ -263,16 +275,18 @@ export function groupService(store, {directory = null, now = Date.now, recheckMs
         if (action === 'hand' && method === 'POST') { // ✋ raise or lower the hand
           const body = await json(req, base, 256);
           need(s.state.live, 'انتهت الحصة.', 409);
-          g.saveState(code, studentHand(s.state, me.id, body.up)); broadcast(code);
+          if(body.up) feature(s,'hands');
+          g.saveState(code, studentHand(raw.state, me.id, body.up)); broadcast(code);
           return send(res, {ok: true});
         }
-        if (action === 'content' && method === 'GET') return send(res, contentFor(s.state, withBook(s.plan, code), url.searchParams.get('step') || ''));
-        if (action === 'narration' && method === 'GET') {
+        if (action === 'content' && method === 'GET') { allowedStep(s,url.searchParams.get('step')); return send(res, contentFor(s.state, withBook(s.plan, code), url.searchParams.get('step') || '')); }
+        if (action === 'narration' && method === 'GET') { feature(s,'narration'); allowedStep(s,url.searchParams.get('step'));
           const segment = url.searchParams.get('segment');
           return send(res, segment === null ? narrationFor(s.state, s.plan, url.searchParams.get('step') || '') : segmentAudio(s.state, s.plan, url.searchParams.get('step') || '', Number(segment)));
         }
         if (action === 'answer' && method === 'POST') {
           const body = await json(req, base, 8192), kind = body.kind === 'homework' ? 'homework' : 'answer';
+          feature(s,kind === 'homework' ? 'homework' : 'questions'); allowedStep(s,body.step);
           const a = checkAnswer(s.state, s.plan, body, kind);
           g.respond(code, me.id, a.step, a.question, kind, a.data); broadcast(code);
           return send(res, {ok: true});
@@ -395,9 +409,9 @@ export function groupService(store, {directory = null, now = Date.now, recheckMs
       if (lm) {
         const [, code, action] = lm, s = ownSession(teacher, code); await schoolTeacher(s, teacher);
         if (!action && method === 'GET') return page(res, html, 'إدارة الحصة', v.teacherPage(code, s.plan.title, base), true, true); // the teacher's microphone and camera
-        if (action === 'display' && method === 'GET') return page(res, html, 'شاشة العرض', v.displayPage(code, s.plan.title, base));
+        if (action === 'display' && method === 'GET') { feature(s,'display'); return page(res, html, 'شاشة العرض', v.displayPage(code, s.plan.title, base)); }
         if (action === 'plan' && method === 'GET') return send(res, {...withBook(s.plan, code), booksShown: relayOn()}); // booksShown: the teacher's «📖 الكتاب» button
-        if (action === 'book-page' && method === 'POST') { // a page of the ministry book, rendered on the teacher's device: this class only, in memory
+        if (action === 'book-page' && method === 'POST') { feature(s,'page'); feature(s,'board'); // a page of the ministry book, rendered on the teacher's device: this class only, in memory
           const body = await json(req, base, 1_000_000), step = s.plan.steps.find(x => x.id === body.step && x.type === 'page'), book = bookOf(body.book);
           need(relayOn(), RELAY_OFF, 403); need(step, 'خطوة المنهج غير موجودة.', 404); need(book && Number.isInteger(body.page) && body.page >= 1 && body.page <= book.pages, 'صفحة غير صالحة.'); need(validImage(body.image), 'صورة الصفحة غير صالحة.');
           bookPages.set(code, {step: step.id, book: book.id, page: body.page, image: body.image});
@@ -405,7 +419,7 @@ export function groupService(store, {directory = null, now = Date.now, recheckMs
           return send(res, {ok: true});
         }
         if (action === 'laser' && method === 'POST') {
-          const b = await json(req, base, 8192), pts = Array.isArray(b.p) ? b.p : [];
+          const b = await json(req, base, 8192); feature(s,b.ink?'drawing':'laser'); feature(s,'board'); allowedStep(s,s.plan.steps[s.state.index].id); const pts = Array.isArray(b.p) ? b.p : [];
           need(pts.length <= 120 && pts.every(p => Array.isArray(p) && p.length === 2 && p.every(Number.isFinite) && p[0] >= 0 && p[0] <= 1000 && p[1] >= 0 && p[1] <= 600), 'مسار غير صالح.');
           const p = pts.map(([x, y]) => [Math.round(x * 10) / 10, Math.round(y * 10) / 10]);
           // live writing: students see the line grow while the teacher writes; the finished line then arrives as a stroke
@@ -416,14 +430,14 @@ export function groupService(store, {directory = null, now = Date.now, recheckMs
           }
           laser(code, {p: p.map(([x, y]) => [Math.round(x), Math.round(y)]), start: b.start === true}); return send(res, {ok: true});
         }
-        if (action === 'speech' && method === 'GET') { // the teacher (and the display screen) may hear any step of their lesson
+        if (action === 'speech' && method === 'GET') { feature(s,'narration'); // the teacher (and the display screen) may hear any step of their lesson
           const seg = url.searchParams.get('segment'), sample = url.searchParams.get('sample');
           const speaker = ['male', 'female'].includes(url.searchParams.get('v')) && sample ? url.searchParams.get('v') : speakerOf(s.state);
           return sendSpeech(res, sample ? 'مرحبًا، أنا صوت المتحدث في حصتكم. أشرح لكم الدرس خطوة بخطوة.' : speechText(s.plan, url.searchParams.get('step') || '', seg === null ? null : Number(seg)), speaker);
         }
         if (action === 'events' && method === 'GET') return subscribe(req, res, code, 'teacher', teacher.id);
-        if (action === 'display-events' && method === 'GET') return subscribe(req, res, code, 'display', null);
-        if (action === 'page-image' && method === 'POST') { // the teacher photographs the book page during the class; it stays in this class only
+        if (action === 'display-events' && method === 'GET') { feature(s,'display'); return subscribe(req, res, code, 'display', null); }
+        if (action === 'page-image' && method === 'POST') { feature(s,'page'); feature(s,'board'); // the teacher photographs the book page during the class; it stays in this class only
           const body = await json(req, base, 1_000_000);
           const step = s.plan.steps.find(x => x.id === body.step && x.type === 'page');
           need(step, 'خطوة المنهج غير موجودة.', 404);
@@ -440,10 +454,10 @@ export function groupService(store, {directory = null, now = Date.now, recheckMs
         }
         if (action === 'command' && method === 'POST') {
           const body = await json(req, base, 65536);
-          const next = teacherCommand(s.state, s.plan, body); g.saveState(code, next); broadcast(code);
+          const next = teacherCommand(s.state, s.plan, checkClassroomCommand(featuresFor(s),s.state,s.plan,body,need)); g.saveState(code, next); broadcast(code);
           return send(res, {ok: true, seq: next.seq});
         }
-        if (action === 'evaluate' && method === 'POST') {
+        if (action === 'evaluate' && method === 'POST') { feature(s,'evaluation');
           const body = await json(req, base, 8192), e = checkEvaluation(s.plan, body, g.students(code).map(x => x.id));
           g.respond(code, body.student, e.step, 'evaluation', 'evaluation', e.data); broadcast(code); return send(res, {ok: true});
         }

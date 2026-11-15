@@ -198,17 +198,17 @@ export function teacherPage(code, title, base) {
       ${fly('sizes', '<i class="gl-current-size" data-dot="m"></i>', 'الحجم', Object.entries(SIZE_NAMES).map(([k, n]) => `<button type="button" class="gl-size" data-size="${k}" aria-pressed="${k === 'm' ? 'true' : 'false'}" title="حجم ${n}"><i data-dot="${k}"></i><span>${n}</span></button>`).join(''))}</div>
      <div class="gl-toolgroup" role="group" aria-label="إجراءات"><button type="button" id="gl-undo" title="تراجع (Ctrl+Z)">↶ تراجع</button>
       ${fly('more', '⋯', 'المزيد', '<button type="button" id="gl-library" title="اختر نصًا توضيحيًا وعدّله ثم ضعه على السبورة">📚 نصوص</button><button type="button" id="gl-clear" title="مسح كتابة الخطوة">🗑 مسح</button>'
-        + '<b class="gl-fly-head">⏱ مؤقت يراه الطلاب</b><button type="button" class="gl-timer-btn" data-sec="60">١ د</button><button type="button" class="gl-timer-btn" data-sec="180">٣ د</button><button type="button" class="gl-timer-btn" data-sec="300">٥ د</button><button type="button" class="gl-timer-btn" data-sec="0">⏹ إيقاف</button>'
-        + '<b class="gl-fly-head">🎭 ستارة على السبورة</b><button type="button" class="gl-curtain-btn" data-level="100">إسدال</button><button type="button" class="gl-curtain-btn" data-level="-25">كشف ربع</button><button type="button" class="gl-curtain-btn" data-level="0">رفع</button>'
-        + '<b class="gl-fly-head">أدوات القياس</b><button type="button" class="gl-stamp-btn" data-stamp="ruler">📏 مسطرة</button><button type="button" class="gl-stamp-btn" data-stamp="protractor">📐 منقلة</button>')}</div>
+        + '<b class="gl-fly-head gl-timer-heading">⏱ مؤقت يراه الطلاب</b><button type="button" class="gl-timer-btn" data-sec="60">١ د</button><button type="button" class="gl-timer-btn" data-sec="180">٣ د</button><button type="button" class="gl-timer-btn" data-sec="300">٥ د</button><button type="button" class="gl-timer-btn" data-sec="0">⏹ إيقاف</button>'
+        + '<b class="gl-fly-head gl-curtain-heading">🎭 ستارة على السبورة</b><button type="button" class="gl-curtain-btn" data-level="100">إسدال</button><button type="button" class="gl-curtain-btn" data-level="-25">كشف ربع</button><button type="button" class="gl-curtain-btn" data-level="0">رفع</button>'
+        + '<b class="gl-fly-head gl-tools-heading">أدوات القياس</b><button type="button" class="gl-stamp-btn" data-stamp="ruler">📏 مسطرة</button><button type="button" class="gl-stamp-btn" data-stamp="protractor">📐 منقلة</button>')}</div>
     </div>`;
-  return `${css}<section class="gl-wrap gl-teacher gl-present" dir="rtl" id="gl-app" data-code="${e(code)}" data-role="teacher">
+  return `${css}<link rel="stylesheet" href="/classroom-features.css"><section class="gl-wrap gl-teacher gl-present" dir="rtl" id="gl-app" data-code="${e(code)}" data-role="teacher">
   <header class="gl-bar gl-bar-top">
    <div class="gl-bar-title"><h1>${e(title)}</h1><button type="button" class="gl-code-chip" id="gl-code" data-join="${e(join)}" title="انسخ رابط الطلاب: ${e(join)}">الرمز <b class="gl-code">${e(code)}</b></button><span id="gl-status" class="gl-status-dot" role="status" aria-live="polite">جارٍ الاتصال…</span></div>
    <div class="gl-bar-actions"><a class="outline gl-mini" href="/teach/live/${e(code)}/display" target="_blank" rel="noopener" title="افتح على السبورة الذكية أو جهاز العرض">🖥 شاشة العرض</a><div class="gl-fly gl-class-fly" data-fly="class"><button type="button" class="gl-fly-btn gl-mini" aria-expanded="false" aria-haspopup="true" title="إدارة الفصل: اختيار طالب، الانتباه، وضع العمل"><span class="gl-fly-icon" aria-hidden="true">🧭</span><span class="gl-fly-label">إدارة الفصل</span><b aria-hidden="true">▾</b></button><div class="gl-fly-menu gl-class-menu" role="group" aria-label="إدارة الفصل" hidden>
      <button type="button" id="gl-pick" class="btn">🎲 اختر طالبًا</button><button type="button" id="gl-pick-reset" class="quiet">↺ ابدأ الدور من جديد</button>
      <button type="button" id="gl-attention" aria-pressed="false">👀 انتباه: اقفل شاشات الطلاب</button>
-     <b class="gl-fly-head">🚦 وضع العمل يراه الطلاب</b>${Object.entries(WORK_MODES).map(([k, v]) => `<button type="button" class="gl-work-btn" data-mode="${k}" aria-pressed="${k === 'none'}">${k === 'none' ? '✖ إلغاء' : v}</button>`).join('')}
+     <b class="gl-fly-head gl-work-heading">🚦 وضع العمل يراه الطلاب</b>${Object.entries(WORK_MODES).map(([k, v]) => `<button type="button" class="gl-work-btn" data-mode="${k}" aria-pressed="${k === 'none'}">${k === 'none' ? '✖ إلغاء' : v}</button>`).join('')}
     </div></div><button type="button" class="gl-mini gl-hands" id="gl-hands" hidden title="طلاب رفعوا أيديهم">✋ <b id="gl-hands-n"></b></button><button type="button" class="outline gl-mini" id="gl-drawer-btn" aria-expanded="false" aria-controls="gl-drawer">👥 الطلاب <span id="gl-count"></span></button><a class="quiet gl-mini" href="/guide" target="_blank" rel="noopener">الدليل</a><button type="button" class="quiet gl-mini" id="gl-live">إنهاء العرض</button></div>
   </header>
   <nav class="gl-bar gl-bar-steps" aria-label="الخطوة الحالية">
@@ -232,9 +232,9 @@ export function teacherPage(code, title, base) {
    <div class="gl-drawer-head"><h2>الخطوة والطلاب</h2><button type="button" class="quiet" id="gl-drawer-close" aria-label="إغلاق">✕</button></div>
    <section class="gl-panel" id="gl-panel" aria-label="أدوات الخطوة الحالية"></section>
    <div class="gl-narration" id="gl-narration" hidden></div>
-   <section><h2>الطلاب</h2><ul id="gl-students" class="gl-students"></ul></section>
-   <section><h2>الواجب</h2><div id="gl-homework"></div></section>
-   <section><h2>التقييم</h2><div id="gl-evaluation"></div></section>
+   <section id="gl-students-section"><h2>الطلاب</h2><ul id="gl-students" class="gl-students"></ul></section>
+   <section id="gl-homework-section"><h2>الواجب</h2><div id="gl-homework"></div></section>
+   <section id="gl-evaluation-section"><h2>التقييم</h2><div id="gl-evaluation"></div></section>
    <details class="gl-keys"><summary>اختصارات لوحة المفاتيح</summary><p>V تحريك · H يد · P قلم · B فرشاة · M تظليل · R مستطيل · O دائرة · L خط · A سهم · K مؤشر ليزر · T كتابة · E ممحاة · + و − تكبير وتصغير · 0 ملاءمة · Ctrl+Z تراجع · PageDown أو ← للخطوة التالية، و PageUp أو → للسابقة (تناسب أجهزة التحكم بالعرض) · Esc إلغاء.</p></details>
    <p class="gl-note">الصوت والصورة مباشران بين جهازك وكل طالب. في بعض الشبكات المقيّدة قد لا يصل الصوت أو الصورة؛ السبورة وبقية الحصة تعمل دائمًا.</p>
   </aside>
@@ -243,7 +243,7 @@ export function teacherPage(code, title, base) {
 
 export function displayPage(code, title) {
   // Made for a smart board or projector: one thin bar, and the board takes every remaining pixel.
-  return `${css}<section class="gl-wrap gl-display gl-show" dir="rtl" id="gl-app" data-code="${e(code)}" data-role="display">
+  return `${css}<link rel="stylesheet" href="/classroom-features.css"><section class="gl-wrap gl-display gl-show" dir="rtl" id="gl-app" data-code="${e(code)}" data-role="display">
   <header class="gl-show-bar"><h1>${e(title)}</h1><p class="gl-join">للانضمام: <b class="gl-code">${e(code)}</b></p>
    <p id="gl-status" class="gl-status-dot" role="status" aria-live="polite">جارٍ الاتصال…</p>
    <span class="gl-show-actions"><button type="button" id="gl-audio" class="outline gl-mini" hidden>تفعيل صوت الشرح على هذه الشاشة</button><button type="button" id="gl-full" class="outline gl-mini">⛶ ملء الشاشة</button></span></header>
@@ -254,7 +254,7 @@ export function displayPage(code, title) {
 export function studentPage(code, name, title) {
   // Nothing but the board: it pops up over everything. A slim bar holds the microphone, «كتابة» (answers and
   // homework open in a sheet over the board) and ✕ to leave, which asks first. The teacher controls the rest.
-  return `${css}<section class="gl-wrap gl-student gl-solo" dir="rtl" id="gl-app" data-code="${e(code)}" data-role="student">
+  return `${css}<link rel="stylesheet" href="/classroom-features.css"><section class="gl-wrap gl-student gl-solo" dir="rtl" id="gl-app" data-code="${e(code)}" data-role="student">
   <div class="gl-entry" id="gl-start" role="dialog" aria-modal="true" aria-labelledby="gl-start-title"><div class="gl-start-card"><p class="gl-hello">مرحبًا ${e(name)}</p><h1 id="gl-start-title">${e(title)}</h1>
    <button type="button" class="btn" id="gl-enter">ادخل الحصة</button><p class="gl-hint">تفتح السبورة على الشاشة كلها، ويُسمع صوت المعلم.</p></div></div>
   ${boardShell('<video class="gl-cam" id="gl-teachercam" playsinline autoplay muted hidden aria-label="المعلم"></video>', true)}<p id="gl-wait" class="gl-wait" hidden></p>

@@ -30,7 +30,8 @@ files['/classroom-lab-model.js']='text/javascript; charset=utf-8';
 files['/classroom-lab.css']='text/css; charset=utf-8';
 files['/science-shadow.js']='text/javascript; charset=utf-8';
 files['/shadow-client.js']='text/javascript; charset=utf-8';
-for(const f of ['activities.js','matter-model.js','cells-model.js','placevalue-model.js','curriculum-g4.js','tool-library.js','tool-library-ui.js','model-kit.js','body-models.js','solids-model.js','math-models.js','science-models.js','explain-registry.js','lesson-preps-g4.js','lesson-preps-g1.js','lesson-preps-g2.js','lesson-preps-g3.js','lesson-preps-g5.js','lesson-preps-g6.js','lesson-preps.js','aids-page.js','motion.js','icons.js','book-catalog.js','curriculum-primary.js','book-viewer.js','group-voice.js','error-report.js','class-guide.js','group-plan.js','group-view.js','group-ink.js','group-board-tools.js','group-plans.js','text-library.js','explain-texts.js','narrator-scripts.js','group-planner.js','group-teacher.js','group-student.js'])files['/'+f]='text/javascript; charset=utf-8';
+for(const f of ['classroom-features.js','activities.js','matter-model.js','cells-model.js','placevalue-model.js','curriculum-g4.js','tool-library.js','tool-library-ui.js','model-kit.js','body-models.js','solids-model.js','math-models.js','science-models.js','explain-registry.js','lesson-preps-g4.js','lesson-preps-g1.js','lesson-preps-g2.js','lesson-preps-g3.js','lesson-preps-g5.js','lesson-preps-g6.js','lesson-preps.js','aids-page.js','motion.js','icons.js','book-catalog.js','curriculum-primary.js','book-viewer.js','group-voice.js','error-report.js','class-guide.js','group-plan.js','group-view.js','group-ink.js','group-board-tools.js','group-plans.js','text-library.js','explain-texts.js','narrator-scripts.js','group-planner.js','group-teacher.js','group-student.js'])files['/'+f]='text/javascript; charset=utf-8';
+files['/classroom-features.css']='text/css; charset=utf-8';
 files['/group-lesson.css']='text/css; charset=utf-8';
 for(const f of ['pdf.min.mjs','pdf.worker.min.mjs'])files['/vendor/pdfjs/'+f]='text/javascript; charset=utf-8'; files['/vendor/gsap/gsap.min.js']='text/javascript; charset=utf-8'; // GSAP 3.13.0, standard no-charge license (public/vendor/gsap/LICENSE.txt) // PDF.js 4.10.38, Apache-2.0 (public/vendor/pdfjs/LICENSE)
 for(const f of ['noto-sans-arabic-arabic-wght-normal.woff2','noto-sans-arabic-latin-wght-normal.woff2'])files['/vendor/fonts/'+f]='font/woff2'; // Noto Sans Arabic (variable), OFL-1.1 (public/vendor/fonts/NotoSansArabic-OFL.txt)
@@ -42,12 +43,14 @@ async function fields(req){
   if(req.headers['content-type']?.split(';')[0]!=='application/x-www-form-urlencoded')throw new UserError('صيغة نموذج غير صالحة.',415);
   const chunks=[];let length=0;
   for await (const chunk of req){length+=chunk.length;if(length>(req.url?.includes('/send')?3000000:32768))throw new UserError('حجم الإدخال كبير.',413);chunks.push(chunk);}
-  return Object.fromEntries(new URLSearchParams(Buffer.concat(chunks).toString()));
+  const params=new URLSearchParams(Buffer.concat(chunks).toString());
+  if(req.url?.split('?')[0]==='/admin/classroom' && new Set(params.keys()).size !== [...params.keys()].length)throw new UserError('حقل مكرر.');
+  return Object.fromEntries(params);
 }
 
 export function createApp(store,{origin=process.env.APP_ORIGIN,directory=null,now,recheckMs}={}) {
   const lessons=lessonService(store);
-  const administration=adminService(store);
+  const administration=adminService(store,{onClassroomChange:scope=>groups.refreshClassroom(scope)});
   const groups=groupService(store,{directory,now,recheckMs}); // directory: the school's administration data (stage 075); null until the link is set up
   const limits=new Map();
   function limit(req,key,max){

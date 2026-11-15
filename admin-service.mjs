@@ -1,9 +1,10 @@
+import {CLASSROOM_FEATURES} from './public/classroom-features.js';
 import {UserError,subjects} from './store.mjs';
 import * as ui from './admin-views.mjs';
 import {ADMIN_PERMISSIONS} from './admin-model.mjs';
 const selectedPermissions=data=>Object.keys(ADMIN_PERMISSIONS).filter(key=>data['permission_'+key]==='1');
 const csv=value=>String(value||'').split(',').map(v=>v.trim()).filter(Boolean);
-export function adminService(store) {
+export function adminService(store, {onClassroomChange = () => {}} = {}) {
   const admin=store.admin;
   return {matches:path=>path==='/admin'||path.startsWith('/admin/'),async handle({req,url,u,base,html,redirect,fields,limit,enter}) {
     if(!u)return redirect('/login');
@@ -12,6 +13,7 @@ export function adminService(store) {
     const profile=admin.profile(u.id);
     const invitation=result=>ui.adminInviteResult(profile,{...result,activationUrl:new URL('/activate?code='+result.token,base).href});
     if(req.method==='GET') {
+      if(path==='/admin/classroom')return html('إدارة الفصل والسبورة الذكية',ui.adminClassroom(profile,admin.classroomSettings(u.id),url.searchParams.get('saved')==='1'));
       if(path==='/admin')return html('الإدارة',ui.adminHome(profile,admin.overview(u.id)));
       if(path==='/admin/accounts')return html('أعضاء الإدارة',ui.adminAccounts(profile,admin.members(u.id)));
       if(path==='/admin/accounts/new'){admin.requireAccess(u.id,'supervisor');return html('إضافة عضو إدارة',ui.adminAccountForm(profile));}
@@ -29,6 +31,12 @@ export function adminService(store) {
       if(req.headers.origin!==base)throw new UserError('تعذّر التحقق من مصدر الطلب. افتح التطبيق مجددًا.',403);
       limit(req,'admin-write',180);
       const data=await fields(req);
+      if(path==='/admin/classroom'){
+        const keys=CLASSROOM_FEATURES.map(f=>'feature_'+f.key);
+        if(Object.keys(data).some(k=>k!=='revision'&&!keys.includes(k))||keys.some(k=>data[k]!==undefined&&data[k]!=='1')||!/^\d+$/.test(data.revision||''))throw new UserError('راجع حقول الإعدادات.');
+        admin.setClassroomSettings(u.id,{revision:Number(data.revision),features:Object.fromEntries(CLASSROOM_FEATURES.map(f=>[f.key,data['feature_'+f.key]==='1']))});
+        onClassroomChange(profile.scope);return redirect('/admin/classroom?saved=1');
+      }
       if(path==='/admin/registration-agents/new')return html('دعوة وكيل تسجيل',invitation(admin.createRegistrationAgent(u.id,{...data,register_parent:data.register_parent==='on',register_child:data.register_child==='on',manage_status:data.manage_status==='on'})),201);
       if(path==='/admin/registration-agents/renew')return html('تجديد دعوة وكيل',invitation(admin.renewInvitation(u.id,data.agent,'agent')));
       const renew=path.match(/^\/admin\/(accounts|education\/teachers)\/([\da-f-]{36})\/renew$/i);

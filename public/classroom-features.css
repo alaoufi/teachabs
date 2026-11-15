@@ -1,0 +1,31 @@
+/* Administrative visibility; the enabled layout is unchanged. */
+.gl-off-board #gl-board,.gl-off-board .gl-zoom{display:none!important}
+.gl-off-drawing [data-fly="pens"],.gl-off-drawing [data-fly="shapes"],.gl-off-drawing [data-tool="select"],.gl-off-drawing [data-tool="eraser"],.gl-off-drawing .gl-look,.gl-off-drawing #gl-undo,.gl-off-drawing #gl-clear,.gl-off-drawing #gl-textbox{display:none!important}
+.gl-off-texts #gl-library,.gl-off-texts #gl-snippets,.gl-off-texts .gl-dialog.tl-dialog{display:none!important}
+.gl-off-tools .gl-lesson-tools,.gl-off-tools .gl-stamp-btn,.gl-off-tools .tl-dialog:not(.gl-dialog){display:none!important}
+.gl-off-laser [data-tool="laser"]{display:none!important}
+.gl-off-zoom .gl-zoom,.gl-off-zoom [data-tool="hand"]{display:none!important}
+.gl-off-timer .gl-timer-btn,.gl-off-timer .gl-timer{display:none!important}
+.gl-off-curtain .gl-curtain-btn,.gl-off-curtain .gl-curtain{display:none!important}
+.gl-off-display a[href$="/display"]{display:none!important}
+.gl-off-roster #gl-students-section{display:none!important}
+.gl-off-hands #gl-hand,.gl-off-hands #gl-hands,.gl-off-hands [data-down]{display:none!important}
+.gl-off-pick #gl-pick,.gl-off-pick #gl-pick-reset,.gl-off-pick #gl-pick-pop{display:none!important}
+.gl-off-attention #gl-attention,.gl-off-attention #gl-attention-cover{display:none!important}
+.gl-off-workMode .gl-work-btn,.gl-off-workMode #gl-work{display:none!important}
+.gl-off-stars #gl-stars,.gl-off-stars #gl-star-pop,.gl-off-stars .gl-star-btn{display:none!important}
+.gl-off-teacherMic #gl-voice{display:none!important}
+.gl-off-studentMic #gl-mics,.gl-off-studentMic #gl-mic{display:none!important}
+.gl-off-camera #gl-cam,.gl-off-camera #gl-selfcam,.gl-off-camera #gl-teachercam{display:none!important}
+.gl-off-narration #gl-test-voice,.gl-off-narration #gl-narration,.gl-off-narration [data-narr],.gl-off-narration .gl-narrator,.gl-off-narration .gl-narr-panel,.gl-off-narration .gl-narr-quick,.gl-off-narration [data-q=narration]{display:none!important}
+.gl-off-title [data-type="title"]{display:none!important}
+.gl-off-page [data-type="page"]{display:none!important}
+.gl-off-interactive [data-type="interactive"]{display:none!important}
+.gl-off-notes [data-type="board"]{display:none!important}
+.gl-off-questions [data-type="questions"],.gl-off-questions #gl-answer{display:none!important}
+.gl-off-homework [data-type="homework"],.gl-off-homework #gl-homework-section,.gl-off-homework #gl-hw{display:none!important}
+.gl-off-evaluation [data-type="evaluation"],.gl-off-evaluation #gl-evaluation-section,.gl-off-evaluation #gl-eval{display:none!important}
+.gl-off-timer .gl-timer-heading,.gl-off-curtain .gl-curtain-heading,.gl-off-tools .gl-tools-heading,.gl-off-workMode .gl-work-heading{display:none!important}
+.gl-section-disabled #gl-content,.gl-section-disabled #gl-quick,.gl-section-disabled #gl-panel,.gl-section-disabled #gl-ink,.gl-section-disabled #gl-show,.gl-off-display .gl-display .gl-stage{display:none!important}
+.gl-section-disabled .gl-stage::after{content:"هذه الفقرة مخفية بقرار الإدارة. اختر فقرة أخرى.";position:absolute;inset:40% 1rem auto;text-align:center;pointer-events:none}
+.gl-off-questions.gl-off-homework.gl-off-evaluation #gl-write,.gl-off-questions.gl-off-homework.gl-off-evaluation #gl-sheet{display:none!important}

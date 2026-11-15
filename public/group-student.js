@@ -1,3 +1,4 @@
+import {applyClassroomFeatures} from './classroom-features.js';
 // Student seat and classroom display screen: shows only what the teacher has made visible.
 import {publicStep, WORK_MODES} from './group-plan.js';
 import {el, renderStep, renderInk, playNarration, stopNarration, renderNarrator, setSpeaking, speechUrl, laserTrail, liveInk, renderExtras} from './group-view.js';
@@ -13,7 +14,7 @@ const $ = x => document.getElementById(x);
 const status = (text, bad = false) => { $('gl-status').textContent = text; $('gl-status').classList.toggle('is-error', bad); };
 const classBase = '/class/' + code;
 let renderKey = '', shownStep = null, lastSegment = 0, speakTimer = 0, wasMuted = false;
-const tools = attachBoardTools({mode: 'viewer'});
+const tools = attachBoardTools({mode: 'viewer', enabled: key => view?.features?.[key] !== false});
 let view = null, content = null, contentKey = null, homework = null, lastNarration = 0, pendingNarration = null, plan = null;
 let explore = null, lastPageKey = '';
 const sent = {};
@@ -121,6 +122,9 @@ async function narrator(n) {
 }
 
 async function render() {
+  applyClassroomFeatures(view.features);
+  if(view.features?.narration===false) { pendingNarration=null; stopNarration(); }
+
   $('gl-progress') && ($('gl-progress').textContent = `الخطوة ${formatNumber(view.index + 1)} من ${formatNumber(view.total)}`);
   const wait = $('gl-wait'), board = $('gl-board');
   if (!view.live || !view.step) {
