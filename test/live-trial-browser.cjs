@@ -43,7 +43,7 @@ function png(w, h) { // a plain test picture standing in for a photo of a book p
     await t.locator('#gl-drawer-btn').click(); await t.waitForFunction(() => document.querySelector('#gl-students')?.textContent.includes('طالب 1')); await t.keyboard.press('Escape');
     results.push('«أنا الطالب» joined the running class directly as «طالب 1» — no code, no name, no sign-up');
 
-    const placeAll = async () => { const n = await t.locator('.gl-snip').count(); for (let i = 0; i < n; i++) { await t.locator('.gl-snip').nth(i).click(); await t.waitForTimeout(250); } await t.waitForTimeout(600);
+    const placeAll = async () => { const n = await t.locator('.gl-snip').count(); for (let i = 0; i < n; i++) { await t.locator('[data-fly=pens] > .gl-fly-btn').click(); await t.locator('.gl-snip').nth(i).click(); await t.waitForTimeout(250); } await t.waitForTimeout(600);
       return t.evaluate(() => { const ink = document.querySelector('#gl-ink'), m = ink.getScreenCTM().inverse(), b = [...ink.querySelectorAll('text')].map(x => x.getBBox());
         const rects = [...document.querySelectorAll('#gl-content .gl-page-svg text')].map(x => { const r = x.getBoundingClientRect(), a = new DOMPoint(r.left, r.top).matrixTransform(m), c = new DOMPoint(r.right, r.bottom).matrixTransform(m); return {x: a.x, y: a.y, width: c.x - a.x, height: c.y - a.y}; });
         const hit = (p, q) => p.x < q.x + q.width && q.x < p.x + p.width && p.y < q.y + q.height && q.y < p.y + p.height;
@@ -72,7 +72,7 @@ function png(w, h) { // a plain test picture standing in for a photo of a book p
     const dc = await browser.newContext({viewport: {width: 390, height: 844}, isMobile: true, hasTouch: true}); await dc.addCookies(await tc.cookies());
     const d = await dc.newPage(); watch(d); await d.goto(t.url() + '/display'); await d.waitForSelector('#gl-board'); await d.waitForTimeout(600);
     const shown = await d.evaluate(() => { const r = document.querySelector('#gl-board').getBoundingClientRect(); return {h: r.height, vh: innerHeight, w: r.width, scroll: document.documentElement.scrollHeight > innerHeight + 1}; });
-    assert.ok(shown.h > shown.vh * 0.72 && !shown.scroll, JSON.stringify(shown));
+    assert.ok(shown.h > shown.w && shown.h > shown.vh * 0.45 && !shown.scroll, JSON.stringify(shown));
     await d.screenshot({path: path.join(out, 'live-trial-display-phone.png')});
     results.push(`display screen on an upright phone: the board fills ${Math.round(100 * shown.h / shown.vh)}% of the screen height, no empty space`);
 

@@ -14,9 +14,17 @@ const $ = x => document.getElementById(x);
 const status = (text, bad = false) => { $('gl-status').textContent = text; $('gl-status').classList.toggle('is-error', bad); };
 const classBase = '/class/' + code;
 let renderKey = '', shownStep = null, lastSegment = 0, speakTimer = 0, wasMuted = false;
-const tools = attachBoardTools({mode: 'viewer', enabled: key => view?.features?.[key] !== false});
 let view = null, content = null, contentKey = null, homework = null, lastNarration = 0, pendingNarration = null, plan = null;
-let explore = null, lastPageKey = '';
+const tools = attachBoardTools({mode: student ? 'student' : 'viewer', enabled: key => view?.features?.[key] !== false,
+  canInk: () => Boolean(view?.canDraw), send: async command => {
+    if (!view?.canDraw) return;
+    try {
+      const r = await fetch(classBase + '/ink', {method: 'POST', headers: {'content-type': 'application/json'}, body: JSON.stringify({...command, step: view.step.id, pageVer: view.pageVer})});
+      const d = await r.json(); if (!r.ok) throw new Error(d.error);
+    } catch (e) { status(e.message, true); }
+    finally { renderInk($('gl-ink'), view?.strokes || []); }
+  }});
+let explore = null, lastPageKey = '', lastInkContext = '';
 const sent = {};
 
 async function getJSON(url) { const r = await fetch(url); const d = await r.json().catch(() => ({})); if (!r.ok) throw new Error(d.error || 'تعذّر التحميل.'); return d; }
@@ -122,7 +130,10 @@ async function narrator(n) {
 }
 
 async function render() {
+  const inkContext = `${view.step?.id}:${view.pageVer}:${view.canDraw}`;
+  if (inkContext !== lastInkContext) { tools.resetForStep(); lastInkContext = inkContext; }
   applyClassroomFeatures(view.features);
+  if ($('gl-student-ink')) $('gl-student-ink').hidden = !view.canDraw;
   if(view.features?.narration===false) { pendingNarration=null; stopNarration(); }
 
   $('gl-progress') && ($('gl-progress').textContent = `الخطوة ${formatNumber(view.index + 1)} من ${formatNumber(view.total)}`);

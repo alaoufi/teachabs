@@ -174,9 +174,9 @@ export function plannerPage(id, title) {
  </section><script type="module" src="/group-planner.js?v=2"></script>`;
 }
 
-const zoomBar = (follow = false) => `<div class="gl-zoom" role="group" aria-label="تكبير السبورة"><button type="button" data-zoom="in" aria-label="تكبير" title="تكبير (+)">＋</button><button type="button" data-zoom="out" aria-label="تصغير" title="تصغير (−)">－</button><button type="button" data-zoom="fit" title="ملاءمة (0)">ملاءمة</button>${follow ? '<button type="button" data-zoom="follow" hidden>اتبع المعلم</button><button type="button" data-zoom="max" aria-pressed="false" title="السبورة بملء الشاشة">⛶</button>' : ''}</div>`;
+const zoomBar = (follow = false) => `<div class="gl-zoom" role="group" aria-label="تكبير السبورة"><button type="button" data-zoom="in" aria-label="تكبير" title="تكبير (+)">＋</button><button type="button" data-zoom="out" aria-label="تصغير" title="تصغير (−)">－</button><button type="button" data-zoom="fit" title="ملاءمة (0)">ملاءمة</button><button type="button" data-zoom="width" title="تكبير الكتاب لعرض القراءة">عرض الصفحة</button>${follow ? '<button type="button" data-zoom="follow" hidden>اتبع المعلم</button><button type="button" data-zoom="max" aria-pressed="false" title="السبورة بملء الشاشة">⛶</button>' : ''}</div>`;
 // Students get the zoom controls under the board so they never cover the lesson on a small phone.
-const boardShell = (extra = '', follow = false, under = '') => `<div class="gl-stage"><div class="gl-board" id="gl-board" aria-live="polite"><div class="gl-camera" id="gl-camera"><div class="gl-content" id="gl-content"></div><svg class="gl-ink" id="gl-ink" viewBox="0 0 1000 600" preserveAspectRatio="none" aria-hidden="true"></svg></div></div>${under}${zoomBar(follow)}${extra}</div>`; // zoom sits under the board, never on it
+const boardShell = (extra = '', follow = false, under = '', zoom = true) => `<div class="gl-stage"><div class="gl-board" id="gl-board" aria-live="polite"><div class="gl-camera" id="gl-camera"><div class="gl-content" id="gl-content"></div><svg class="gl-ink" id="gl-ink" viewBox="0 0 1000 600" preserveAspectRatio="none" aria-hidden="true"></svg></div></div>${under}${zoom ? zoomBar(follow) : ''}${extra}</div>`; // zoom sits under the board, never on it
 
 export function teacherPage(code, title, base) {
   // Presentation mode: one screen, no page scroll. The raised board fills the middle; lesson controls sit above it,
@@ -188,11 +188,9 @@ export function teacherPage(code, title, base) {
   const byTool = Object.fromEntries(TOOL_BUTTONS.map(b => [b[0], b]));
   const fly = (id, icon, label, inner, cls = '') => `<div class="gl-fly ${cls}" data-fly="${id}"><button type="button" class="gl-fly-btn" aria-expanded="false" aria-haspopup="true" title="${label}"><span class="gl-fly-icon" aria-hidden="true">${icon}</span><span class="gl-fly-label">${label}</span><b aria-hidden="true">▾</b></button><div class="gl-fly-menu" role="group" aria-label="${label}" hidden>${inner}</div></div>`;
   const tools = `<div class="gl-tools" role="toolbar" aria-label="أدوات السبورة">
-     <div class="gl-toolgroup gl-main-tools" role="group" aria-label="الأداة">${['select', 'hand'].map(t => toolBtn(byTool[t])).join('')}
-      ${fly('pens', '✎', 'أقلام', ['pen', 'brush', 'marker', 'text'].map(t => toolBtn(byTool[t])).join(''))}
-      ${fly('shapes', '◯', 'أشكال', ['rect', 'ellipse', 'line', 'arrow'].map(t => toolBtn(byTool[t])).join(''))}
-      ${['laser', 'eraser'].map(t => toolBtn(byTool[t])).join('')}</div>
-     <div class="gl-toolgroup gl-lesson-tools" role="group" aria-label="أدوات الدرس">${fly('lesson', '🧰', 'أدوات الدرس', '<span id="gl-lesson-tools" class="gl-lesson-tools-list"></span><button type="button" id="gl-open-library" class="btn">📚 المكتبة كاملة</button>', 'gl-lesson-fly')}</div>
+     <div class="gl-toolgroup gl-main-tools" role="group" aria-label="الأداة">${['pen', 'eraser', 'hand', 'select'].map(t => toolBtn(byTool[t])).join('')}${fly('pens', '✎', 'أقلام', ['brush', 'marker', 'text'].map(t => toolBtn(byTool[t])).join('') + '<div class="gl-snippets" id="gl-snippets" hidden></div>')}
+      ${['laser'].map(t => toolBtn(byTool[t])).join('')}</div>
+     <div class="gl-toolgroup gl-lesson-tools" role="group" aria-label="أدوات الدرس">${fly('lesson', '🧰', 'أدوات إضافية', ['rect', 'ellipse', 'line', 'arrow'].map(t => toolBtn(byTool[t])).join('') + '<span id="gl-lesson-tools" class="gl-lesson-tools-list"></span><button type="button" id="gl-open-library" class="btn">📚 المكتبة كاملة</button>', 'gl-lesson-fly')}</div>
      <div class="gl-toolgroup gl-look" role="group" aria-label="اللون والحجم">
       ${fly('colors', '<i class="gl-current-color"></i>', 'اللون', COLORS.map((c, i) => `<button type="button" class="gl-color" data-color="${c.value}" aria-label="${c.name}" title="${c.name}" aria-pressed="${i ? 'false' : 'true'}"><i data-swatch="${i}"></i></button>`).join(''), 'gl-colors')}
       ${fly('sizes', '<i class="gl-current-size" data-dot="m"></i>', 'الحجم', Object.entries(SIZE_NAMES).map(([k, n]) => `<button type="button" class="gl-size" data-size="${k}" aria-pressed="${k === 'm' ? 'true' : 'false'}" title="حجم ${n}"><i data-dot="${k}"></i><span>${n}</span></button>`).join(''))}</div>
@@ -201,7 +199,7 @@ export function teacherPage(code, title, base) {
         + '<b class="gl-fly-head gl-timer-heading">⏱ مؤقت يراه الطلاب</b><button type="button" class="gl-timer-btn" data-sec="60">١ د</button><button type="button" class="gl-timer-btn" data-sec="180">٣ د</button><button type="button" class="gl-timer-btn" data-sec="300">٥ د</button><button type="button" class="gl-timer-btn" data-sec="0">⏹ إيقاف</button>'
         + '<b class="gl-fly-head gl-curtain-heading">🎭 ستارة على السبورة</b><button type="button" class="gl-curtain-btn" data-level="100">إسدال</button><button type="button" class="gl-curtain-btn" data-level="-25">كشف ربع</button><button type="button" class="gl-curtain-btn" data-level="0">رفع</button>'
         + '<b class="gl-fly-head gl-tools-heading">أدوات القياس</b><button type="button" class="gl-stamp-btn" data-stamp="ruler">📏 مسطرة</button><button type="button" class="gl-stamp-btn" data-stamp="protractor">📐 منقلة</button>')}</div>
-    </div>`;
+    ${zoomBar(false)}</div>`;
   return `${css}<link rel="stylesheet" href="/classroom-features.css"><section class="gl-wrap gl-teacher gl-present" dir="rtl" id="gl-app" data-code="${e(code)}" data-role="teacher">
   <header class="gl-bar gl-bar-top">
    <div class="gl-bar-title"><h1>${e(title)}</h1><button type="button" class="gl-code-chip" id="gl-code" data-join="${e(join)}" title="انسخ رابط الطلاب: ${e(join)}">الرمز <b class="gl-code">${e(code)}</b></button><span id="gl-status" class="gl-status-dot" role="status" aria-live="polite">جارٍ الاتصال…</span></div>
@@ -219,14 +217,14 @@ export function teacherPage(code, title, base) {
    <button type="button" id="gl-prev" class="gl-mini" title="السابق (PageUp)" aria-label="الفقرة السابقة">→</button>
    <ol id="gl-steps" class="gl-steps-strip"></ol>
    <button type="button" id="gl-next" class="btn gl-mini" title="التالي (PageDown)" aria-label="الفقرة التالية">←</button>
-  </nav>`)}
+  </nav>`, false)}
   <footer class="gl-bar gl-bar-bottom"><div class="gl-av" id="gl-av" role="group" aria-label="الصوت والكاميرا — تحكم سريع">
    <button type="button" id="gl-voice" class="gl-avbtn" aria-pressed="false" title="صوتك يصل إلى أجهزة الطلاب"><span class="gl-avl">🎙 صوتي</span><span class="gl-avs">: مغلق</span></button>
    <button type="button" id="gl-cam" class="gl-avbtn" aria-pressed="false" title="صورتك تظهر للطلاب"><span class="gl-avl">📷 الكاميرا</span><span class="gl-avs">: مغلقة</span></button>
    <button type="button" id="gl-mics" class="gl-avbtn" aria-pressed="true" title="هل يستطيع الطلاب فتح المايك؟"><span class="gl-avl">🎤 مايك الطلاب</span><span class="gl-avs">: مسموح</span></button>
    <button type="button" id="gl-test-voice" class="gl-avbtn" title="يقرأ جملة تجريبية بصوت المتحدث، ويخبرك إن لم يُسمع ولماذا"><span class="gl-avl">🔈 اختبار</span><span class="gl-avs"> الصوت</span></button>
    <button type="button" id="gl-stop" class="gl-avbtn gl-danger" title="يغلق صوتك وكاميرتك ومايك كل الطلاب فورًا">⛔ إيقاف الكل</button>
-  </div>${tools}<div class="gl-snippets" id="gl-snippets" hidden></div></footer>
+  </div>${tools}</footer>
   <div class="gl-ended gl-voice-help" id="gl-voice-help" hidden role="alertdialog" aria-modal="true" aria-labelledby="gl-voice-help-title"><div class="gl-start-card"><h2 id="gl-voice-help-title">صوت المتحدث</h2><div id="gl-voice-help-text"></div><button type="button" class="btn" id="gl-voice-help-close">حسنًا</button></div></div>
   <aside class="gl-drawer" id="gl-drawer" aria-label="الخطوة والطلاب والنتائج" hidden>
    <div class="gl-drawer-head"><h2>الخطوة والطلاب</h2><button type="button" class="quiet" id="gl-drawer-close" aria-label="إغلاق">✕</button></div>
@@ -257,7 +255,7 @@ export function studentPage(code, name, title) {
   return `${css}<link rel="stylesheet" href="/classroom-features.css"><section class="gl-wrap gl-student gl-solo" dir="rtl" id="gl-app" data-code="${e(code)}" data-role="student">
   <div class="gl-entry" id="gl-start" role="dialog" aria-modal="true" aria-labelledby="gl-start-title"><div class="gl-start-card"><p class="gl-hello">مرحبًا ${e(name)}</p><h1 id="gl-start-title">${e(title)}</h1>
    <button type="button" class="btn" id="gl-enter">ادخل الحصة</button><p class="gl-hint">تفتح السبورة على الشاشة كلها، ويُسمع صوت المعلم.</p></div></div>
-  ${boardShell('<video class="gl-cam" id="gl-teachercam" playsinline autoplay muted hidden aria-label="المعلم"></video>', true)}<p id="gl-wait" class="gl-wait" hidden></p>
+  ${boardShell('<div id="gl-student-ink" class="gl-student-ink" role="group" aria-label="كتابة الطالب" hidden><span>سمح لك المعلم بالكتابة</span><button type="button" class="gl-tool" data-tool="pen" aria-pressed="true">قلم</button><button type="button" class="gl-tool" data-tool="hand" aria-pressed="false">تحريك</button></div><video class="gl-cam" id="gl-teachercam" playsinline autoplay muted hidden aria-label="المعلم"></video>', true)}<p id="gl-wait" class="gl-wait" hidden></p>
   <nav class="gl-sbar" aria-label="أدوات الطالب">
    <button type="button" class="gl-sbtn" id="gl-mic" aria-pressed="false">🎤 <span>المايك</span></button>
    <button type="button" class="gl-sbtn" id="gl-hand" aria-pressed="false">✋ <span>ارفع يدك</span></button>

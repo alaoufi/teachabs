@@ -43,16 +43,47 @@ function addInk(s, step, item) {
   return s;
 }
 
+export function switchBookPage(state, step, book, page) {
+  const s = structuredClone(state), key = `${book}:${page}`;
+  s.bookScenes ||= {}; s.bookActive ||= {};
+  const scenes = s.bookScenes[step] ||= {};
+  const previous = s.bookActive[step] || 'original';
+  scenes[previous] = {strokes: s.strokes[step] || [], camera: s.camera?.[step] || {z: 1, x: 0, y: 0}};
+  // Bound metadata/ink memory independently of book images (which are never persisted).
+  need(Object.hasOwn(scenes, key) || Object.keys(scenes).length < 250, 'بلغت الحصة حد صفحات الكتاب.', 409);
+  const restored = scenes[key] || {strokes: [], camera: {z: 1, x: 0, y: 0}};
+  s.strokes[step] = restored.strokes; s.camera ||= {}; s.camera[step] = restored.camera;
+  s.bookActive[step] = key; s.drawGrants = {}; s.pageVer = (s.pageVer || 0) + 1; s.seq++;
+  return s;
+}
+
+export function studentInk(state, plan, student, cmd) {
+  need(cmd && typeof cmd === 'object', 'كتابة غير صالحة.');
+  const step = current(state, plan);
+  need(state.live && state.shown && !state.attention && state.drawGrants?.[student] === step.id, 'لم يسمح المعلم لك بالكتابة الآن.', 403);
+  need(cmd.step === step.id && cmd.pageVer === (state.pageVer || 0), 'تغيرت صفحة الكتاب؛ ابدأ الكتابة مجددًا.', 409);
+  need(cmd.op === 'stroke' && ['pen', 'brush', 'marker'].includes(cmd.tool || 'pen'), 'أداة غير متاحة للطالب.', 403);
+  const s = teacherCommand(state, plan, cmd);
+  s.strokes[step.id].at(-1).author = student;
+  return s;
+}
+
 export function teacherCommand(state, plan, cmd) {
   need(cmd && typeof cmd.op === 'string', 'أمر غير صالح.');
   const s = structuredClone(state), step = current(s, plan);
   s.seq++; s.camera ||= {}; s.strokes ||= {}; s.narrator ||= initialNarrator(); s.acts ||= {};
   switch (cmd.op) {
+    case 'draw-permission':
+      need(typeof cmd.student === 'string' && typeof cmd.allow === 'boolean', 'صلاحية غير صالحة.');
+      s.drawGrants ||= {};
+      if (cmd.allow) { need(s.live && s.shown && INKABLE.includes(step.type), 'اعرض السبورة أولًا.', 409); s.drawGrants[cmd.student] = step.id; }
+      else delete s.drawGrants[cmd.student];
+      return s;
     case 'go': {
       // «next/previous» come as a step forward or back from where the class is now, so quick presses never get lost
       if (Number.isInteger(cmd.by) && cmd.index === undefined) { need(Math.abs(cmd.by) === 1, 'خطوة غير موجودة.'); const to = s.index + cmd.by; if (to < 0 || to >= plan.steps.length) return state; cmd = {...cmd, index: to}; }
       need(Number.isInteger(cmd.index) && cmd.index >= 0 && cmd.index < plan.steps.length, 'خطوة غير موجودة.');
-      s.index = cmd.index; s.shown = shownOf(s, plan.steps[cmd.index]); return s;
+      s.drawGrants = {}; s.index = cmd.index; s.shown = shownOf(s, plan.steps[cmd.index]); return s;
     }
     case 'show': { // any step of the lesson, hidden from or shown on the students' board; it stays so when the class comes back to it
       need(typeof cmd.shown === 'boolean', 'قيمة غير صالحة.');
@@ -281,6 +312,8 @@ export function teacherView(state, plan, students, responses) {
 export function publicView(state, plan, student, responses, studentNames = {}) {
   const step = current(state, plan), shown = state.live && state.shown;
   const view = {role: student ? 'student' : 'display', live: state.live, title: plan.title, index: state.index, total: plan.steps.length, shown, seq: state.seq, voice: voiceOf(state), speaker: speakerOf(state)};
+  view.pageVer = state.pageVer || 0;
+  view.canDraw = Boolean(student && shown && !state.attention && state.drawGrants?.[student] === step.id);
   if (student) { view.me = student; view.hand = Boolean(state.hands?.[student]); view.stars = state.stars?.[student] || 0; if (state.lastStar?.student === student) view.starSeq = state.lastStar.seq; }
   if (shown) {
     const revealed = state.revealed[step.id] || [];

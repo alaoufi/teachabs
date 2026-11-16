@@ -1,0 +1,48 @@
+{
+  "showBlockedDuringDoubleChange": true,
+  "page13RestoresInk": true,
+  "returnedPageHasPrintedContent": 0.24846153846153846,
+  "deniedBeforeGrant": true,
+  "studentWritesAfterGrant": true,
+  "studentCannotErase": true,
+  "stalePageRejected": true,
+  "midStrokeRevocation": true,
+  "deniedAfterRevoke": true,
+  "simulatedStylus": true,
+  "alignmentLandscapeReading": {
+    "image": {
+      "x": 271.86211620494146,
+      "y": 5.999999983033726,
+      "right": 728.1480147320971,
+      "bottom": 593.9999864439468
+    },
+    "inkBox": {
+      "x": 420,
+      "y": 180,
+      "width": 150,
+      "height": 18
+    },
+    "relative": {
+      "x": 0.48903085656454626,
+      "y": 0.3112244969909214
+    }
+  },
+  "alignmentPortrait": {
+    "image": {
+      "x": 271.86301372357826,
+      "y": 5.99999525857865,
+      "right": 728.150359918588,
+      "bottom": 593.9999881451699
+    },
+    "inkBox": {
+      "x": 420,
+      "y": 180,
+      "width": 150,
+      "height": 18
+    },
+    "relative": {
+      "x": 0.4890273380078715,
+      "y": 0.3112245016246402
+    }
+  }
+}

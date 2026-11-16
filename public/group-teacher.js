@@ -24,7 +24,7 @@ const remember = (k, d) => { try { const v = localStorage.getItem('gl-' + k); re
 const keep = (k, v) => { try { localStorage.setItem('gl-' + k, v ? '1' : '0'); } catch {} };
 let autoAdvance = remember('auto', true), listenHere = remember('here', true), lastSegmentSeq = 0, advanceTimer = 0, speakTimer = 0;
 const autoStart = remember('autostart', true), autoStarted = new Set();
-let lastStepId = null, lastHands = 0;
+let lastStepId = null, lastHands = 0, lastCanvas = '';
 const speaker = () => view?.state?.speaker === 'female' ? 'female' : 'male';
 /** A step's prepared explanation, with the natural voice when the server has one. */
 const speakerButton = () => !view?.natural ? null : el('button', {type: 'button', class: 'gl-mini gl-speaker', 'data-narr': 'speaker', title: 'صوت المتحدث: رجل أو امرأة', onclick: () => command({op: 'speaker', speaker: speaker() === 'male' ? 'female' : 'male'})}, speaker() === 'male' ? '🧔 رجل' : '🧕 امرأة');
@@ -151,7 +151,9 @@ function renderBoard() {
     contentKey = key; renderStep($('gl-content'), content, {teacher: true, revealed, shadow: actView, display, places});
     if (s.id !== lastStep) { $('gl-content').classList.remove('gl-enter'); void $('gl-content').offsetWidth; $('gl-content').classList.add('gl-enter'); }
   }
-  if (s.id !== lastStep) { lastStep = s.id; tools.resetForStep(); renderSnippets(s); }
+  const canvasKey = `${s.id}:${view.state.pageVer || 0}`;
+  if (canvasKey !== lastCanvas) { tools.resetForStep(); lastCanvas = canvasKey; }
+  if (s.id !== lastStep) { lastStep = s.id; renderSnippets(s); }
   renderInk($('gl-ink'), view.state.strokes[s.id] || []);
   tools.remoteCamera(view.state.camera?.[s.id]);
   renderTeacherNarrator(s);
@@ -323,6 +325,7 @@ function renderSide() {
   lastHands = hands.length;
   const order = [...view.students].sort((a, b) => (up.has(b.id) - up.has(a.id)) || (hands.indexOf(a.id) - hands.indexOf(b.id)));
   $('gl-students').replaceChildren(...(view.students.length ? order.map(st => el('li', {class: (talking.has(st.id) ? 'is-talking ' : '') + (up.has(st.id) ? 'is-hand' : '')}, el('span', {text: (up.has(st.id) ? '✋ ' : '') + (talking.has(st.id) ? '🎤 ' : '') + st.name + (stars[st.id] ? ` ⭐${formatNumber(stars[st.id])}` : '')}),
+    el('button', {type: 'button', class: 'outline gl-mini gl-draw-grant', 'aria-pressed': String(view.state.drawGrants?.[st.id] === step().id), onclick: () => command({op: 'draw-permission', student: st.id, allow: view.state.drawGrants?.[st.id] !== step().id})}, view.state.drawGrants?.[st.id] === step().id ? 'إيقاف الكتابة' : 'السماح بالكتابة'),
     up.has(st.id) ? el('button', {type: 'button', class: 'outline gl-mini', onclick: () => command({op: 'hand-down', student: st.id})}, 'أنزل يده') : null,
     el('button', {type: 'button', class: 'outline gl-mini gl-star-btn', 'aria-label': 'نجمة لـ ' + st.name, onclick: () => command({op: 'star', student: st.id})}, '⭐ نجمة'),
     el('button', {type: 'button', class: 'quiet', 'aria-label': 'إخراج ' + st.name, onclick: async () => { if (!confirm(`إخراج ${st.name} من الحصة؟`)) return; try { await post('/remove', {student: st.id}); } catch (e) { status(e.message, true); } }}, 'إخراج'))) : [el('li', {class: 'gl-empty', text: 'بانتظار انضمام الطلاب برمز الحصة.'})]));

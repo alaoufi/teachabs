@@ -4,7 +4,7 @@ import {TOOLS, colorAllowed} from './public/group-ink.js';
 import {validatePlan, defaultPlan, PlanError, LIMITS, LESSON_TEMPLATES, classPlan} from './public/group-plan.js';
 import {validImage} from './public/group-plan.js';
 import {speech, ttsReady} from './tts.mjs';
-import {initialState, teacherCommand, teacherView, publicView, voiceOf, studentHand, speechText, speakerOf, classExtras, checkAnswer, checkEvaluation, contentFor, narrationFor, segmentAudio, MAX_STUDENTS} from './group-session.mjs';
+import {switchBookPage, studentInk, initialState, teacherCommand, teacherView, publicView, voiceOf, studentHand, speechText, speakerOf, classExtras, checkAnswer, checkEvaluation, contentFor, narrationFor, segmentAudio, MAX_STUDENTS} from './group-session.mjs';
 import {UserError} from './store.mjs';
 import * as v from './group-views.mjs';
 import {BOOKS, bookOf, lessonBookPage, allLessons, lessonOf} from './public/book-catalog.js';
@@ -252,7 +252,7 @@ export function groupService(store, {directory = null, now = Date.now, recheckMs
         const joined = g.join(room.code, name, MAX_STUDENTS, null, u.id, e.studentId); need(joined, 'اكتمل عدد الطلاب في هذه الحصة.', 409);
         setStudentCookie(res, base, room.code, joined.token); broadcast(room.code); return redirect('/class/' + room.code);
       }
-      const cls = path.match(/^\/class\/([A-Z0-9]{6})(?:\/(events|content|narration|answer|rtc|hand|speech))?$/);
+      const cls = path.match(/^\/class\/([A-Z0-9]{6})(?:\/(events|content|narration|answer|rtc|hand|speech|ink))?$/);
       if (cls) {
         const [, code, action] = cls; need(CODE.test(code), 'رمز الحصة غير صالح.', 404);
         const raw = g.session(code), s = raw && effective(raw), me = s && g.student(code, studentToken(req, code));
@@ -271,6 +271,17 @@ export function groupService(store, {directory = null, now = Date.now, recheckMs
           const step = url.searchParams.get('step') || '', seg = url.searchParams.get('segment');
           const n = seg === null ? narrationFor(s.state, s.plan, step) : segmentAudio(s.state, s.plan, step, Number(seg));
           return sendSpeech(res, n.mode === 'speech' ? n.text : null, speakerOf(s.state));
+        }
+        if (action === 'ink' && method === 'POST') {
+          feature(raw, 'drawing'); feature(raw, 'board'); allowedStep(raw, raw.plan.steps[raw.state.index].id);
+          const body = await json(req, base, 65536);
+          // Admission, membership and the teacher grant are checked on every request, including after revocation.
+          const latest = g.session(code);
+          need(g.student(code, studentToken(req, code)), 'لم تعد منضمًا للحصة.', 403);
+          feature(latest, 'drawing'); feature(latest, 'board'); allowedStep(latest, latest.plan.steps[latest.state.index].id);
+          studentInk(effective(latest).state, latest.plan, me.id, body);
+          const next = studentInk(latest.state, latest.plan, me.id, body);
+          g.saveState(code, next); broadcast(code); return send(res, {ok: true, seq: next.seq});
         }
         if (action === 'hand' && method === 'POST') { // ✋ raise or lower the hand
           const body = await json(req, base, 256);
@@ -414,8 +425,8 @@ export function groupService(store, {directory = null, now = Date.now, recheckMs
         if (action === 'book-page' && method === 'POST') { feature(s,'page'); feature(s,'board'); // a page of the ministry book, rendered on the teacher's device: this class only, in memory
           const body = await json(req, base, 1_000_000), step = s.plan.steps.find(x => x.id === body.step && x.type === 'page'), book = bookOf(body.book);
           need(relayOn(), RELAY_OFF, 403); need(step, 'خطوة المنهج غير موجودة.', 404); need(book && Number.isInteger(body.page) && body.page >= 1 && body.page <= book.pages, 'صفحة غير صالحة.'); need(validImage(body.image), 'صورة الصفحة غير صالحة.');
-          bookPages.set(code, {step: step.id, book: book.id, page: body.page, image: body.image});
-          const next = {...s.state, pageVer: (s.state.pageVer || 0) + 1, seq: s.state.seq + 1}; g.saveState(code, next); broadcast(code);
+          const next = switchBookPage(ownSession(teacher, code).state, step.id, book.id, body.page);
+          bookPages.set(code, {step: step.id, book: book.id, page: body.page, image: body.image}); g.saveState(code, next); broadcast(code);
           return send(res, {ok: true});
         }
         if (action === 'laser' && method === 'POST') {
@@ -454,7 +465,9 @@ export function groupService(store, {directory = null, now = Date.now, recheckMs
         }
         if (action === 'command' && method === 'POST') {
           const body = await json(req, base, 65536);
-          const next = teacherCommand(s.state, s.plan, checkClassroomCommand(featuresFor(s),s.state,s.plan,body,need)); g.saveState(code, next); broadcast(code);
+          if (body.op === 'draw-permission') need(g.students(code).some(st => st.id === body.student), 'الطالب غير موجود في الحصة.', 404);
+          const latest = ownSession(teacher, code);
+          const next = teacherCommand(latest.state, latest.plan, checkClassroomCommand(featuresFor(latest),latest.state,latest.plan,body,need)); g.saveState(code, next); broadcast(code);
           return send(res, {ok: true, seq: next.seq});
         }
         if (action === 'evaluate' && method === 'POST') { feature(s,'evaluation');

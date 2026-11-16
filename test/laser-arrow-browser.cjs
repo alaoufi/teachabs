@@ -1,5 +1,5 @@
 // Optional browser verification for stage 054 (ideas from Excalidraw, Microsoft Whiteboard and ClassIn): tools in a
-// rail beside the board on a computer; ↗ arrow and ／ line reach the student; the 🔴 laser pointer shows a passing
+// dock below the board on a computer; ↗ arrow and ／ line reach the student; the 🔴 laser pointer shows a passing
 // trail on the student's screen and is never stored.
 const {chromium} = require(process.env.PLAYWRIGHT_MODULE || 'playwright');
 const {pick, openStepMenus, pastTitle} = require('./ui-helpers.cjs');
@@ -18,9 +18,9 @@ const assert = require('node:assert/strict'), fs = require('node:fs'), path = re
     const t = await tc.newPage(); watch(t); t.on('dialog', d => d.accept().catch(() => {}));
     await t.goto(base + '/start/teacher'); await t.locator('.gl-cur-subject[data-subject=science] li.is-ready button').first().click(); await t.waitForSelector('#pl-steps li');
     await t.getByRole('button', {name: 'بدء الحصة بهذا الترتيب'}).click(); await t.waitForURL(/\/teach\/live\/[A-Z0-9]{6}$/); await pastTitle(t);
-    const lay = await t.evaluate(() => { const f = document.querySelector('footer.gl-bar-bottom').getBoundingClientRect(), b = document.querySelector('#gl-board').getBoundingClientRect(); return {railBeside: f.top < b.bottom && f.left > b.right - 2, board: b.width}; });
-    assert.ok(lay.railBeside && lay.board > 850, JSON.stringify(lay)); // since stage 072 the lesson sections take a row under the board
-    results.push(`computer: the tools sit in a rail beside the board; the board is ${Math.round(lay.board)}px wide`);
+    const lay = await t.evaluate(() => { const f = document.querySelector('footer.gl-bar-bottom').getBoundingClientRect(), b = document.querySelector('#gl-board').getBoundingClientRect(); return {dockBelow: f.top >= b.bottom - 1 && f.bottom <= innerHeight + 1, board: b.width}; });
+    assert.ok(lay.dockBelow && lay.board > 850, JSON.stringify(lay)); // since stage 072 the lesson sections take a row under the board
+    results.push(`computer: the tools sit in a dock below the board; the board is ${Math.round(lay.board)}px wide`);
     const sc = await browser.newContext({viewport: {width: 390, height: 844}, isMobile: true, hasTouch: true}); sc.setDefaultTimeout(15000);
     const s = await sc.newPage(); watch(s);
     await s.goto(base + '/start/student'); await s.waitForFunction(() => window.__voice); await s.locator('#gl-enter').click(); await s.waitForSelector('#gl-content .gl-page');

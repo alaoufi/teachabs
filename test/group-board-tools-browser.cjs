@@ -44,6 +44,7 @@ const assert = require('node:assert/strict'), fs = require('node:fs'), path = re
 
     // Prepared text placed with one tap.
     assert.equal(await t.locator('.gl-snip').count(), 5);
+    await t.locator('[data-fly=pens] > .gl-fly-btn').click();
     await t.locator('.gl-snip', {hasText: 'جسم معتم'}).click();
     await t.mouse.click(...at(0.8, 0.85));
     await s.waitForFunction(() => [...document.querySelectorAll('#gl-ink text')].some(x => x.textContent === 'جسم معتم'));

@@ -1049,3 +1049,79 @@ html{font-family:var(--gl-font)}
 @media(max-width:760px){
  .gl-present .gl-bar-top,.gl-present nav.gl-bar-steps{-webkit-mask-image:linear-gradient(to right,transparent 0,#000 22px);mask-image:linear-gradient(to right,transparent 0,#000 22px)}
 }
+
+/* Tablet/phone preview: a stable document viewport and a reachable bottom dock.
+   Content and ink keep their original 1000×600 coordinate system. */
+.gl-wrap.gl-present{grid-template-columns:minmax(0,1fr);grid-template-rows:auto auto minmax(0,1fr) auto;gap:4px;padding:6px 8px calc(6px + env(safe-area-inset-bottom));height:100dvh;overflow:hidden}
+.gl-present>.gl-bar-top,.gl-present>.gl-bar-steps{grid-column:1;grid-row:auto}
+.gl-present>.gl-stage{grid-column:1;grid-row:3;container-type:size;min-height:0;width:100%;padding:0!important;justify-content:center;gap:4px}
+.gl-present>footer.gl-bar-bottom{grid-column:1;grid-row:4;inline-size:auto;flex-direction:row;flex-wrap:wrap;justify-content:center;overflow:visible;padding:4px;gap:4px;z-index:6}
+.gl-present footer .gl-tools{display:flex;flex-direction:row;flex-wrap:wrap;justify-content:center;align-items:center;gap:6px;width:auto}
+.gl-present footer .gl-toolgroup{display:flex!important;grid-template-columns:none;flex-direction:row;flex-wrap:nowrap;gap:4px;border:0!important;padding:0!important;margin:0}
+.gl-present footer .gl-toolgroup+.gl-toolgroup{border:0!important;padding:0!important}
+.gl-present footer .gl-tool,.gl-present footer .gl-fly-btn,.gl-present footer #gl-undo,.gl-wrap .gl-zoom button,.gl-student-ink button{min-width:44px;min-height:44px;font-size:13px;padding:4px 8px!important}
+.gl-present footer .gl-tool{flex-direction:row;gap:4px}
+.gl-present footer .gl-fly-menu{position:absolute;top:auto;bottom:calc(100% + 8px);inset-inline-start:auto;inset-inline-end:0;max-width:calc(100vw - 24px);max-height:min(50dvh,420px);overflow:auto;z-index:20}
+.gl-present footer .gl-snippets{display:none}
+/* Prepared text remains available through the existing text library. */
+.gl-present footer .gl-snippets:not([hidden]){display:flex;flex-direction:row;overflow-x:auto;flex-wrap:nowrap;max-width:100%;border:0;padding:0;gap:4px}
+.gl-present footer .gl-snippets .gl-snip{white-space:nowrap;min-height:44px;font-size:13px;padding:4px 8px}
+.gl-present footer .gl-zoom{position:static;display:flex;gap:4px;margin:0;padding:0;border:0;box-shadow:none;background:none}
+.gl-present .gl-stage::before,.gl-present .gl-stage::after,.gl-solo .gl-stage::before,.gl-solo .gl-stage::after{display:none}
+.gl-present .gl-board,.gl-present .gl-stage:has(> .gl-sections) .gl-board{width:min(100cqw - 12px,(100cqh - 58px) * 1.666667)!important;flex:none;margin:0;box-sizing:content-box;border-width:2px;border-radius:8px;background:var(--gl-surface);box-shadow:none}
+.gl-present .gl-stage:has(> .gl-narrator) .gl-board{width:min(100cqw - 12px,(100cqh - 140px) * 1.666667)!important}
+.gl-wrap .gl-stage .gl-board.gl-book-surface{aspect-ratio:var(--gl-book-ratio,.78);width:min(100cqw - 12px,(100cqh - 58px) * var(--gl-book-ratio,.78))!important}
+.gl-wrap .gl-stage:has(> .gl-narrator) .gl-board.gl-book-surface{width:min(100cqw - 12px,(100cqh - 140px) * var(--gl-book-ratio,.78))!important}
+.gl-book-surface .gl-content,.gl-book-surface .gl-content.gl-enter{animation:none!important}
+.gl-book-surface .gl-page img{border-radius:0;box-shadow:none}
+.gl-board::after{box-shadow:none;background:none}
+.gl-wrap.gl-solo{transform:none;grid-template-rows:minmax(0,1fr) auto;gap:4px;padding:6px 8px calc(6px + env(safe-area-inset-bottom))}
+.gl-solo .gl-stage{position:relative!important;inset:auto!important;width:100%!important;height:auto!important;transform:none!important;container-type:size;padding:0;gap:4px;justify-content:center}
+.gl-solo .gl-board,.gl-solo .gl-stage.is-max .gl-board{box-sizing:content-box;border-width:2px;border-radius:8px;background:var(--gl-surface);box-shadow:none;width:min(100cqw - 12px,(100cqh - 58px) * 1.666667)!important}
+.gl-solo .gl-stage>.gl-zoom{position:static;margin:0;flex:none;transform:none}
+.gl-student-ink{position:absolute;bottom:52px;inset-inline:8px;display:flex;justify-content:center;align-items:center;gap:8px;padding:4px;background:var(--gl-surface);border:1px solid var(--gl-line-cool);border-radius:8px;z-index:4;font-size:13px}
+.gl-student-ink[hidden]{display:none}
+.gl-board[data-tool=pen],.gl-board[data-tool=hand]{touch-action:none}
+.gl-present .gl-sections{max-width:100%;flex:none;margin:0;min-height:44px}
+.gl-wrap .gl-sections .gl-mini,.gl-wrap .gl-sections .gl-eye,.gl-wrap .gl-sections .gl-go{min-height:44px;min-width:44px}
+.gl-present.drawer-open{grid-template-columns:minmax(0,1fr);grid-template-rows:auto auto minmax(0,1fr) auto}
+.gl-present.drawer-open>.gl-stage{grid-column:1;grid-row:3}
+.gl-present.drawer-open>footer.gl-bar-bottom{grid-column:1;grid-row:4}
+.gl-present.drawer-open>.gl-bar-top,.gl-present.drawer-open>.gl-bar-steps{grid-column:1}
+.gl-present .gl-drawer{position:fixed;inset:8px 8px 8px auto;width:min(400px,calc(100vw - 16px));z-index:30;overflow:auto}
+.gl-wrap button:focus-visible{outline:3px solid var(--gl-brand);outline-offset:3px}
+@media(max-width:760px){
+ .gl-present footer .gl-tool span:last-child{display:none}
+ .gl-present footer .gl-snippets:not([hidden]){display:none}
+ .gl-present .gl-bar-top,.gl-present .gl-bar-steps{min-height:44px}
+ .gl-present footer .gl-fly-btn{font-size:12px}
+ .gl-present .gl-tools{gap:4px}
+}
+@media(orientation:landscape) and (max-height:500px){
+ .gl-wrap.gl-solo{grid-template-columns:minmax(0,1fr) auto;grid-template-rows:minmax(0,1fr)}
+ .gl-solo .gl-student-bar{flex-direction:column}
+}
+.gl-present footer .gl-fly-menu .gl-snippets:not([hidden]){display:flex;flex-wrap:wrap;overflow:visible;max-width:320px;white-space:normal}
+@media(orientation:landscape) and (max-height:500px){
+ .gl-solo>.gl-sbar{grid-column:2;grid-row:1;display:flex;flex-direction:column;width:auto;max-width:140px;margin:0;padding:4px;gap:4px}
+ .gl-solo .gl-sbar .gl-status-dot{display:none}
+ .gl-solo .gl-stage .gl-board.gl-book-surface{aspect-ratio:5/3;width:min(100cqw - 12px,(100cqh - 58px) * 1.666667)!important}
+}
+.gl-present footer .gl-fly-menu button{min-height:44px;min-width:44px}
+/* Captions keep a readable width instead of inheriting the shrunken board width. */
+#gl-app.gl-present .gl-stage>.gl-narrator{width:min(100cqw - 16px,1000px)!important;max-height:104px;margin:0;overflow:auto;box-sizing:border-box;flex:none}
+#gl-app.gl-present .gl-stage:has(>.gl-narrator) .gl-board{width:min(100cqw - 12px,(100cqh - 176px) * 1.666667)!important}
+.gl-present footer .gl-tools{flex:1 1 auto;min-width:0;max-width:100%}
+@media(orientation:landscape) and (max-height:500px){
+ .gl-present footer .gl-tool span:last-child,.gl-present footer .gl-fly-label,.gl-present footer .gl-fly-btn>b{display:none}
+ #gl-app.gl-present .gl-stage:has(>.gl-narrator){display:grid;grid-template-columns:minmax(0,1fr) minmax(160px,30%);grid-template-rows:minmax(0,1fr) auto;justify-items:center;gap:4px}
+ #gl-app.gl-present .gl-stage:has(>.gl-narrator) .gl-board{grid-column:1;grid-row:1;width:min(70cqw - 16px,(100cqh - 64px) * 1.666667)!important}
+ #gl-app.gl-present .gl-stage>.gl-narrator{grid-column:2;grid-row:1;width:100%!important;max-height:100%;min-height:0}
+ #gl-app.gl-present .gl-stage:has(>.gl-narrator)>.gl-sections{grid-column:1/-1;grid-row:2}
+}
+/* A book on the display route follows its natural orientation too. */
+.gl-show:has(.gl-book-surface) .gl-stage{position:relative!important;inset:auto!important;width:100%!important;height:auto!important;transform:none!important;container-type:size}
+.gl-show:has(.gl-book-surface){height:100dvh;grid-template-rows:auto minmax(0,1fr)}
+.gl-show:has(.gl-book-surface){inset:0;width:100vw;transform:none;grid-template-columns:minmax(0,1fr);padding:6px}
+.gl-show:has(.gl-book-surface)>.gl-show-bar{grid-column:1;grid-row:1;flex-direction:row;flex-wrap:wrap;max-width:none;text-align:start}
+.gl-show:has(.gl-book-surface)>.gl-stage{grid-column:1;grid-row:2}

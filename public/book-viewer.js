@@ -40,18 +40,26 @@ export function openBookDialog({book, page, onShow}) {
   document.body.append(dlg); dlg.showModal(); openMotion(dlg);
   const $ = k => dlg.querySelector(`[data-k=${k}]`), canvas = dlg.querySelector('canvas'), status = dlg.querySelector('.gl-status');
   dlg.querySelector('.bk-title').textContent = book.title;
-  let at = page || 1, doc = null, busy = false;
+  let at = page || 1, doc = null, busy = false, loading = false, renderedAt = null;
   const max = book.pages - book.offset;
   async function show(n) {
+    if (loading || busy) return;
+    loading = true; renderedAt = null;
+    for (const key of ['show', 'prev', 'next', 'page']) $(key).disabled = true;
     at = Math.min(max, Math.max(1, n)); $('page').value = at; status.textContent = `جارٍ تحميل الصفحة ${ar.format(at)}…`;
-    try { doc = doc || await openBook(book.id); await drawPage(doc, at, book.offset, canvas, Math.min(1400, Math.max(700, innerWidth * 1.2))); status.textContent = `الصفحة ${ar.format(at)} من ${ar.format(max)}`; }
+    try { doc = doc || await openBook(book.id); await drawPage(doc, at, book.offset, canvas, Math.min(1400, Math.max(700, innerWidth * 1.2))); renderedAt = at; status.textContent = `الصفحة ${ar.format(at)} من ${ar.format(max)}`; }
     catch (e) { status.textContent = e?.status === 403 ? 'عرض الكتاب داخل المنصة موقوف حتى يتأكد حق العرض. افتح الكتاب من مصدره، أو صوّر صفحة من نسختك بزر «📷 صورة».' : 'تعذّر فتح الكتاب من مصدره الآن. حاول بعد قليل.'; }
+    finally {
+      loading = false;
+      for (const key of ['prev', 'next', 'page']) $(key).disabled = false;
+      $('show').disabled = renderedAt !== at;
+    }
   }
   $('prev').onclick = () => show(at - 1); $('next').onclick = () => show(at + 1);
   $('page').onchange = e => show(Number(e.target.value) || 1);
   $('close').onclick = () => { dlg.close(); dlg.remove(); };
   $('show').onclick = async () => {
-    if (busy || !canvas.width) return; busy = true; status.textContent = 'جارٍ عرض الصفحة على السبورة…';
+    if (busy || loading || renderedAt !== at || !canvas.width) return; busy = true; status.textContent = 'جارٍ عرض الصفحة على السبورة…';
     try { await onShow(pageImage(canvas), at); dlg.close(); dlg.remove(); } catch (e) { status.textContent = e.message || 'تعذّر العرض.'; } finally { busy = false; }
   };
   show(at);

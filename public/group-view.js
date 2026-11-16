@@ -125,6 +125,8 @@ export function applyCamera(camera, c, {animate = true} = {}) {
  * options.shadow is the activity state to draw; options.display is the questions display.
  */
 export function renderStep(container, content, {teacher = false, revealed = null, shadow = null, display = null, places = {}} = {}) {
+  const surface = container.closest('.gl-board');
+  surface?.classList.toggle('gl-book-surface', content?.type === 'page' && content?.source === 'upload');
   if (!content) { container.replaceChildren(); delete container.dataset.step; return; }
   const title = el('h2', {class: 'gl-step-title', text: content.title});
   if (content.type !== 'interactive') { container.replaceChildren(); delete container.dataset.step; }
@@ -138,7 +140,16 @@ export function renderStep(container, content, {teacher = false, revealed = null
   }
   if (content.type === 'page') {
     const frame = el('div', {class: 'gl-page'});
-    if (content.source === 'upload') frame.append(el('img', {src: content.image, alt: content.title}));
+    if (content.source === 'upload') {
+      const image = el('img', {src: content.image, alt: content.title});
+      image.addEventListener('load', () => {
+        if (surface && image.isConnected && image.naturalHeight) {
+          surface.style.setProperty('--gl-book-ratio', String(image.naturalWidth / image.naturalHeight));
+          fitBoard();
+        }
+      });
+      frame.append(image);
+    }
     else if (content.source === 'book') frame.append(el('div', {class: 'gl-book-wait'}, el('b', {text: '📖 ' + content.title}), el('p', {text: `صفحة ${content.page} من كتاب الوزارة — تظهر هنا عندما يعرضها المعلم.`})));
     else frame.innerHTML = renderOriginalPage(content.page); // fixed, escaped project content
     container.append(frame);
@@ -258,9 +269,19 @@ export async function playNarration(n, {onEnd = () => {}} = {}) {
 // Board content is laid out at 1000×600 (like the ink) and scaled to the board, so a lesson looks the same on a
 // phone, a laptop and a smart board, and nothing is cut off on small screens.
 const boardEl = typeof document !== 'undefined' && document.getElementById('gl-board');
+function fitBoard() {
+  if (!boardEl) return;
+  const camera = boardEl.querySelector('.gl-camera');
+  if (!camera) return;
+  const w = boardEl.classList.contains('gl-book-surface') ? boardEl.clientHeight * 5 / 3 : Math.min(boardEl.clientWidth, boardEl.clientHeight * 5 / 3);
+  if (!w) return;
+  boardEl.style.setProperty('--k', String(w / 1000));
+  camera.style.width = w + 'px'; camera.style.height = w * .6 + 'px';
+  camera.style.left = (boardEl.clientWidth - w) / 2 + 'px'; camera.style.top = (boardEl.clientHeight - w * .6) / 2 + 'px';
+  camera.style.right = 'auto'; camera.style.bottom = 'auto';
+}
 if (boardEl && 'ResizeObserver' in window) {
-  const fit = () => { const w = boardEl.clientWidth; if (w) boardEl.style.setProperty('--k', String(w / 1000)); };
-  new ResizeObserver(fit).observe(boardEl); fit();
+  new ResizeObserver(fitBoard).observe(boardEl); fitBoard();
 }
 
 /** Where the natural voice of a step's explanation (or of one narrator segment) is fetched from. */

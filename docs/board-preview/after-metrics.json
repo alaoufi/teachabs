@@ -1,0 +1,78 @@
+{
+  "runs": 3,
+  "firstPageMs": {
+    "samples": [
+      2589,
+      2509,
+      2713
+    ],
+    "median": 2589
+  },
+  "liveInkMs": {
+    "samples": [
+      21,
+      20,
+      26,
+      21,
+      19,
+      22,
+      19,
+      20,
+      20,
+      20,
+      21,
+      20,
+      20,
+      19,
+      20
+    ],
+    "median": 20
+  },
+  "finishedInkMs": {
+    "samples": [
+      7,
+      12,
+      7,
+      6,
+      5,
+      7,
+      5,
+      9,
+      6,
+      9,
+      6,
+      11,
+      6,
+      7,
+      5
+    ],
+    "median": 7
+  },
+  "publicationMs": {
+    "samples": [
+      105,
+      121,
+      90
+    ],
+    "median": 105
+  },
+  "pageTurnMs": {
+    "samples": [
+      562,
+      641,
+      689
+    ],
+    "median": 641
+  },
+  "errors": [],
+  "newPageInk": [
+    0,
+    0,
+    0
+  ],
+  "alignmentMaxDifference": {
+    "alignmentBeforeZoom": 0.0000015034535034708085,
+    "alignmentZoomed": 0.0000014701509729042606,
+    "alignmentPanned": 0.0000015237158535463813
+  }
+}

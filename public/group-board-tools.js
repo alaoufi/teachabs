@@ -6,7 +6,7 @@ import {settle} from './motion.js';
 
 export function attachBoardTools({mode, enabled = () => true, send = () => {}, items = () => [], canInk = () => false, onStatus = () => {}, onNext, onPrev, onUndo, onLaser = () => {}, onLiveInk = () => {}}) {
   const $ = id => document.getElementById(id);
-  const board = $('gl-board'), camera = $('gl-camera'), ink = $('gl-ink'), teacher = mode === 'teacher';
+  const board = $('gl-board'), camera = $('gl-camera'), ink = $('gl-ink'), teacher = mode === 'teacher', writer = teacher || mode === 'student';
   const state = {tool: 'select', color: '#173e34', size: 'm', camera: {z: 1, x: 0, y: 0}, remote: {z: 1, x: 0, y: 0}, following: true, lastLocal: 0, pendingText: null};
   const pointers = new Map();
   let gesture = null, cameraTimer = 0, spaceDown = false;
@@ -14,7 +14,7 @@ export function attachBoardTools({mode, enabled = () => true, send = () => {}, i
   // ---- coordinates ----
   const unrotatedRect = () => board.getBoundingClientRect();
   const toBoard = e => { const r = ink.getBoundingClientRect(); return [Math.max(0, Math.min(BOARD.width, (e.clientX - r.left) / r.width * BOARD.width)), Math.max(0, Math.min(BOARD.height, (e.clientY - r.top) / r.height * BOARD.height))]; };
-  const unitsPerPixel = () => BOARD.width / unrotatedRect().width / state.camera.z;
+  const unitsPerPixel = () => BOARD.width / ink.getBoundingClientRect().width;
 
   // ---- camera ----
   function setCamera(c, {animate = false, share = true} = {}) {
@@ -27,7 +27,7 @@ export function attachBoardTools({mode, enabled = () => true, send = () => {}, i
       clearTimeout(cameraTimer);
       cameraTimer = setTimeout(() => send({op: 'camera', ...state.camera}), 120);
     }
-    if (!teacher && mode === 'viewer' && share) { state.following = false; followButton(); }
+    if (!teacher && share) { state.following = false; followButton(); }
   }
   function followButton() { const b = board.parentElement.querySelector('[data-zoom=follow]'); if (b) b.hidden = state.following; }
   /** Called with the teacher's camera from each live update. */
@@ -41,10 +41,16 @@ export function attachBoardTools({mode, enabled = () => true, send = () => {}, i
     const [px, py] = center || [state.camera.x + BOARD.width / state.camera.z / 2, state.camera.y + BOARD.height / state.camera.z / 2];
     setCamera(zoomAround(state.camera, factor, px, py), {animate: true});
   };
-  for (const b of board.parentElement.querySelectorAll('[data-zoom]')) b.addEventListener('click', () => {
+  for (const b of document.querySelectorAll('#gl-app [data-zoom]')) b.addEventListener('click', () => {
     const z = b.dataset.zoom;
     if (z === 'in') zoomBy(1.4); else if (z === 'out') zoomBy(1 / 1.4);
     else if (z === 'fit') setCamera({z: 1, x: 0, y: 0}, {animate: true});
+    else if (z === 'width') {
+      const image = board.querySelector('.gl-page img');
+      const r = image?.getBoundingClientRect();
+      const zoom = r?.width ? Math.min(4, state.camera.z * board.clientWidth / r.width) : 2;
+      setCamera({z: Math.max(1, zoom), x: (1000 - 1000 / zoom) / 2, y: 0}, {animate: true});
+    }
     else if (z === 'max') {
       const stage = board.parentElement, on = !stage.classList.contains('is-max');
       stage.classList.toggle('is-max', on); document.documentElement.classList.toggle('gl-noscroll', on);
@@ -59,13 +65,13 @@ export function attachBoardTools({mode, enabled = () => true, send = () => {}, i
 
   // ---- tool selection ----
   function setTool(tool) {
-    if (!teacher || !enabled(tool==='laser'?'laser':tool==='hand'?'zoom':'drawing')) return;
+    if (!writer || (!teacher && !['pen', 'hand'].includes(tool)) || !enabled(tool==='laser'?'laser':tool==='hand'?'zoom':'drawing')) return;
     state.tool = tool; state.pendingText = tool === 'text' ? state.pendingText : null;
     for (const b of document.querySelectorAll('.gl-tool')) b.setAttribute('aria-pressed', String(b.dataset.tool === tool));
     board.dataset.tool = tool;
     if (tool !== 'text') closeTextbox();
   }
-  if (teacher) {
+  if (writer) {
     for (const b of document.querySelectorAll('.gl-tool')) b.addEventListener('click', () => { setTool(b.dataset.tool); if (b.dataset.tool === 'text') openDocked(); });
     for (const b of document.querySelectorAll('.gl-color')) b.addEventListener('click', () => {
       state.color = b.dataset.color; for (const x of document.querySelectorAll('.gl-color')) x.setAttribute('aria-pressed', String(x === b));
@@ -190,7 +196,11 @@ export function attachBoardTools({mode, enabled = () => true, send = () => {}, i
     if (fresh.length || end) onLiveInk({ink: {g: g.g, tool: g.tool, size: state.size, color: state.color, at, end: end !== false}, p: fresh.map(clip)});
     if (g.sent < g.points.length && end === false) liveTimer = setTimeout(() => flushLive(false), 50);
   }
-  const queueLive = () => { if (!liveTimer) liveTimer = setTimeout(() => flushLive(false), 50); };
+  const queueLive = () => {
+    // Send the first visible segment immediately; batch the rest at the existing 20Hz rate.
+    if (gesture?.type === 'draw' && gesture.sent === 0 && gesture.points.length >= 2) { flushLive(false); return; }
+    if (!liveTimer) liveTimer = setTimeout(() => flushLive(false), 50);
+  };
   // redraw the line being written once per screen frame, however fast the pen reports points
   let frame = 0;
   function drawLive() {
@@ -206,10 +216,10 @@ export function attachBoardTools({mode, enabled = () => true, send = () => {}, i
     pointers.set(e.pointerId, {x: e.clientX, y: e.clientY});
     if (pointers.size === 2) { if(enabled('zoom'))startPinch(); return; }
     if (pointers.size > 2) return;
-    const point = toBoard(e), tool = spaceDown || e.button === 1 ? 'hand' : (teacher ? state.tool : 'hand');
+    const point = toBoard(e), tool = spaceDown || e.button === 1 ? 'hand' : (writer && canInk() ? state.tool : 'hand');
     if(!enabled(tool==='laser'?'laser':tool==='hand'?'zoom':'drawing')) return;
-    const inking = teacher && canInk();
-    if (!teacher && state.camera.z <= 1) return; // let the page scroll when not zoomed
+    const inking = writer && canInk();
+    if (!inking && !teacher && state.camera.z <= 1) return; // let the page scroll when not zoomed
     board.setPointerCapture(e.pointerId);
     if (['pen', 'brush', 'marker'].includes(tool) && inking) {
       e.preventDefault();
@@ -246,6 +256,7 @@ export function attachBoardTools({mode, enabled = () => true, send = () => {}, i
     pointers.set(e.pointerId, {x: e.clientX, y: e.clientY});
     if (gesture?.type === 'pinch') return movePinch();
     if (!gesture) return;
+    if (gesture.type === 'draw' && (!canInk() || !enabled('drawing'))) { gesture.live.remove(); gesture = null; return; }
     if (gesture.type === 'draw') {
       const events = e.getCoalescedEvents?.() || [e];
       for (const ev of events) {
@@ -281,6 +292,7 @@ export function attachBoardTools({mode, enabled = () => true, send = () => {}, i
     if (gesture?.type === 'pinch') { if (pointers.size < 2) gesture = null; return; }
     const g = gesture; gesture = null; board.classList.remove('is-panning');
     if (!g) return;
+    if (g.type === 'draw' && (!canInk() || !enabled('drawing'))) { g.live.remove(); clearTimeout(liveTimer); return; }
     if (frame) { cancelAnimationFrame(frame); frame = 0; if (g && (g.type === 'draw' || g.type === 'shape')) { gesture = g; drawLive(); gesture = null; } }
     if (g && (g.type === 'draw' || g.type === 'shape')) flushLive(g);
     if (g.type === 'draw') { g.live.classList.remove('is-live'); if (g.points.length >= 2) { g.live.classList.add('is-pending'); send({op: 'stroke', tool: g.tool, size: state.size, color: state.color, points: g.points}); } else g.live.remove(); }
@@ -324,8 +336,8 @@ export function attachBoardTools({mode, enabled = () => true, send = () => {}, i
     document.addEventListener('keyup', e => { if (e.key === ' ') { spaceDown = false; board.classList.remove('is-space'); } });
   }
 
-  if (teacher) setTool('select');
-  return {remoteCamera, prepareSnippet, placeNow, openDocked, setTool, resetForStep() { closeTextbox(); state.pendingText = null; gesture = null; pointers.clear(); }, get tool() { return state.tool; }};
+  if (writer) setTool(teacher ? 'select' : 'pen');
+  return {remoteCamera, prepareSnippet, placeNow, openDocked, setTool, resetForStep() { closeTextbox(); state.pendingText = null; gesture?.live?.remove(); gesture = null; pointers.clear(); clearTimeout(liveTimer); clearTimeout(cameraTimer); cancelAnimationFrame(frame); frame = 0; liveTimer = 0; state.lastLocal = 0; state.following = true; followButton(); ink.querySelectorAll('.gl-live-remote, .is-pending, .is-live').forEach(n => n.remove()); }, get tool() { return state.tool; }};
 }
 
 function segmentDistance(p, a, b) {
