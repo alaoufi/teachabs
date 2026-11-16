@@ -81,7 +81,21 @@ test('a student enters their class by subject; another class, a moved or suspend
   assert.deepEqual([room.period_id, room.occurrence_date, room.class_id], ['p-1', DATE, 'c-4a']); assert.equal(room.plan.steps[0].type, 'title');
 
   // the student of 4/a chooses science and is in
-  assert.match(await (await get('/school', parentA)).text(), /value="science"[^]*value="math"|value="math"[^]*value="science"/);
+  assert.equal((await get('/start/student', parentA)).headers.get('location'), '/school');
+  clock = at(7, 49);
+  const early = await get('/school', parentA);
+  assert.equal(early.status, 200); assert.match(await early.text(), /school-entry.js/);
+  clock = at(7, 50);
+  const automatic = await get('/school', parentA);
+  assert.equal(automatic.status, 303);
+  assert.equal(automatic.headers.get('location'), '/class/' + code, 'auto-select eligible subject at exactly ten minutes early');
+  data.students[1].parent = a.parent;
+  const choices = await get('/school', parentA);
+  assert.equal(choices.status, 200); assert.match(await choices.text(), /اختر الطالب أولًا/);
+  assert.equal((await get('/school?student=' + a.child, parentA)).headers.get('location'), '/class/' + code);
+  data.students[1].parent = b.parent;
+  assert.equal((await get('/school?student=' + b.child, parentA)).status, 403);
+  clock = at(7, 55);
   const enter = await post('/school/enter', parentA, {student: a.child, subject: 'science'});
   assert.equal(enter.status, 303); assert.equal(enter.headers.get('location'), '/class/' + code);
   const nora = enter.headers.get('set-cookie').split(';')[0];

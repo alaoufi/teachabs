@@ -219,6 +219,7 @@ export function groupService(store, {directory = null, now = Date.now, recheckMs
       }
       // The app's «أنا الطالب» in the trial: straight into the class a trial teacher is running — no code, no name.
       if (path === '/start/student' && method === 'GET') {
+        if (directory || u?.role === 'parent') return redirect('/school');
         const code = g.latestTrialLive(Date.now() - 6 * 3600_000);
         if (!code) return redirect('/join?none=1');
         if (g.student(code, studentToken(req, code))) return redirect('/class/' + code);
@@ -234,18 +235,19 @@ export function groupService(store, {directory = null, now = Date.now, recheckMs
         need(u.role === 'parent', 'هذه الصفحة لحساب ولي الأمر.', 403);
         if (!directory) return page(res, html, 'حصتي الآن', v.schoolPage({off: true}));
         const kids = await dir(d => d.childrenOf(u.id, now()));
-        if (method === 'GET') {
-          const pick = String(url.searchParams.get('student') || ''), chosen = kids.find(k => k.studentId === pick) || (kids.length === 1 ? kids[0] : null);
-          const subjects = chosen ? await dir(d => d.studentSubjects(u.id, chosen.studentId, now())) : [];
-          return page(res, html, 'حصتي الآن', v.schoolPage({kids, chosen, subjects}));
-        }
-        need(method === 'POST', 'إجراء غير متاح.', 405);
-        const data = await fields(req), studentId = String(data.student || ''), subject = String(data.subject || '');
+        need(method === 'GET' || method === 'POST', 'إجراء غير متاح.', 405);
+        const automatic = method === 'GET';
+        const data = automatic ? {student: url.searchParams.get('student') || ''} : await fields(req);
+        const studentId = String(data.student || (kids.length === 1 ? kids[0].studentId : ''));
+        const subject = String(data.subject || '');
+        const selected = kids.find(k => k.studentId === studentId);
+        if (automatic && studentId) need(selected, 'هذا الطالب ليس من أبنائك.', 403);
+        if (automatic && !selected) return page(res, html, 'حصتي الآن', v.schoolPage({kids}));
         const r = await dir(d => d.studentNow(u.id, studentId, subject, now())), chosen = kids.find(k => k.studentId === r.student.id) || kids.find(k => k.studentId === studentId) || kids[0];
         const subjects = await dir(d => d.studentSubjects(u.id, studentId || r.student.id, now()));
-        if (!r.now) return page(res, html, 'حصتي الآن', v.schoolPage({kids, chosen, subjects, subject, next: r.next}));
+        if (!r.now) return page(res, html, 'حصتي الآن', v.schoolPage({kids, chosen, subjects, subject, next: r.next, automatic}));
         const room = g.occurrenceRoom(r.now.periodId, r.now.date);
-        if (!room || !room.live) return page(res, html, 'حصتي الآن', v.schoolPage({kids, chosen, subjects, subject, waiting: r.now}));
+        if (!room || !room.live) return page(res, html, 'حصتي الآن', v.schoolPage({kids, chosen, subjects, subject, waiting: r.now, automatic}));
         const s = g.session(room.code), e = await dir(d => d.studentEntry(u.id, studentId || r.student.id, s.period_id, s.occurrence_date, now()));
         need(e.classId === s.class_id, 'هذه الحصة ليست لفصلك.', 403);
         const name = firstName(chosen?.firstName || r.student.firstName || 'طالب');

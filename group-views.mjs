@@ -299,18 +299,18 @@ const subjectName = k => SUBJECTS[k] || k;
 const linkOff = '<p class="gl-status" role="status">الربط مع بيانات المدرسة (الفصول والجدول) غير مفعّل بعد. ادخل الحصة برمزها أو برابطها كما في السابق.</p>';
 
 /** «حصتي الآن»: the parent's account picks the student (if more than one) and a subject; the class's current period opens. */
-export function schoolPage({off = false, kids = [], chosen = null, subjects = [], subject = '', next = null, waiting = null} = {}) {
-  const head = `<div class="section-head welcome-panel"><div class="eyebrow">الحصة المدرسية</div><h1>حصتي الآن</h1><p>اختر المادة، فتدخل حصة فصلك إن كانت الآن.</p></div>`;
+export function schoolPage({off = false, kids = [], chosen = null, subjects = [], subject = '', next = null, waiting = null, automatic = false} = {}) {
+  const head = `<div class="section-head welcome-panel"><div class="eyebrow">الحصة المدرسية</div><h1>حصتي الآن</h1><p>ندخلك إلى حصتك المستحقة تلقائيًا، ابتداءً من عشر دقائق قبل بدايتها.</p></div>`;
   if (off) return `${css}<section class="gl-wrap sc-page" dir="rtl">${head}${linkOff}<p><a class="btn" href="/join">الدخول برمز الحصة</a></p></section>`;
   if (!kids.length) return `${css}<section class="gl-wrap sc-page" dir="rtl">${head}<p class="gl-status" role="status">لا يوجد في هذا الحساب طالب مسجّل في فصل. راجع إدارة المدرسة.</p></section>`;
   const who = kids.length > 1 ? `<nav class="gl-actions sc-kids" aria-label="الطالب">${kids.map(k => `<a class="${chosen?.studentId === k.studentId ? 'btn' : 'outline'}" href="/school?student=${encodeURIComponent(k.studentId)}"${chosen?.studentId === k.studentId ? ' aria-current="true"' : ''}>${e(k.firstName)}${k.className ? ` <small>${e(k.className)}</small>` : ''}</a>`).join('')}</nav>` : '';
-  const note = waiting ? `<p class="gl-status" role="status">حصة ${e(subjectName(subject))} الآن (${e(waiting.starts)}–${e(waiting.ends)})، والمعلم لم يبدأها بعد. انتظر قليلًا ثم اضغط المادة مرة أخرى.</p>`
-    : subject && next ? `<p class="gl-status" role="status">لا توجد حصة ${e(subjectName(subject))} الآن. حصتك القادمة: ${e(arT.format(next.opensAt + 10 * 60_000))} (${e(next.starts)}–${e(next.ends)}).</p>`
-    : subject ? `<p class="gl-status" role="status">لا توجد حصة ${e(subjectName(subject))} لفصلك في الأسبوعين القادمين.</p>` : '';
+  const note = waiting ? `<p class="gl-status" role="status">حصة ${e(subjectName(subject || waiting.subject))} الآن (${e(waiting.starts)}–${e(waiting.ends)})، والمعلم لم يبدأها بعد. ${automatic ? 'سنحاول الدخول تلقائيًا عند بدء المعلم للحصة.' : 'انتظر قليلًا ثم اضغط المادة مرة أخرى.'}</p>`
+    : next ? `<p class="gl-status" role="status">لا توجد حصة ${e(subjectName(subject))} الآن. حصتك القادمة: ${e(arT.format(next.opensAt + 10 * 60_000))} (${e(next.starts)}–${e(next.ends)}).</p>`
+    : (subject || automatic) ? `<p class="gl-status" role="status">لا توجد حصة ${e(subjectName(subject))} لفصلك في الأسبوعين القادمين.</p>` : '';
   const pick = chosen ? (subjects.length ? `<form method="post" action="/school/enter" class="gl-actions sc-subjects"><input type="hidden" name="student" value="${e(chosen.studentId)}">${subjects.map(k => `<button class="btn" name="subject" value="${e(k)}">${e(subjectName(k))}</button>`).join('')}</form>`
     : '<p class="gl-note">لا توجد مواد مسندة لفصلك في هذا الفصل الدراسي.</p>') : '<p class="gl-note">اختر الطالب أولًا.</p>';
-  return `${css}<section class="gl-wrap sc-page" dir="rtl">${head}${who}${chosen ? `<h2>${e(chosen.firstName)}${chosen.className ? ` — ${e(chosen.className)}` : ''}</h2>` : ''}${note}${pick}
-  <p class="gl-note">يدخل الطالب حصة فصله فقط، في وقتها. ويظهر للزملاء اسمه الأول فقط.</p></section>`;
+  return `${css}<section class="gl-wrap sc-page" dir="rtl">${head}${who}${chosen ? `<h2>${e(chosen.firstName)}${chosen.className ? ` — ${e(chosen.className)}` : ''}</h2>` : ''}${note}${automatic ? '<p class="gl-note">يفتح الدخول قبل بداية الحصة بعشر دقائق. يتم تحديث حالة الحصة تلقائيًا.</p>' : ''}${pick}
+  <p class="gl-note">يدخل الطالب حصة فصله فقط، في وقتها. ويظهر للزملاء اسمه الأول فقط.</p></section>${automatic ? '<script type="module" src="/school-entry.js"></script>' : ''}`;
 }
 
 /** «حصص اليوم»: the teacher's periods from the school's schedule; each opens one room for that period and date. */

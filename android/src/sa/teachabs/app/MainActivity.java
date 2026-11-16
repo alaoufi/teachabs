@@ -46,10 +46,10 @@ import java.util.Locale;
  * lesson import), the microphone for recorded explanations, downloads of lesson files, and the back button.
  */
 public class MainActivity extends Activity {
-    static final String HOME = "https://abdulrahman-edu-trial.onrender.com/";
-    static final String HOST = "abdulrahman-edu-trial.onrender.com";
+    static final String HOME = "https://teachabs-board-preview-082.onrender.com/";
+    static final String HOST = "teachabs-board-preview-082.onrender.com";
     static final int FILE_REQUEST = 41, MIC_REQUEST = 42;
-    static final String VERSION = "1.6";
+    static final String VERSION = "1.8";
 
     WebView web;
     ProgressBar progress;
@@ -185,6 +185,7 @@ public class MainActivity extends Activity {
         if (!VERSION.equals(prefs.getString("version", ""))) { web.clearCache(true); web.clearHistory(); prefs.edit().putString("version", VERSION).apply(); }
         s.setCacheMode(WebSettings.LOAD_DEFAULT); // the site stamps its files per deploy, so cached files are always current
         if (saved != null) web.restoreState(saved);
+        else if ("student".equals(prefs.getString("lastRole", ""))) web.loadUrl(HOME + "start/student");
         else showStart();
     }
 
@@ -236,6 +237,7 @@ public class MainActivity extends Activity {
         @JavascriptInterface public String version() { return VERSION; }
         @JavascriptInterface public void go(String who) {
             ui.post(() -> {
+                getSharedPreferences("app", MODE_PRIVATE).edit().putString("lastRole", "teacher".equals(who) ? "teacher" : "student").apply();
                 label.setText("جارٍ الفتح…"); loading.setVisibility(View.VISIBLE);
                 ui.removeCallbacks(slowNote); ui.postDelayed(slowNote, 5000);
                 web.loadUrl(HOME + ("teacher".equals(who) ? "start/teacher" : "start/student")); // the student goes straight into the running trial class
