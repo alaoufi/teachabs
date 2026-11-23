@@ -1195,5 +1195,29 @@ html{font-family:var(--gl-font)}
 }
 
 #gl-app.gl-simple-seat{grid-template: minmax(0,1fr) / minmax(0,1fr)}
-#gl-app.gl-simple-seat>.gl-stage{grid-area:1/1}
+#gl-app.gl-simple-seat>.gl-stage{grid-area:1/1;z-index:auto}
 #gl-app.gl-simple-seat>.gl-sbar{position:absolute;inset-inline-start:max(8px,env(safe-area-inset-right));bottom:max(8px,env(safe-area-inset-bottom));grid-area:auto;width:auto;max-width:90%;padding:0;border:0;box-shadow:none;background:transparent;z-index:3}
+
+.gl-video-controls:not([hidden]){display:inline-flex;align-items:center;justify-content:center;gap:4px}
+.gl-video-controls #gl-file-sound{position:static}
+#gl-app.gl-video-expanded{
+ position:fixed;inset:0;z-index:50;transform:none;width:100%;max-width:none;height:100vh;height:100dvh;
+ display:grid;grid-template:minmax(0,1fr) auto / minmax(0,1fr);gap:0;overflow:hidden;box-sizing:border-box;
+ padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left)
+}
+#gl-app.gl-video-expanded::after{content:none}
+#gl-app.gl-video-expanded>:is(header,footer,nav,.gl-drawer),
+#gl-app.gl-video-expanded>.gl-stage>:is(.gl-sections,.gl-zoom,.gl-narrator){display:none!important}
+#gl-app.gl-video-expanded>.gl-stage{
+ position:relative!important;inset:auto!important;transform:none!important;grid-area:1/1;width:100%!important;height:100%!important;
+ min-width:0;min-height:0;margin:0;padding:0!important;container-type:size;display:grid;grid-template:100% / 100%;place-items:center
+}
+#gl-app.gl-video-expanded>.gl-stage>.gl-board.gl-has-material{
+ grid-area:1/1;box-sizing:border-box;margin:0;border:0;padding:0;
+ width:min(100cqw,100cqh * var(--material-ratio,1.66667))!important;height:auto!important;
+ max-width:100%;max-height:100%;aspect-ratio:var(--material-ratio,1.66667)
+}
+#gl-app.gl-video-expanded>.gl-video-controls{
+ grid-area:2/1;justify-self:stretch;flex-wrap:wrap;padding:2px;z-index:2;background:var(--gl-surface)
+}
+#gl-app.gl-video-expanded>.gl-video-controls button{min-height:44px;min-width:44px;white-space:normal}

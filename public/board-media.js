@@ -1,9 +1,62 @@
 // The material and ink share one coordinate system. Camera and playback controls stay outside it.
 import {fitBoard} from './group-view.js';
 
+// Move the same controls between the normal toolbar and the enlarged video view.
+function videoLayout(board, sound) {
+  const app = board.closest('#gl-app');
+  const play = document.getElementById('gl-file-play');
+  const anchor = play || document.getElementById('gl-audio');
+  const controls = document.createElement('div');
+  controls.className = 'gl-video-controls';
+  controls.hidden = true;
+  controls.setAttribute('role', 'group');
+  controls.setAttribute('aria-label', 'عرض الفيديو');
+  const size = document.createElement('button');
+  size.type = 'button';
+  size.hidden = true;
+  size.id = 'gl-video-size';
+  size.className = 'gl-mini';
+  size.setAttribute('aria-controls', board.id);
+  const home = document.createComment('video controls');
+  anchor.after(home);
+  home.after(controls);
+  if (play) controls.append(play);
+  controls.append(sound, size);
+
+  const phone = matchMedia('(max-width: 760px), (pointer: coarse) and (max-height: 540px)');
+  let choice = null;
+  function layout() {
+    const expanded = !controls.hidden && (choice ?? phone.matches);
+    app.classList.toggle('gl-video-expanded', expanded);
+    if (expanded && controls.parentNode !== app) app.append(controls);
+    if (!expanded && controls.previousSibling !== home) home.after(controls);
+    size.textContent = expanded ? 'العودة للسبورة' : 'تكبير الفيديو';
+    size.setAttribute('aria-expanded', String(expanded));
+  }
+  function toggle(expanded) {
+    choice = expanded;
+    layout();
+    size.focus({preventScroll:true});
+  }
+  size.onclick = () => toggle(!app.classList.contains('gl-video-expanded'));
+  app.addEventListener('keydown', event => {
+    if (event.key === 'Escape' && app.classList.contains('gl-video-expanded')) {
+      event.preventDefault();
+      toggle(false);
+    }
+  });
+  phone.addEventListener('change', layout);
+  return isVideo => {
+    choice = null;
+    controls.hidden = size.hidden = !isVideo;
+    layout();
+  };
+}
+
 export function boardMedia(base, status, onEnded) {
   const board = document.getElementById('gl-board'), layer = document.getElementById('gl-material-layer');
   const sound = document.getElementById('gl-file-sound');
+  const showVideoControls = videoLayout(board, sound);
   let key = '', node = null, current = null, received = 0;
   let soundEnabled = Boolean(board.closest('.gl-simple, .gl-simple-seat'));
   if (soundEnabled) sound.textContent = 'كتم صوت الفيديو';
@@ -35,10 +88,11 @@ export function boardMedia(base, status, onEnded) {
       node = null; layer.replaceChildren(); layer.hidden = !material;
       board.classList.toggle('gl-has-material', Boolean(material));
       board.style.removeProperty('--material-ratio');
-      sound.hidden = !material?.mime.startsWith('video/');
+      const video = material?.mime.startsWith('video/') === true;
+      sound.hidden = !video;
+      showVideoControls(video);
       fitBoard();
       if (!material) return;
-      const video = material.mime.startsWith('video/');
       const item = document.createElement(video ? 'video' : 'img');
       if (video) { item.playsInline = true; item.preload = 'auto'; item.muted = !soundEnabled; }
       else item.alt = 'صفحة المعلم المعروضة';
