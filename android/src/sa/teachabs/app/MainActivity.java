@@ -46,10 +46,10 @@ import java.util.Locale;
  * lesson import), the microphone for recorded explanations, downloads of lesson files, and the back button.
  */
 public class MainActivity extends Activity {
-    static final String HOME = "https://teachabs-simple-board-085.onrender.com/";
-    static final String HOST = "teachabs-simple-board-085.onrender.com";
+    static final String HOME = "https://teachabs-school-admin-086.onrender.com/";
+    static final String HOST = "teachabs-school-admin-086.onrender.com";
     static final int FILE_REQUEST = 41, MIC_REQUEST = 42;
-    static final String VERSION = "2.0";
+    static final String VERSION = "2.1";
 
     WebView web;
     ProgressBar progress;
@@ -185,9 +185,13 @@ public class MainActivity extends Activity {
             Toast.makeText(this, "جارٍ تنزيل " + name, Toast.LENGTH_SHORT).show();
         });
 
-        // A new app version never shows pages cached by an older one.
+        // Start an upgrade at the role selector so its new entries are visible.
         SharedPreferences prefs = getSharedPreferences("app", MODE_PRIVATE);
-        if (!VERSION.equals(prefs.getString("version", ""))) { web.clearCache(true); web.clearHistory(); prefs.edit().putString("version", VERSION).apply(); }
+        if (!VERSION.equals(prefs.getString("version", ""))) {
+            web.clearCache(true);
+            web.clearHistory();
+            prefs.edit().putString("version", VERSION).remove("lastRole").apply();
+        }
         s.setCacheMode(WebSettings.LOAD_DEFAULT); // the site stamps its files per deploy, so cached files are always current
         if (saved != null) web.restoreState(saved);
         else if ("student".equals(prefs.getString("lastRole", ""))) web.loadUrl(HOME + "start/student");
@@ -236,16 +240,21 @@ public class MainActivity extends Activity {
         }).start();
     }
 
-    /** Called by the start screen. Only two fixed destinations. */
+    /** Called by the start screen. Accepts the three fixed role destinations. */
     class Bridge {
         @JavascriptInterface public String state() { return serverState; }
         @JavascriptInterface public String version() { return VERSION; }
         @JavascriptInterface public void go(String who) {
+            final String destination;
+            if ("teacher".equals(who)) destination = "start/teacher";
+            else if ("student".equals(who)) destination = "start/student";
+            else if ("administration".equals(who)) destination = "start/administration";
+            else return;
             ui.post(() -> {
-                getSharedPreferences("app", MODE_PRIVATE).edit().putString("lastRole", "teacher".equals(who) ? "teacher" : "student").apply();
+                getSharedPreferences("app", MODE_PRIVATE).edit().putString("lastRole", who).apply();
                 label.setText("جارٍ الفتح…"); loading.setVisibility(View.VISIBLE);
                 ui.removeCallbacks(slowNote); ui.postDelayed(slowNote, 5000);
-                web.loadUrl(HOME + ("teacher".equals(who) ? "start/teacher" : "start/student")); // the student goes straight into the running trial class
+                web.loadUrl(HOME + destination);
             });
         }
         @JavascriptInterface public void retry() { ui.post(() -> warmUp()); }
@@ -276,11 +285,12 @@ public class MainActivity extends Activity {
         + "<style>body{margin:0;font-family:sans-serif;background:linear-gradient(160deg,#155c4d,#0f3d34);color:#fff;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px;box-sizing:border-box}"
         + ".c{width:100%;max-width:420px;text-align:center}h1{font-size:30px;margin:6px 0 4px}p{opacity:.85;margin:0 0 26px}img{width:84px;height:84px;border-radius:20px;background:#fff}"
         + "button{display:block;width:100%;box-sizing:border-box;font-size:22px;font-weight:700;padding:20px;margin:12px 0;border-radius:18px;border:0;cursor:pointer}"
-        + ".t{background:#fff;color:#155c4d}.s{background:#e8890c;color:#fff}button:active{transform:scale(.98)}small{display:block;margin-top:18px;opacity:.7}"
+        + ".t{background:#fff;color:#155c4d}.s{background:#e8890c;color:#fff}.a{background:#193f35;color:#fff;border:1px solid #a8c7bb}button:active{transform:scale(.98)}small{display:block;margin-top:18px;opacity:.7}"
         + ".st{margin:18px 0 0;font-size:16px;opacity:.9}.st.ok{color:#9fe0b4}.st.bad{color:#ffc9b8}</style></head><body><div class=c>"
         + "<img src='/icon-192.png' alt=''><h1>احتراف التدريس</h1><p>السبورة الواحدة للحصة</p>"
         + "<button class=t onclick=\"App.go('teacher')\">👩‍🏫 أنا المعلم</button>"
         + "<button class=s onclick=\"App.go('student')\">🎒 أنا الطالب</button>"
+        + "<button class=a onclick=\"App.go('administration')\">إدارة الفصول</button>"
         + "<p id=st class=st>⏳ جارٍ تجهيز الخادم…</p>"
         + "<small>الإصدار " + VERSION + " · نسخة تجريبية</small></div>"
         + "<script>var st=document.getElementById('st'),n=0;setInterval(function(){var s=App.state();n++;"

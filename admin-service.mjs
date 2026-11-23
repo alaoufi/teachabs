@@ -1,26 +1,80 @@
 import {CLASSROOM_FEATURES} from './public/classroom-features.js';
+import {readLessonPricingFields} from './lesson-pricing-fields.mjs';
+import {registrationIntakeValues,registrationIntakeFields} from './registration-intake.mjs';
+import {teacherService} from './teacher-service.mjs';
+import {lessonPricingBody} from './lesson-pricing-views.mjs';
+import {adminCalendar} from './admin-calendar-views.mjs';
+import {adminAcademics} from './admin-academics-views.mjs';
+import {schoolSelection} from './admin-school-selection.mjs';
+import {validSchoolLevel} from './school-catalog.mjs';
 import {UserError,subjects} from './store.mjs';
 import * as ui from './admin-views.mjs';
 import {ADMIN_PERMISSIONS} from './admin-model.mjs';
 const selectedPermissions=data=>Object.keys(ADMIN_PERMISSIONS).filter(key=>data['permission_'+key]==='1');
 const csv=value=>String(value||'').split(',').map(v=>v.trim()).filter(Boolean);
 export function adminService(store, {onClassroomChange = () => {}} = {}) {
-  const admin=store.admin;
-  return {matches:path=>path==='/admin'||path.startsWith('/admin/'),async handle({req,url,u,base,html,redirect,fields,limit,enter}) {
+  const admin=store.admin,teachers=teacherService(admin);
+  return {matches:path=>path==='/admin'||path.startsWith('/admin/'),async handle({req,res,url,u,base,html,redirect,fields,limit,enter}) {
     if(!u)return redirect('/login');
     const path=url.pathname;
+    if(teachers.matches(path))return teachers.handle({req,res,url,u,base,html,redirect,limit});
     if(path==='/admin/demo/switch'&&req.method==='POST'){if(req.headers.origin!==base)throw new UserError('Untrusted origin',403);limit(req,'admin-write',180);const data=await fields(req);return enter(admin.switchDemo(u.id,data.adminRole));}
     const profile=admin.profile(u.id);
-    const invitation=result=>ui.adminInviteResult(profile,{...result,activationUrl:new URL('/activate?code='+result.token,base).href});
+    const classDestination=classId=>{if(!classId)return '/admin/school';const row=admin.school(u.id).classes.find(c=>c.id===classId);if(!row)throw new UserError('الفصل غير متاح.',404);return '/admin/school?'+new URLSearchParams({trackId:row.track_id,stage:row.stage,grade:String(row.grade),classId:row.id});};
+    const enrollmentWrite=(classId,write)=>{
+      admin.requireAccess(u.id,'school.students');
+      if(typeof classId!=='string'||!classId)throw new UserError('اختر الفصل أولًا.');
+      const destination=classDestination(classId);
+      try{write();}
+      catch(error){
+        if(!(error instanceof UserError)||![400,404,409].includes(error.status))throw error;
+        // The write transaction has rolled back. Recheck authority and resolve
+        // the destination again from the same-scope server record, never input URLs.
+        admin.requireAccess(u.id,'school.students');
+        const returnTo=classDestination(classId);
+        return html('مراجعة إضافة الطلاب',ui.adminEnrollmentError(admin.profile(u.id),error.message,returnTo),error.status);
+      }
+      return redirect(destination);
+    };
+    const invitation=(result,section='accounts')=>ui.adminInviteResult(profile,{...result,activationUrl:new URL('/activate?code='+result.token,base).href,section});
     if(req.method==='GET') {
       if(path==='/admin/classroom')return html('إدارة الفصل والسبورة الذكية',ui.adminClassroom(profile,admin.classroomSettings(u.id),url.searchParams.get('saved')==='1'));
+      if(path==='/admin/school/calendar'){
+        for(const key of ['classId','yearId','termId'])if(url.searchParams.getAll(key).length>1)throw new UserError('اختر قيمة واحدة للسياق.');
+        return html('الأعوام والإسنادات والجدول',adminCalendar(profile,admin.calendarSchool(u.id),admin.academicSchool(u.id),admin.school(u.id),Object.fromEntries(url.searchParams)));
+      }
+      if(path==='/admin/school/academics'){
+        if(url.searchParams.getAll('classId').length>1)throw new UserError('اختر فصلًا واحدًا.');
+        const classId=url.searchParams.get('classId')||'';if(classId)admin.academicClassContext(u.id,{classId});
+        return html('المواد والدروس والجدول',adminAcademics(profile,admin.academicSchool(u.id),admin.school(u.id),{classId}));
+      }
       if(path==='/admin')return html('الإدارة',ui.adminHome(profile,admin.overview(u.id)));
+      if(path==='/admin/school/assignments'){admin.requireAccess(u.id,'school.individuals');return redirect('/admin/school/calendar');}
+      if(path==='/admin/school'||path==='/admin/school/enrollment'){
+        for(const key of ['trackId','stage','grade','classId','subject'])if(url.searchParams.getAll(key).length>1)throw new UserError('اختر قيمة واحدة لكل خطوة.');
+        if(path.endsWith('/enrollment'))admin.requireAccess(u.id,'school.students');
+        const school=admin.school(u.id),selection=schoolSelection(school,Object.fromEntries(url.searchParams)),subject=url.searchParams.get('subject')||'';
+        if(subject&&(!selection.classId||path.endsWith('/enrollment')))throw new UserError('اختر الفصل قبل مادة المعلم.');
+        if(path.endsWith('/enrollment')){
+          if(!selection.grade||selection.classId)throw new UserError('اختر المسار والمرحلة والصف أولًا، ثم حدد الطلاب قبل الفصل.');
+          return html('إضافة طلاب الصف إلى فصل',ui.adminSchoolEnrollment(profile,school,selection));
+        }
+        const classTeachers=subject?admin.schoolClassTeachers(u.id,{classId:selection.classId,subject}):null;
+        return html('الصفوف والفصول',ui.adminSchool(profile,school,selection,classTeachers));
+      }
       if(path==='/admin/accounts')return html('أعضاء الإدارة',ui.adminAccounts(profile,admin.members(u.id)));
+      if(path==='/admin/agents')return html('وكلاء التسجيل',ui.adminRegistrationAgents(profile,store.registration.agents(u.id)));
       if(path==='/admin/accounts/new'){admin.requireAccess(u.id,'supervisor');return html('إضافة عضو إدارة',ui.adminAccountForm(profile));}
       const account=path.match(/^\/admin\/accounts\/([\da-f-]{36})$/i);
       if(account){const member=admin.members(u.id).find(m=>m.id===account[1]);if(!member)throw new UserError('العضو غير متاح.',404);return html('صلاحيات العضو',ui.adminAccountForm(profile,member));}
       if(path==='/admin/finance')return html('المحاسبة المالية',ui.adminFinance(profile,admin.ledger(u.id)));
-      if(path==='/admin/registration')return html('التسجيل وشؤون الطلاب',ui.adminRegistration(profile,admin.registration(u.id)));
+      if(path==='/admin/registration'){
+        if(url.searchParams.getAll('parentId').length>1)throw new UserError('اختر ولي أمر واحدًا.');
+        const intake=admin.registrationIntake(u.id),parentId=url.searchParams.get('parentId')||'';
+        if(parentId&&!intake.parents.some(p=>p.id===parentId))throw new UserError('سجل ولي الأمر غير متاح.',404);
+        return html('التسجيل وشؤون الطلاب',ui.adminRegistration(profile,admin.registration(u.id),intake,{parentId}));
+      }
+      if(path==='/admin/education/prices'){for(const [key] of url.searchParams)if(!['gradeId','subjectId','teacherId'].includes(key)||url.searchParams.getAll(key).length>1)throw new UserError('معامل غير مسموح أو مكرر.');return html('تسعير الحصص',ui.adminShell(profile,'education','تسعير الحصص','أسعار الصفوف والمواد وأسعار المعلمين الخاصة.',lessonPricingBody(profile,admin.lessonPricing(u.id),Object.fromEntries(url.searchParams))));}
       if(path==='/admin/education')return html('الشؤون التعليمية',ui.adminEducation(profile,admin.education(u.id)));
       if(path==='/admin/education/teachers/new'){admin.requireAccess(u.id,'education.write');return html('دعوة معلم',ui.adminTeacherForm(profile));}
       if(path==='/admin/operations')return html('الأعمال الإدارية',ui.adminOperations(profile,admin.operations(u.id)));
@@ -30,15 +84,95 @@ export function adminService(store, {onClassroomChange = () => {}} = {}) {
     }else if(req.method==='POST') {
       if(req.headers.origin!==base)throw new UserError('تعذّر التحقق من مصدر الطلب. افتح التطبيق مجددًا.',403);
       limit(req,'admin-write',180);
-      const data=await fields(req);
+      const intakeKind=path==='/admin/registration/parents'?'parent':path==='/admin/registration/students'?'student':null;
+      const data=intakeKind?await registrationIntakeFields(req,intakeKind,UserError):path==='/admin/education/prices'?await readLessonPricingFields(req,UserError):await fields(req);
       if(path==='/admin/classroom'){
         const keys=CLASSROOM_FEATURES.map(f=>'feature_'+f.key);
         if(Object.keys(data).some(k=>k!=='revision'&&!keys.includes(k))||keys.some(k=>data[k]!==undefined&&data[k]!=='1')||!/^\d+$/.test(data.revision||''))throw new UserError('راجع حقول الإعدادات.');
         admin.setClassroomSettings(u.id,{revision:Number(data.revision),features:Object.fromEntries(CLASSROOM_FEATURES.map(f=>[f.key,data['feature_'+f.key]==='1']))});
         onClassroomChange(profile.scope);return redirect('/admin/classroom?saved=1');
       }
-      if(path==='/admin/registration-agents/new')return html('دعوة وكيل تسجيل',invitation(admin.createRegistrationAgent(u.id,{...data,register_parent:data.register_parent==='on',register_child:data.register_child==='on',manage_status:data.manage_status==='on'})),201);
-      if(path==='/admin/registration-agents/renew')return html('تجديد دعوة وكيل',invitation(admin.renewInvitation(u.id,data.agent,'agent')));
+      if(['/admin/registration/parents','/admin/registration/students'].includes(path)){
+        admin.requireAccess(u.id,'registration.write');
+        const kind=path.endsWith('/parents')?'parent':'student',values=registrationIntakeValues(data,kind);
+        try{
+          const id=kind==='parent'?admin.addRegistrationParent(u.id,values):admin.addRegistrationStudent(u.id,values);
+          return redirect('/admin/registration'+(kind==='parent'?'?'+new URLSearchParams({parentId:id})+'#registration-students':values.parentId?'?'+new URLSearchParams({parentId:values.parentId}):''));
+        }catch(error){
+          if(!(error instanceof UserError)||![400,404,409].includes(error.status))throw error;
+          return html('راجع بيانات التسجيل',ui.adminRegistration(admin.profile(u.id),admin.registration(u.id),admin.registrationIntake(u.id),{...values,form:kind},error.message),error.status);
+        }
+      }
+      if(path==='/admin/education/prices'){
+        try{admin.setLessonPrice(u.id,{...data,revision:Number(data.revision)});}
+        catch(error){if(!(error instanceof UserError)||![400,404,409].includes(error.status))throw error;return html('تسعير الحصص',ui.adminShell(profile,'education','تسعير الحصص','راجع التسعير.',lessonPricingBody(profile,admin.lessonPricing(u.id),{...data,error:error.message})),error.status);}
+        return redirect('/admin/education/prices?'+new URLSearchParams({gradeId:data.gradeId,subjectId:data.subjectId,teacherId:data.teacherId||''}));
+      }
+
+      if(['/admin/school/academics/student-teachers','/admin/school/assignments','/admin/school/assignments/remove'].includes(path)){admin.requireAccess(u.id,'school.individuals');throw new UserError('أُلغي الإسناد المستقل للطالب إلى المعلم. استخدم التسجيل السنوي وتكليف الحصة.',409);}
+      if(['/admin/school/academics/class-teachers','/admin/school/academics/students','/admin/school/academics/timetable','/admin/school/academics/remove'].includes(path)){admin.requireAccess(u.id,'school.read');throw new UserError('السجلات السابقة محفوظة. استخدم الإسنادات السنوية وجدول الحصص الأسبوعي.',409);}
+      if(path.startsWith('/admin/school/calendar/')){
+        const action=path.slice('/admin/school/calendar/'.length),methods={years:'addAcademicYear',terms:'addAcademicTerm',curricula:'addAcademicCurriculum','curriculum-lessons':'linkAcademicCurriculumLesson',enrollments:'enrollCalendarStudent',students:'registerClassStudent',assignments:'assignTermTeacher',periods:'addClassPeriod',archive:'archiveCalendarRecord'};
+        if(!Object.hasOwn(methods,action))throw new UserError('الصفحة غير موجودة.',404);
+        try{
+          let values={...data};
+          if(action==='enrollments'){const [profileType,studentId,...extra]=String(data.student||'').split(':');if(extra.length)throw new UserError('اختر الطالب من القائمة.');values={...data,profileType,studentId};}
+          if(action==='assignments'){const [coverageId,curriculumId,...extra]=String(data.coverageCurriculum||'').split(':');if(extra.length)throw new UserError('اختر تكليفاً صالحاً.');const c=admin.academicSchool(u.id).coverage.find(x=>x.id===coverageId);if(!c)throw new UserError('اعتماد المعلم غير متاح.',404);values={...data,curriculumId,teacherId:c.teacherId,subjectId:c.subjectId};}
+          if(action==='periods'){const minute=v=>/^\d{2}:\d{2}$/.test(v||'')?Number(v.slice(0,2))*60+Number(v.slice(3)):NaN;values={...data,weekday:Number(data.weekday),startMinute:minute(data.starts),endMinute:minute(data.ends),periodOrder:Number(data.periodOrder)};}
+          if(action==='archive')values.revision=Number(data.revision);
+          admin[methods[action]](u.id,values);
+        }catch(error){if(!(error instanceof UserError)||![400,404,409].includes(error.status))throw error;return html('راجع الإعداد الدراسي',adminCalendar(admin.profile(u.id),admin.calendarSchool(u.id),admin.academicSchool(u.id),admin.school(u.id),{...data,error:error.message}),error.status);}
+        return redirect('/admin/school/calendar?'+new URLSearchParams(Object.fromEntries(['classId','yearId','termId'].filter(k=>data[k]).map(k=>[k,data[k]]))));
+      }
+      if(path.startsWith('/admin/school/academics/')){
+        admin.requireAccess(u.id,'school.read');
+        const name=path.slice('/admin/school/academics/'.length);
+        const supported=['subjects','subjects/update','lessons','lessons/update','teachers','coverage','class-subjects','class-teachers','students','student-teachers','timetable','timetable/cancel','remove'];
+        if(!supported.includes(name))throw new UserError('الصفحة غير موجودة.',404);
+        const active=()=>{if(!['0','1'].includes(data.active))throw new UserError('راجع حالة السجل.');return data.active==='1';};
+        try{
+          if(data.classId)admin.academicClassContext(u.id,{classId:data.classId});
+          if(name==='subjects')admin.addAcademicSubject(u.id,data);
+          if(name==='subjects/update')admin.updateAcademicSubject(u.id,{...data,active:active(),revision:Number(data.revision)});
+          if(name==='lessons')admin.addAcademicLesson(u.id,data);
+          if(name==='lessons/update')admin.updateAcademicLesson(u.id,{...data,active:active(),revision:Number(data.revision)});
+          if(name==='teachers')return html('رابط تفعيل المعلم',invitation(admin.createTeacher(u.id,{name:data.name,email:data.email,language:data.language,subjects:[],grades:[],academicOnly:true}),'education'),201);
+          if(name==='coverage')admin.setAcademicTeacherCoverage(u.id,data);
+          if(name==='class-subjects')admin.setAcademicClassSubject(u.id,data);
+          if(name==='class-teachers'){
+            let values=data;
+            if(data.coverageId){const coverage=admin.academicSchool(u.id).coverage.find(x=>x.id===data.coverageId);if(!coverage)throw new UserError('اعتماد المعلم غير متاح.',404);values={classId:data.classId,teacherId:coverage.teacherId,subjectId:coverage.subjectId};}
+            admin.assignAcademicClassTeacher(u.id,values);
+          }
+          if(name==='students'){
+            const student=admin.academicSchool(u.id).students.find(x=>x.id===data.studentId);if(!student)throw new UserError('الطالب غير متاح.',404);
+            if(student.profileType==='legacy')admin.assignSchoolStudent(u.id,{classId:data.classId,childId:data.studentId});
+            else admin.enrollAcademicStudent(u.id,data);
+          }
+          if(name==='student-teachers'){
+            let values=data;
+            if(data.classTeacherId){const row=admin.academicSchool(u.id).teacherAssignments.find(x=>x.id===data.classTeacherId&&x.classId===data.classId);if(!row)throw new UserError('إسناد المعلم غير متاح.',404);values={studentId:data.studentId,teacherId:row.teacherId,subjectId:row.subjectId};}
+            admin.assignAcademicStudentTeacher(u.id,values);
+          }
+          if(name==='timetable'){
+            const start=/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(data.start||'')?Date.parse(data.start+':00+03:00'):NaN;
+            admin.addAcademicTimetable(u.id,{classId:data.classId,lessonId:data.lessonId,start,minutes:Number(data.minutes),request:data.request,...(data.teacherId!==undefined?{teacherId:data.teacherId}:{})});
+          }
+          if(name==='timetable/cancel')admin.cancelAcademicTimetable(u.id,{id:data.id,revision:Number(data.revision)});
+          if(name==='remove')admin.removeAcademicAssignment(u.id,data);
+        }catch(error){
+          if(!(error instanceof UserError)||![400,404,409].includes(error.status))throw error;
+          const current=admin.academicSchool(u.id),classId=current.classes.some(c=>c.id===data.classId)?data.classId:'';
+          return html('راجع إعداد الفصل',adminAcademics(admin.profile(u.id),current,admin.school(u.id),{classId,error:error.message}),error.status);
+        }
+        return redirect('/admin/school/academics'+(data.classId?'?'+new URLSearchParams({classId:data.classId}):''));
+      }
+      if(path==='/admin/agents'){
+        store.registration.setPermissions(u.id,data.agent,{register_parent:data.register_parent==='on',register_child:data.register_child==='on',manage_status:data.manage_status==='on'},Number(data.rev));
+        return redirect('/admin/agents');
+      }
+      if(path==='/admin/registration-agents/new'||path==='/admin/agents/new')return html('دعوة وكيل تسجيل',invitation(admin.createRegistrationAgent(u.id,{...data,register_parent:data.register_parent==='on',register_child:data.register_child==='on',manage_status:data.manage_status==='on'}),'registration-agents'),201);
+      if(path==='/admin/registration-agents/renew'||path==='/admin/agents/renew')return html('تجديد دعوة وكيل',invitation(admin.renewInvitation(u.id,data.agent,'agent'),'registration-agents'));
       const renew=path.match(/^\/admin\/(accounts|education\/teachers)\/([\da-f-]{36})\/renew$/i);
       if(renew)return html('تجديد رابط التفعيل',invitation(admin.renewInvitation(u.id,renew[2],renew[1]==='accounts'?'member':'teacher')));
       if(path==='/admin/demo/switch')return enter(admin.switchDemo(u.id,data.adminRole));
@@ -49,6 +183,33 @@ export function adminService(store, {onClassroomChange = () => {}} = {}) {
         admin.updateMember(u.id,account[1],{...data,active:data.active==='1',revision:Number(data.revision),permissions:selectedPermissions(data)});
         return redirect('/admin/accounts');
       }
+      if(path==='/admin/school/assignments'||path==='/admin/school/assignments/remove'){
+        const selection={gradeId:data.gradeId||'',subject:data.subject||'',teacherId:data.teacherId||'',page:1};
+        if(path.endsWith('/remove')){admin.removeSchoolTeacherStudent(u.id,{assignmentId:data.assignmentId});selection.teacherId='';}
+        else admin.assignSchoolTeacherStudents(u.id,{...selection,childIds:Object.keys(data).filter(k=>k.startsWith('child_')&&data[k]==='1').map(k=>k.slice(6))});
+        return redirect('/admin/school/assignments?'+new URLSearchParams({...selection,page:'1'}));
+      }
+      if(path==='/admin/school/tracks/initialize'){const track=admin.initializeSchoolLegacyTrack(u.id);return redirect('/admin/school?'+new URLSearchParams({trackId:track.id}));}
+      if(path==='/admin/school/tracks'){const trackId=admin.addSchoolTrack(u.id,data);return redirect('/admin/school?'+new URLSearchParams({trackId}));}
+      if(path==='/admin/school/grades'){admin.addSchoolGrade(u.id,{...data,grade:Number(data.grade)});return redirect('/admin/school');}
+      if(path==='/admin/school/classes'){
+        if(data.stage!==undefined||data.grade!==undefined){
+          if(data.gradeId!==undefined||data.levelKey!==undefined||!validSchoolLevel(data.stage,Number(data.grade)))throw new UserError('اختر المسار والمرحلة والصف الثابت دون حقول متعارضة.');
+          const classId=admin.addSchoolClass(u.id,{trackId:data.trackId,levelKey:data.stage+':'+Number(data.grade),name:data.name,capacity:Number(data.capacity)});
+          return redirect(classDestination(classId));
+        }
+        const classId=admin.addSchoolClass(u.id,{...data,capacity:Number(data.capacity)});return redirect(classDestination(classId));
+      }
+      if(path==='/admin/school/classes/capacity'){const destination=classDestination(data.classId);admin.updateSchoolClassCapacity(u.id,{...data,capacity:Number(data.capacity),revision:Number(data.revision)});return redirect(destination);}
+      if(path==='/admin/school/classes/update'){const destination=classDestination(data.classId);admin.updateSchoolClass(u.id,{...data,revision:Number(data.revision)});return redirect(destination);}
+      if(path==='/admin/school/teachers'){const destination=classDestination(data.classId);admin.assignSchoolTeacher(u.id,data);return redirect(destination);}
+      if(path==='/admin/school/students/batch')return enrollmentWrite(data.classId,()=>{
+        if(data.childId!==undefined)throw new UserError('استخدم اختيار الطلاب للدفعة دون حقول متعارضة.');
+        admin.assignSchoolStudents(u.id,{classId:data.classId,childIds:Object.keys(data).filter(k=>k.startsWith('child_')&&data[k]==='1').map(k=>k.slice(6))});
+      });
+      if(path==='/admin/school/students')return enrollmentWrite(data.classId,()=>admin.assignSchoolStudent(u.id,data));
+      if(path==='/admin/school/supervisors'){admin.assignSchoolSupervisor(u.id,data);return redirect('/admin/school');}
+      if(path==='/admin/school/remove'){const destination=classDestination(data.classId);admin.removeSchoolAssignment(u.id,data);return redirect(destination);}
       if(path==='/admin/technical'){admin.addTicket(u.id,{...data,description:data.description||''});return redirect(path);}
       const ticket=path.match(/^\/admin\/technical\/([\da-f-]{36})$/i);
       if(ticket){admin.updateTicket(u.id,ticket[1],{status:data.status,priority:data.priority,revision:Number(data.revision)});return redirect('/admin/technical');}

@@ -123,6 +123,8 @@ export function openStore(path) {
     instructions=instructions.trim() || 'افتح تفاصيل الحجز واضغط «دخول الحصة».';
     return transaction(()=>{
       check(!one('SELECT id FROM slots WHERE teacher=? AND active=1 AND start<? AND start+minutes*60000>?',teacherId,start+minutes*60000,start),'لديك موعد متداخل في هذه الفترة.',409);
+      admin.assertCalendarTimeAvailable({teacherId,start,end:start+minutes*60000});
+      check(!one("SELECT id FROM academic_timetable WHERE teacher_id=? AND state='active' AND start<? AND end>?",teacherId,start+minutes*60000,start),'لديك حصة مدرسية متداخلة.',409);
       const id=randomUUID();
       run('INSERT INTO slots(id,teacher,subject,minutes,start,instructions) VALUES(?,?,?,?,?,?)',id,teacherId,subject,minutes,start,instructions.trim());
       return id;
@@ -150,8 +152,9 @@ export function openStore(path) {
         check(previous.child===childId && previous.slot===slotId,'تغيّرت تفاصيل طلب الحجز.',409);
         return previous.id;
       }
-      const s=one('SELECT subject FROM slots WHERE id=?',slotId);
+      const s=one('SELECT subject,start,minutes FROM slots WHERE id=?',slotId);
       check(s && offers(owner,childId,s.subject,slotId).length,'لم يعد الموعد متاحًا. اختر موعدًا آخر.',409);
+      admin.assertStudentBookingAvailable(childId,s.start,s.start+s.minutes*60000);
       const id=randomUUID();
       run('INSERT INTO bookings(id,parent,child,slot,request) VALUES(?,?,?,?,?)',id,owner,childId,slotId,key);
       return id;

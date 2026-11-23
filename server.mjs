@@ -1,3 +1,4 @@
+import {academicApi} from './academic-api.mjs';
 import {registrationDashboard,registrationAdmin} from './registration-views.mjs';
 import { adminService } from './admin-service.mjs';
 import { groupService } from './group-lesson.mjs';
@@ -50,6 +51,7 @@ async function fields(req){
 
 export function createApp(store,{origin=process.env.APP_ORIGIN,directory=null,now,recheckMs,simpleBoard=false}={}) {
   const lessons=lessonService(store);
+  const academics=academicApi(store);
   const administration=adminService(store,{onClassroomChange:scope=>groups.refreshClassroom(scope)});
   const groups=groupService(store,{directory,now,recheckMs,simpleBoard}); // directory: the school's administration data (stage 075); null until the link is set up
   const limits=new Map();
@@ -84,7 +86,8 @@ export function createApp(store,{origin=process.env.APP_ORIGIN,directory=null,no
       const url=new URL(req.url,base);
       route=url.pathname;const q=Object.fromEntries(url.searchParams);
       const uid=store.resolve(cookie);u=uid?store.user(uid):null;
-      if(administration.matches(route)&&route!=='/admin/registration-agents')return await administration.handle({req,url,u,base,html,redirect,fields,limit,enter});
+      if(academics.matches(route))return await academics.handle({req,res,url,u,base,fields,limit});
+      if(administration.matches(route)&&route!=='/admin/registration-agents')return await administration.handle({req,res,url,u,base,html,redirect,fields,limit,enter});
       if(groups.matches(route))return await groups.handle({req,res,url,u,base,html,redirect,fields});
       if(lessons.matches(route))return await lessons.handle({req,res,url,u,cookie,base,html,redirect,fields,limit});
       if(req.method==='GET'){
@@ -102,6 +105,11 @@ export function createApp(store,{origin=process.env.APP_ORIGIN,directory=null,no
         }
         if(route==='/demo')return html('شاشات التجربة',demoHub(u,q.role));
         // The Android app's «أنا المعلم»: opens the trial teacher straight into «دروسي» (trial data only; a real account is never replaced).
+        if(route==='/start/administration'){
+          if(u?.role==='admin')return redirect('/admin/school');
+          if(u && !u.scope) return redirect('/app');
+          return html('إدارة الفصول','<section class="panel"><h1>إدارة الفصول</h1><p>ادخل بحساب الإدارة لإدارة الفصول والطلاب وجدول الحصص.</p><a class="btn" href="/login">دخول الإدارة</a><form method="post" action="/demo/start"><input type="hidden" name="role" value="admin"><input type="hidden" name="next" value="/admin/school"><button>تجربة ببيانات مؤقتة</button></form></section>');
+        }
         if(route==='/start/teacher'){
           if(u?.role==='teacher')return redirect('/teach/plans');
           if(u&&!u.scope)return redirect('/app');
@@ -161,7 +169,7 @@ export function createApp(store,{origin=process.env.APP_ORIGIN,directory=null,no
           if(!['parent','teacher','admin'].includes(data.role))throw new UserError('اختر تجربة متاحة.');
           if(u && !u.scope)throw new UserError('سجّل الخروج من الحساب الفعلي قبل بدء تجربة.',409);
           limit(req,'demo',15);
-          if(data.role==='admin')return enter(store.admin.demo().supervisor);
+          if(data.role==='admin')return enter(store.admin.demo().supervisor,data.next==='/admin/school'?'/admin/school':'/app');
           if(u&&['parent','teacher'].includes(u.role))return enter(u.role===data.role?u.id:store.switchTour(u.id),data.role==='teacher'&&data.next==='/teach/plans'?'/teach/plans':'/app');
           const next=data.role==='teacher'&&data.next==='/teach/plans'?'/teach/plans':'/app'; // the one-board class opens directly
           const tour=store.tour();return enter(tour[data.role],next);

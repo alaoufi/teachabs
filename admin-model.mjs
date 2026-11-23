@@ -1,11 +1,17 @@
 import {createClassroomSettings} from './classroom-settings.mjs';
+import {createRegistrationIntake} from './registration-intake.mjs';
+import {createTeacherProfiles} from './teacher-store.mjs';
+import {createLessonPricing} from './lesson-pricing.mjs';
+import {createAcademicCalendar} from './academic-calendar.mjs';
+import {createSchoolAcademics} from './school-academics.mjs';
+import {createSchoolStore,SCHOOL_PERMISSIONS} from './school.mjs';
 import {createTechnicalStore} from './admin-technical.mjs';
 import {randomUUID} from 'node:crypto';
 
 export const ADMIN_ROLES = Object.freeze({supervisor:'الإشراف العام',finance:'المحاسبة المالية',registration:'التسجيل وشؤون الطلاب',education:'الشؤون التعليمية',deputy:'الوكيل الإداري',technical:'القسم الفني'});
-export const ADMIN_PERMISSIONS = Object.freeze({'classroom.read':'عرض إعدادات الفصل والسبورة','classroom.write':'إدارة مكونات الفصل والسبورة','finance.read':'عرض السجل المالي','finance.write':'إضافة قيد مالي','registration.read':'عرض ملفات الطلاب','education.read':'عرض المعلمين والجداول','education.write':'إدارة المعلمين والجداول','operations.read':'عرض الأعمال الإدارية','operations.write':'إدارة الأعمال الإدارية','audit.read':'عرض سجل التغييرات','technical.read':'عرض الأعطال والدعم الفني','technical.write':'إدارة الأعطال والدعم الفني','libraries.read':'عرض فهرس المكتبات والوسائل','libraries.write':'إدارة فهرس المكتبات والوسائل'});
-export const DEFAULT_GRANTS = Object.freeze({supervisor:Object.keys(ADMIN_PERMISSIONS),finance:['finance.read','finance.write'],registration:['registration.read'],education:['education.read','education.write'],deputy:['operations.read','operations.write'],technical:['technical.read','technical.write','libraries.read','libraries.write']});
-const writes = {'classroom.write':'classroom.read','finance.write':'finance.read','education.write':'education.read','operations.write':'operations.read','technical.write':'technical.read','libraries.write':'libraries.read'};
+export const ADMIN_PERMISSIONS = Object.freeze({...SCHOOL_PERMISSIONS,'classroom.read':'عرض إعدادات الفصل والسبورة','classroom.write':'إدارة مكونات الفصل والسبورة','finance.read':'عرض السجل المالي','finance.write':'إضافة قيد مالي','registration.read':'عرض ملفات الطلاب','registration.write':'إدارة طلبات تسجيل أولياء الأمور والطلاب','education.read':'عرض المعلمين والجداول','education.write':'إدارة المعلمين والجداول','operations.read':'عرض الأعمال الإدارية','operations.write':'إدارة الأعمال الإدارية','audit.read':'عرض سجل التغييرات','technical.read':'عرض الأعطال والدعم الفني','technical.write':'إدارة الأعطال والدعم الفني','libraries.read':'عرض فهرس المكتبات والوسائل','libraries.write':'إدارة فهرس المكتبات والوسائل'});
+export const DEFAULT_GRANTS = Object.freeze({supervisor:Object.keys(ADMIN_PERMISSIONS),finance:['finance.read','finance.write'],registration:['registration.read','registration.write'],education:['education.read','education.write'],deputy:['operations.read','operations.write'],technical:['technical.read','technical.write','libraries.read','libraries.write']});
+const writes = {'classroom.write':'classroom.read','registration.write':'registration.read',...Object.fromEntries(Object.keys(SCHOOL_PERMISSIONS).filter(k=>k!=='school.read').map(k=>[k,'school.read'])),'finance.write':'finance.read','education.write':'education.read','operations.write':'operations.read','technical.write':'technical.read','libraries.write':'libraries.read'};
 const validText=(value,max)=>typeof value==='string'&&value.trim().length>0&&value.trim().length<=max;
 const validKey=value=>typeof value==='string'&&/^[\da-f-]{36}$/i.test(value);
 
@@ -21,6 +27,7 @@ export function createAdminStore({db,one,all,run,transaction,user,UserError,subj
     CREATE TABLE IF NOT EXISTS admin_slot_requests(actor TEXT NOT NULL REFERENCES users(id),request TEXT NOT NULL,slot TEXT NOT NULL REFERENCES slots(id),payload TEXT NOT NULL,PRIMARY KEY(actor,request));
     CREATE INDEX IF NOT EXISTS admin_audit_scope ON admin_audit(scope,created);
     CREATE INDEX IF NOT EXISTS admin_ledger_scope ON admin_ledger(scope,created);`);
+  const teacherProfiles=createTeacherProfiles({db,one,all,run,transaction,requireAccess,audit,UserError});
   function profile(id) {
     const u=user(id),m=one('SELECT department,permissions,active,revision FROM admin_members WHERE user=?',id);
     check(u.role==='admin'&&m&&m.active===1,'هذا القسم غير متاح لهذا الحساب.',403);
@@ -117,7 +124,7 @@ export function createAdminStore({db,one,all,run,transaction,user,UserError,subj
   function overview(actorId) {
     const a=profile(actorId),has=p=>a.permissions.includes(p),count=(sql,...args)=>one(sql,...args).n;
     return {members:a.adminRole==='supervisor'?count('SELECT count(*) n FROM admin_members m JOIN users u ON u.id=m.user WHERE u.scope=? AND m.active=1',a.scope):null,
-      students:has('registration.read')?count('SELECT count(*) n FROM children c JOIN users p ON p.id=c.parent WHERE p.scope=?',a.scope):null,
+      students:has('registration.read')?count('SELECT (SELECT count(*) FROM children c JOIN users p ON p.id=c.parent WHERE p.scope=?) + (SELECT count(*) FROM registration_school_students s JOIN users p ON p.id=s.parent JOIN school_grades g ON g.id=s.grade_id JOIN school_tracks t ON t.id=g.track_id AND t.scope=g.scope WHERE p.scope=? AND g.scope=?) n',a.scope,a.scope,a.scope):null,
       teachers:has('education.read')?count("SELECT count(*) n FROM users WHERE scope=? AND role='teacher'",a.scope):null,
       slots:has('education.read')?count('SELECT count(*) n FROM slots s JOIN users u ON u.id=s.teacher WHERE u.scope=? AND s.active=1 AND s.start>?',a.scope,Date.now()):null,
       entries:has('finance.read')?count('SELECT count(*) n FROM admin_ledger WHERE scope=?',a.scope):null,
@@ -137,16 +144,16 @@ export function createAdminStore({db,one,all,run,transaction,user,UserError,subj
       const id=randomUUID();run('INSERT INTO admin_ledger VALUES(?,?,?,?,?,?,?,?)',id,a.scope,a.id,values.description.trim(),cents,values.kind,values.request,Date.now());audit(a,'finance.created',id,{kind:values.kind,amountCents:cents});return id;
     });
   }
-  function registration(actorId) {const a=requireAccess(actorId,'registration.read');return all('SELECT c.id,c.name,c.grade,c.curriculum,c.language,p.name parentName FROM children c JOIN users p ON p.id=c.parent WHERE p.scope=? ORDER BY c.name',a.scope);}
+  function registration(actorId) {const a=requireAccess(actorId,'registration.read');return [...all('SELECT c.id,c.name,c.grade,c.curriculum,c.language,p.name parentName FROM children c JOIN users p ON p.id=c.parent WHERE p.scope=? ORDER BY c.name',a.scope),...all(`SELECT s.id,s.name,g.grade,g.stage,t.name trackName,t.curriculum_name curriculum,p.name parentName,s.status,'school' profileType FROM registration_school_students s JOIN users p ON p.id=s.parent JOIN school_grades g ON g.id=s.grade_id JOIN school_tracks t ON t.id=g.track_id AND t.scope=g.scope WHERE p.scope=? AND g.scope=? ORDER BY s.name`,a.scope,a.scope)];}
   function education(actorId) {
     const a=requireAccess(actorId,'education.read');
-    return {teachers:all("SELECT id,name,subjects,grades,language,(pass IS NOT NULL OR (scope<>'' AND email IS NULL)) activated FROM users WHERE scope=? AND role='teacher' ORDER BY name",a.scope).map(t=>({...t,activated:!!t.activated,subjects:JSON.parse(t.subjects||'[]'),grades:JSON.parse(t.grades||'[]')})),slots:all("SELECT s.id,s.teacher,u.name teacherName,s.subject,s.start,s.minutes,(u.pass IS NOT NULL OR (u.scope<>'' AND u.email IS NULL)) teacherActivated,EXISTS(SELECT 1 FROM bookings b WHERE b.slot=s.id AND b.status='confirmed') booked FROM slots s JOIN users u ON u.id=s.teacher WHERE u.scope=? AND s.active=1 AND s.start>? ORDER BY s.start",a.scope,Date.now()).map(s=>({...s,teacherActivated:!!s.teacherActivated}))};
+    return {teachers:all("SELECT id,name,subjects,grades,language,EXISTS(SELECT 1 FROM teacher_profiles p WHERE p.id=users.id) registered,(pass IS NOT NULL OR (scope<>'' AND email IS NULL AND NOT EXISTS(SELECT 1 FROM teacher_profiles p WHERE p.id=users.id))) activated FROM users WHERE scope=? AND role='teacher' ORDER BY name",a.scope).map(t=>({...t,activated:!!t.activated,subjects:JSON.parse(t.subjects||'[]'),grades:JSON.parse(t.grades||'[]')})),slots:all("SELECT s.id,s.teacher,u.name teacherName,s.subject,s.start,s.minutes,(u.pass IS NOT NULL OR (u.scope<>'' AND u.email IS NULL)) teacherActivated,EXISTS(SELECT 1 FROM bookings b WHERE b.slot=s.id AND b.status='confirmed') booked FROM slots s JOIN users u ON u.id=s.teacher WHERE u.scope=? AND s.active=1 AND s.start>? ORDER BY s.start",a.scope,Date.now()).map(s=>({...s,teacherActivated:!!s.teacherActivated}))};
   }
   function createTeacher(actorId,values) {
     return transaction(()=>{
       const a=requireAccess(actorId,'education.write'),email=emailForScope(values.email,a.scope);
-      check(validText(values.name,60)&&Array.isArray(values.subjects)&&values.subjects.length&&values.subjects.every(k=>Object.hasOwn(subjects,k)),'راجع اسم المعلم ومواده.');
-      check(Array.isArray(values.grades)&&values.grades.length&&values.grades.every(g=>Number.isInteger(g)&&g>=1&&g<=6)&&['ar','en'].includes(values.language),'راجع الصفوف ولغة التدريس.');
+      check(validText(values.name,60)&&Array.isArray(values.subjects)&&(values.subjects.length||values.academicOnly===true)&&values.subjects.every(k=>Object.hasOwn(subjects,k)),'راجع اسم المعلم ومواده.');
+      check(Array.isArray(values.grades)&&(values.grades.length||values.academicOnly===true)&&values.grades.every(g=>Number.isInteger(g)&&g>=1&&g<=6)&&['ar','en'].includes(values.language),'راجع الصفوف ولغة التدريس.');
       check(!one('SELECT id FROM users WHERE email=?',email),'البريد مستخدم بالفعل. اختر بريدًا آخر.',409);
       const id=randomUUID(),token=secret();
       run("INSERT INTO users(id,role,name,email,scope,subjects,grades,language) VALUES(?,'teacher',?,?,?,?,?,?)",id,values.name.trim(),email,a.scope,JSON.stringify([...new Set(values.subjects)]),JSON.stringify([...new Set(values.grades)]),values.language);
@@ -167,6 +174,8 @@ export function createAdminStore({db,one,all,run,transaction,user,UserError,subj
       const existing=one('SELECT slot,payload FROM admin_slot_requests WHERE actor=? AND request=?',a.id,values.request);
       if(existing){check(existing.payload===payload,'استُخدم النموذج لموعد مختلف. حدّث الصفحة.',409);return existing.slot;}
       check(!one('SELECT id FROM slots WHERE teacher=? AND active=1 AND start<? AND start+minutes*60000>?',teacher.id,values.start+values.minutes*60000,values.start),'للمعلم موعد متداخل في هذه الفترة.',409);
+      calendarStore.assertCalendarTimeAvailable({teacherId:teacher.id,start:values.start,end:values.start+values.minutes*60000});
+      check(!one("SELECT id FROM academic_timetable WHERE teacher_id=? AND state='active' AND start<? AND end>?",teacher.id,values.start+values.minutes*60000,values.start),'للمعلم حصة مدرسية متداخلة.',409);
       const id=randomUUID();run('INSERT INTO slots(id,teacher,subject,minutes,start,instructions) VALUES(?,?,?,?,?,?)',id,teacher.id,values.subject,values.minutes,values.start,instructions);
       run('INSERT INTO admin_slot_requests VALUES(?,?,?,?)',a.id,values.request,id,payload);audit(a,'schedule.created',id,{teacher:teacher.id,subject:values.subject,start:values.start,minutes:values.minutes});return id;
     });
@@ -203,5 +212,12 @@ export function createAdminStore({db,one,all,run,transaction,user,UserError,subj
   function switchDemo(actorId,adminRole) {const a=isDemoAgent(actorId)?user(actorId):profile(actorId);check(a.scope&&(adminRole==='registration_agent'||Object.hasOwn(ADMIN_ROLES,adminRole)),'التبديل متاح داخل الجولة الإدارية فقط.',403);if(adminRole==='registration_agent'){const r=one('SELECT agent FROM admin_demo_agents WHERE scope=?',a.scope);check(r,'Start a new administrative demo to use the agent',404);return r.agent;}const row=one('SELECT u.id FROM users u JOIN admin_members m ON m.user=u.id WHERE u.scope=? AND m.department=? AND m.active=1 ORDER BY u.rowid LIMIT 1',a.scope,adminRole);check(row,'حساب القسم غير متاح في هذه الجولة.',404);return row.id;}
   const technicalStore=createTechnicalStore({db,one,all,run,transaction,requireAccess,audit,check});
   const classroomSettings=createClassroomSettings({db,one,run,transaction,requireAccess,audit,check,user});
-  return {...classroomSettings,...technicalStore,profile,requireAccess,bootstrap,members,createMember,createRegistrationAgent,renewInvitation,updateMember,overview,ledger,addLedger,registration,education,createTeacher,addSlot,operations,addOperation,updateOperation,auditLog,demo,switchDemo,isDemoAgent};
+  let calendarStore;
+  const schoolStore=createSchoolStore({db,one,all,run,transaction,requireAccess,audit,check,subjects,calendar:()=>calendarStore});
+  const academicStore=createSchoolAcademics({db,one,all,run,transaction,requireAccess,audit,check,calendar:()=>calendarStore});
+  calendarStore=createAcademicCalendar({db,one,all,run,transaction,requireAccess,audit,check});
+  const intakeStore=createRegistrationIntake({db,one,all,run,transaction,requireAccess,audit,check,subjects});
+  const pricingStore=createLessonPricing({db,one,all,run,transaction,requireAccess,audit,check});
+  const manualAssignmentRetired=actor=>{requireAccess(actor,'school.individuals');throw new UserError('أُلغي الإسناد المستقل للطالب إلى المعلم. استخدم تكليف الحصة.',409);};
+  return {...classroomSettings,...pricingStore,...intakeStore,...teacherProfiles,...schoolStore,...academicStore,...calendarStore,...technicalStore,assignAcademicStudentTeacher:manualAssignmentRetired,assignSchoolTeacherStudents:manualAssignmentRetired,removeSchoolTeacherStudent:manualAssignmentRetired,profile,requireAccess,bootstrap,members,createMember,createRegistrationAgent,renewInvitation,updateMember,overview,ledger,addLedger,registration,education,createTeacher,addSlot,operations,addOperation,updateOperation,auditLog,demo,switchDemo,isDemoAgent};
 }
