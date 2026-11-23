@@ -1149,3 +1149,31 @@ html{font-family:var(--gl-font)}
 .gl-present .gl-sections #gl-material-tools{max-width:58%;overflow-x:auto;scrollbar-width:thin}
 #gl-material-tools>*{flex:none}
 .gl-present .gl-sections:has(#gl-file-close:not([hidden])) #gl-material-tools{max-width:72%}
+
+/* A lesson-sized canvas and two teaching actions. Session settings stay in the header disclosure. */
+#gl-app.gl-simple{grid-template-columns:minmax(0,1fr);grid-template-rows:auto minmax(0,1fr) auto;gap:6px}
+#gl-app.gl-simple>.gl-bar-top{grid-row:1;display:block;overflow:visible;mask-image:none;z-index:9}
+.gl-simple .gl-bar-title,.gl-simple .gl-bar-actions,.gl-simple>.gl-bar-steps,.gl-simple .gl-sections,.gl-simple>footer>.gl-tools,.gl-simple>footer>#gl-av{display:none!important}
+.gl-simple-head{display:flex;align-items:center;gap:12px;padding-inline:6px}
+#gl-app .gl-simple-head h1{position:static;clip-path:none;width:auto;height:auto;max-width:65vw;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:1rem;margin:0}
+#gl-simple-settings{margin-inline-start:auto;position:relative}
+#gl-simple-settings summary{display:list-item;cursor:pointer;min-height:44px;align-content:center;padding-inline:10px;font-weight:600}
+#gl-simple-menu{position:absolute;inset-inline-end:0;top:100%;z-index:12;background:var(--gl-surface);border:1px solid var(--gl-line-cool);border-radius:10px;padding:6px;min-width:180px;max-height:65dvh;overflow:auto;box-shadow:0 4px 14px #0002}
+#gl-simple-menu>*{width:100%;min-height:44px;display:block;text-align:start;padding:6px 12px}
+#gl-simple-menu>[hidden],#gl-simple-dock [hidden]{display:none!important}
+.gl-simple-head #gl-status:not(.is-error){display:none}
+#gl-app.gl-simple>.gl-stage{grid-column:1;grid-row:2}
+#gl-app.gl-simple>footer{grid-column:1;grid-row:3}
+#gl-simple-dock{display:flex;justify-content:center;align-items:center;gap:10px;flex-wrap:wrap}
+#gl-simple-dock button{display:inline-flex;align-items:center;justify-content:center;gap:6px;min-height:46px;min-width:116px;padding:6px 14px!important;font-size:1rem}
+#gl-simple-dock .gl-tool span:last-child{display:inline}
+#gl-simple-dock [aria-pressed=true]{border-color:var(--gl-brand)}
+#gl-simple-dock #gl-material-tools{max-width:100%;flex-wrap:wrap;justify-content:center}
+#gl-simple-dock #gl-file-note{white-space:normal;max-width:32ch}
+#gl-app.gl-simple .gl-stage .gl-board:not(.gl-book-surface):not(.gl-has-material){width:min(100cqw - 8px,(100cqh - 8px) * 1.666667)!important}
+#gl-app.gl-simple .gl-stage .gl-board.gl-has-material{width:min(100cqw - 8px,(100cqh - 8px) * var(--material-ratio,1.66667))!important}
+.gl-off-drawing #gl-simple-dock [data-tool=pen],.gl-off-board #gl-simple-dock [data-tool=pen]{display:none!important}
+.gl-simple .gl-title-card,.gl-simple-seat .gl-title-card{visibility:hidden}
+.gl-simple-seat .gl-stage>.gl-zoom{display:none}
+
+#gl-simple-menu #gl-file-sound{position:static}

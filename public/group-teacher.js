@@ -19,6 +19,7 @@ import {useIcons} from './icons.js';
 
 const app = document.getElementById('gl-app'), code = app.dataset.code, base = '/teach/live/' + code;
 const $ = x => document.getElementById(x);
+const simple = app.classList.contains('gl-simple');
 const status = (text, bad = false) => { $('gl-status').textContent = text; $('gl-status').classList.toggle('is-error', bad); };
 let plan = null, view = null, busy = false, lastStep = null, contentKey = '';
 // The explanation of the interactive step plays by itself, segment after segment, and the teacher hears it too.
@@ -49,8 +50,10 @@ async function post(path, body) {
 }
 
 const step = () => plan.steps[view.state.index];
-const media = boardMedia(base,status);
-const picker = filePicker({base,post,media,getContext:() => ({
+const media = boardMedia(base,status,simple ? (clip,position) => {
+  post('/material-control',{op:'playback',id:clip.id,page:clip.page,position,playing:false}).catch(e => status(e.message,true));
+} : undefined);
+const picker = filePicker({base,post,media,videoOnly:simple,getContext:() => ({
   step:step().id, version:view.state.pageVer || 0, material:view.material,
   enabled:view.features?.files !== false && view.features?.board !== false && INKABLE.includes(step().type) && view.features?.[step().type === 'board' ? 'notes' : step().type] !== false
 })});
@@ -372,8 +375,14 @@ function render() {
   const enabled=view.features?.board!==false && view.features?.[cur?.type==='board'?'notes':cur?.type]!==false;
   app.classList.toggle('gl-section-disabled',!enabled); // opening an interactive step starts its prepared explanation once
   if (cur?.id !== lastStepId) { if (lastStepId) { clearTimeout(advanceTimer); clearTimeout(speakTimer); stopNarration(); } lastStepId = cur?.id; } // leaving a step ends its explanation here
-  if (view.features?.narration !== false && view.features?.interactive !== false && view.features?.board !== false && cur?.type === 'interactive' && cur.narrator?.segments.length && view.state.narrator?.segment === -1 && view.state.live && autoStart && !autoStarted.has(cur.id) && !view.material) {
+  if (!simple && view.features?.narration !== false && view.features?.interactive !== false && view.features?.board !== false && cur?.type === 'interactive' && cur.narrator?.segments.length && view.state.narrator?.segment === -1 && view.state.live && autoStart && !autoStarted.has(cur.id) && !view.material) {
     autoStarted.add(cur.id); command({op: 'narrator', action: 'start'});
+  }
+  if (simple) {
+    renderBoard();
+    renderExtras($('gl-board'),view,{teacher:true});
+    $('gl-simple-dock').querySelector('[data-tool=pen]').disabled = !enabled || view.features?.drawing === false || !INKABLE.includes(cur.type);
+    return;
   }
   renderSequence(); renderBoard(); renderQuick(step()); renderExtras($('gl-board'), view, {teacher: true}); renderClassTools();
   // Re-render the step tools but keep keyboard focus on the same control.
@@ -391,7 +400,7 @@ $('gl-hands').addEventListener('click', () => openDrawer(true));
 $('gl-drawer-close').addEventListener('click', () => openDrawer(false));
 document.addEventListener('keydown', e => { if (e.key === 'Escape' && !$('gl-drawer').hidden && !document.querySelector('dialog[open]')) openDrawer(false); });
 $('gl-code').addEventListener('click', async () => { try { await navigator.clipboard.writeText($('gl-code').dataset.join); status('نُسخ رابط الطلاب: ' + $('gl-code').dataset.join); } catch { status('رابط الطلاب: ' + $('gl-code').dataset.join); } });
-if (matchMedia('(min-width: 1600px)').matches) openDrawer(true); // wide screens keep the drawer docked beside the board
+if (!simple && matchMedia('(min-width: 1600px)').matches) openDrawer(true); // wide screens keep the drawer docked beside the board
 $('gl-next').addEventListener('click', () => command({op: 'go', by: 1}));
 $('gl-show').addEventListener('click', () => command({op: 'show', shown: !view.state.shown}));
 $('gl-live').addEventListener('click', () => { if (!view.state.live || confirm('إنهاء العرض للطلاب؟ يبقى الواجب متاحًا إن كان مفتوحًا.')) command({op: 'live', on: !view.state.live}); });
@@ -479,7 +488,27 @@ $('gl-cam').addEventListener('click', async () => {
 // The control panel is always in reach: in the top bar on a computer or tablet, above the tools on an upright phone.
 const avPhone = matchMedia('(max-width:1100px) and (orientation:portrait)');
 function placeAv() { const av = $('gl-av'); if (avPhone.matches) document.querySelector('.gl-bar-bottom').prepend(av); else document.querySelector('.gl-bar-top .gl-bar-actions').prepend(av); }
-avPhone.addEventListener?.('change', placeAv); placeAv();
+if (simple) {
+  const dock = $('gl-simple-dock'), menu = $('gl-simple-menu');
+  const pen = app.querySelector('.gl-tool[data-tool="pen"]');
+  pen.lastElementChild.textContent = 'كتابة وتخطيط';
+  pen.title = 'الكتابة والرسم بالقلم';
+  dock.append($('gl-material-tools'),pen);
+  menu.prepend($('gl-code'),$('gl-voice'),$('gl-cam'),$('gl-show'),$('gl-undo'),$('gl-file-sound'),$('gl-file-close'));
+  menu.append($('gl-live'));
+  $('gl-code').setAttribute('aria-label','نسخ رابط الحصة');
+  $('gl-simple-settings').addEventListener('keydown', event => {
+    if (event.key === 'Escape') { $('gl-simple-settings').open = false; $('gl-simple-settings').querySelector('summary').focus(); }
+  });
+  document.addEventListener('pointerdown', event => {
+    if (!event.target.closest('#gl-simple-settings')) $('gl-simple-settings').open = false;
+  });
+  const header = app.querySelector('.gl-simple-head');
+  header.append($('gl-status'));
+  tools.setTool('pen');
+} else {
+  avPhone.addEventListener?.('change', placeAv); placeAv();
+}
 $('gl-mics').addEventListener('click', () => command({op: 'voice', mics: !(view?.voice?.mics ?? true)}));
 $('gl-stop').addEventListener('click', async () => { // emergency: everything silent and dark at once, no question asked
   await voice.stopAll().catch(() => {});

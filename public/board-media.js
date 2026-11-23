@@ -1,10 +1,12 @@
 // The material and ink share one coordinate system. Camera and playback controls stay outside it.
 import {fitBoard} from './group-view.js';
 
-export function boardMedia(base, status) {
+export function boardMedia(base, status, onEnded) {
   const board = document.getElementById('gl-board'), layer = document.getElementById('gl-material-layer');
   const sound = document.getElementById('gl-file-sound');
-  let key = '', node = null, current = null, received = 0, soundEnabled = false;
+  let key = '', node = null, current = null, received = 0;
+  let soundEnabled = Boolean(board.closest('.gl-simple, .gl-simple-seat'));
+  if (soundEnabled) sound.textContent = 'كتم صوت الفيديو';
   function sync() {
     if (!current?.mime.startsWith('video/') || !node?.readyState) return;
     const v = node;
@@ -46,7 +48,12 @@ export function boardMedia(base, status) {
         if (Number.isFinite(ratio) && ratio > 0) board.style.setProperty('--material-ratio', String(ratio));
         fitBoard(); sync();
       });
-      if (video) item.addEventListener('canplay', sync);
+      if (video) {
+        item.addEventListener('canplay', sync);
+        item.addEventListener('ended', () => {
+          if (node === item && current?.playing) onEnded?.(current,item.currentTime);
+        });
+      }
       item.onerror = () => { if (node === item) status('تعذر فتح الملف على هذا الجهاز.', true); };
       node = item; layer.append(item);
       item.src = base + '/material?' + new URLSearchParams({id:material.id, page:material.page});

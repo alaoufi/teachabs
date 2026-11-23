@@ -46,10 +46,10 @@ import java.util.Locale;
  * lesson import), the microphone for recorded explanations, downloads of lesson files, and the back button.
  */
 public class MainActivity extends Activity {
-    static final String HOME = "https://teachabs-media-board-084.onrender.com/";
-    static final String HOST = "teachabs-media-board-084.onrender.com";
+    static final String HOME = "https://teachabs-simple-board-085.onrender.com/";
+    static final String HOST = "teachabs-simple-board-085.onrender.com";
     static final int FILE_REQUEST = 41, MIC_REQUEST = 42;
-    static final String VERSION = "1.9";
+    static final String VERSION = "2.0";
 
     WebView web;
     ProgressBar progress;

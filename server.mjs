@@ -48,10 +48,10 @@ async function fields(req){
   return Object.fromEntries(params);
 }
 
-export function createApp(store,{origin=process.env.APP_ORIGIN,directory=null,now,recheckMs}={}) {
+export function createApp(store,{origin=process.env.APP_ORIGIN,directory=null,now,recheckMs,simpleBoard=false}={}) {
   const lessons=lessonService(store);
   const administration=adminService(store,{onClassroomChange:scope=>groups.refreshClassroom(scope)});
-  const groups=groupService(store,{directory,now,recheckMs}); // directory: the school's administration data (stage 075); null until the link is set up
+  const groups=groupService(store,{directory,now,recheckMs,simpleBoard}); // directory: the school's administration data (stage 075); null until the link is set up
   const limits=new Map();
   function limit(req,key,max){
     const now=Date.now();
@@ -212,7 +212,7 @@ export function createApp(store,{origin=process.env.APP_ORIGIN,directory=null,no
 }
 if(process.argv[1] && pathToFileURL(process.argv[1]).href===import.meta.url){
   const host=process.env.HOST||'127.0.0.1',port=Number(process.env.PORT||4817);
-  const store=openStore(databasePath()),server=createApp(store);
+  const store=openStore(databasePath()),server=createApp(store,{simpleBoard:true});
   server.listen(port,host,()=>console.log('Khatwa running on '+(process.env.APP_ORIGIN || 'http://'+host+':'+port)));
   const stop=()=>server.close(()=>{store.close();process.exit(0);});
   process.on('SIGINT',stop);process.on('SIGTERM',stop);

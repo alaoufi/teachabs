@@ -28,7 +28,7 @@ const PAGE_CSP = "default-src 'self'; script-src 'self'; style-src 'self'; img-s
 
 /** options.directory: the school's administration data (school-directory.mjs), or null when the link is not set up.
  *  options.now: the clock (tests move it through a school day). */
-export function groupService(store, {directory = null, now = Date.now, recheckMs = 30_000} = {}) {
+export function groupService(store, {directory = null, now = Date.now, recheckMs = 30_000, simpleBoard = false} = {}) {
   const g = store.group, listeners = new Map();
   const featuresFor = s => store.admin.classroomFeaturesForTeacher(s.teacher);
   const feature = (s,key) => need(featuresFor(s)[key] !== false, 'أوقفت الإدارة هذا المكوّن.', 403);
@@ -285,7 +285,7 @@ export function groupService(store, {directory = null, now = Date.now, recheckMs
         const raw = g.session(code), s = raw && effective(raw), me = s && g.student(code, studentToken(req, code));
         if (!me) { if (!action && method === 'GET') return redirect('/join?code=' + code); throw new UserError('انضم إلى الحصة أولًا.', 401); }
         await schoolAdmit(s, me);
-        if (!action && method === 'GET') return page(res, html, 'الحصة', v.studentPage(code, me.name, s.plan.title), true); // the student may open the microphone
+        if (!action && method === 'GET') return page(res, html, 'الحصة', v.studentPage(code, me.name, s.plan.title, simpleBoard), true); // the student may open the microphone
         if (action === 'events' && method === 'GET') { subscribe(req, res, code, 'student', me.id); if (s.period_id) watchAdmission(res, code, me); return; }
         if (action === 'rtc-config' && method === 'GET') {
           need(s.state.live, 'انتهت الحصة.',409); return rtcConfig(res);
@@ -454,7 +454,7 @@ export function groupService(store, {directory = null, now = Date.now, recheckMs
       const lm = path.match(/^\/teach\/live\/([A-Z0-9]{6})(?:\/(events|plan|command|evaluate|remove|display|display-events|rtc|page-image|book-page|speech|laser|rtc-config|material|material-control))?$/);
       if (lm) {
         const [, code, action] = lm, s = ownSession(teacher, code); await schoolTeacher(s, teacher);
-        if (!action && method === 'GET') return page(res, html, 'إدارة الحصة', v.teacherPage(code, s.plan.title, base), true, true); // the teacher's microphone and camera
+        if (!action && method === 'GET') return page(res, html, 'إدارة الحصة', v.teacherPage(code, s.plan.title, base, simpleBoard && url.searchParams.get('layout') !== 'full', simpleBoard), true, true); // the teacher's microphone and camera
         if (action === 'display' && method === 'GET') { feature(s,'display'); return page(res, html, 'شاشة العرض', v.displayPage(code, s.plan.title, base)); }
         if (action === 'plan' && method === 'GET') return send(res, {...withBook(s.plan, code), booksShown: relayOn()}); // booksShown: the teacher's «📖 الكتاب» button
         if (action === 'material' || action === 'material-control') {

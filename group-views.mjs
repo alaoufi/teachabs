@@ -178,7 +178,7 @@ const zoomBar = (follow = false) => `<div class="gl-zoom" role="group" aria-labe
 // Students get the zoom controls under the board so they never cover the lesson on a small phone.
 const boardShell = ({extra = '', follow = false, under = '', zoom = true, camera = ''} = {}) => `<div class="gl-stage"><div class="gl-board" id="gl-board" aria-live="polite"><div class="gl-camera" id="gl-camera"><div class="gl-content" id="gl-content"></div><div id="gl-material-layer" hidden></div><svg class="gl-ink" id="gl-ink" viewBox="0 0 1000 600" preserveAspectRatio="none" aria-hidden="true"></svg></div>${camera}<button type="button" id="gl-file-sound" class="gl-mini" hidden>تشغيل صوت الفيديو</button></div>${under}${zoom ? zoomBar(follow) : ''}${extra}</div>`; // zoom sits under the board, never on it
 
-export function teacherPage(code, title, base) {
+export function teacherPage(code, title, base, simple = false, canSimplify = false) {
   // Presentation mode: one screen, no page scroll. The raised board fills the middle; lesson controls sit above it,
   // drawing tools below it, and students, results, homework and evaluation open in a side drawer.
   const join = `${base}/join?code=${code}`;
@@ -200,10 +200,11 @@ export function teacherPage(code, title, base) {
         + '<b class="gl-fly-head gl-curtain-heading">🎭 ستارة على السبورة</b><button type="button" class="gl-curtain-btn" data-level="100">إسدال</button><button type="button" class="gl-curtain-btn" data-level="-25">كشف ربع</button><button type="button" class="gl-curtain-btn" data-level="0">رفع</button>'
         + '<b class="gl-fly-head gl-tools-heading">أدوات القياس</b><button type="button" class="gl-stamp-btn" data-stamp="ruler">📏 مسطرة</button><button type="button" class="gl-stamp-btn" data-stamp="protractor">📐 منقلة</button>')}</div>
     ${zoomBar(false)}</div>`;
-  return `${css}<link rel="stylesheet" href="/classroom-features.css"><section class="gl-wrap gl-teacher gl-present" dir="rtl" id="gl-app" data-code="${e(code)}" data-role="teacher">
+  return `${css}<link rel="stylesheet" href="/classroom-features.css"><section class="gl-wrap gl-teacher gl-present${simple ? ' gl-simple' : ''}" dir="rtl" id="gl-app" data-code="${e(code)}" data-role="teacher">
   <header class="gl-bar gl-bar-top">
+   ${simple ? `<div class="gl-simple-head"><h1>${e(title)}</h1><details id="gl-simple-settings"><summary aria-label="خيارات الحصة">الحصة</summary><div id="gl-simple-menu"><a href="?layout=full">أدوات الحصة الكاملة</a></div></details></div>` : ''}
    <div class="gl-bar-title"><h1>${e(title)}</h1><button type="button" class="gl-code-chip" id="gl-code" data-join="${e(join)}" title="انسخ رابط الطلاب: ${e(join)}">الرمز <b class="gl-code">${e(code)}</b></button><span id="gl-status" class="gl-status-dot" role="status" aria-live="polite">جارٍ الاتصال…</span></div>
-   <div class="gl-bar-actions"><a class="outline gl-mini" href="/teach/live/${e(code)}/display" target="_blank" rel="noopener" title="افتح على السبورة الذكية أو جهاز العرض">🖥 شاشة العرض</a><div class="gl-fly gl-class-fly" data-fly="class"><button type="button" class="gl-fly-btn gl-mini" aria-expanded="false" aria-haspopup="true" title="إدارة الفصل: اختيار طالب، الانتباه، وضع العمل"><span class="gl-fly-icon" aria-hidden="true">🧭</span><span class="gl-fly-label">إدارة الفصل</span><b aria-hidden="true">▾</b></button><div class="gl-fly-menu gl-class-menu" role="group" aria-label="إدارة الفصل" hidden>
+   <div class="gl-bar-actions"><a class="outline gl-mini" href="/teach/live/${e(code)}/display" target="_blank" rel="noopener" title="افتح على السبورة الذكية أو جهاز العرض">🖥 شاشة العرض</a>${canSimplify && !simple ? '<a href="?layout=simple">السبورة المبسطة</a>' : ''}<div class="gl-fly gl-class-fly" data-fly="class"><button type="button" class="gl-fly-btn gl-mini" aria-expanded="false" aria-haspopup="true" title="إدارة الفصل: اختيار طالب، الانتباه، وضع العمل"><span class="gl-fly-icon" aria-hidden="true">🧭</span><span class="gl-fly-label">إدارة الفصل</span><b aria-hidden="true">▾</b></button><div class="gl-fly-menu gl-class-menu" role="group" aria-label="إدارة الفصل" hidden>
      <button type="button" id="gl-pick" class="btn">🎲 اختر طالبًا</button><button type="button" id="gl-pick-reset" class="quiet">↺ ابدأ الدور من جديد</button>
      <button type="button" id="gl-attention" aria-pressed="false">👀 انتباه: اقفل شاشات الطلاب</button>
      <b class="gl-fly-head gl-work-heading">🚦 وضع العمل يراه الطلاب</b>${Object.entries(WORK_MODES).map(([k, v]) => `<button type="button" class="gl-work-btn" data-mode="${k}" aria-pressed="${k === 'none'}">${k === 'none' ? '✖ إلغاء' : v}</button>`).join('')}
@@ -231,7 +232,7 @@ export function teacherPage(code, title, base) {
    <button type="button" id="gl-mics" class="gl-avbtn" aria-pressed="true" title="هل يستطيع الطلاب فتح المايك؟"><span class="gl-avl">🎤 مايك الطلاب</span><span class="gl-avs">: مسموح</span></button>
    <button type="button" id="gl-test-voice" class="gl-avbtn" title="يقرأ جملة تجريبية بصوت المتحدث، ويخبرك إن لم يُسمع ولماذا"><span class="gl-avl">🔈 اختبار</span><span class="gl-avs"> الصوت</span></button>
    <button type="button" id="gl-stop" class="gl-avbtn gl-danger" title="يغلق صوتك وكاميرتك ومايك كل الطلاب فورًا">⛔ إيقاف الكل</button>
-  </div>${tools}</footer>
+  </div>${tools}${simple ? '<div id="gl-simple-dock" role="toolbar" aria-label="أدوات الشرح"></div>' : ''}</footer>
   <div class="gl-ended gl-voice-help" id="gl-voice-help" hidden role="alertdialog" aria-modal="true" aria-labelledby="gl-voice-help-title"><div class="gl-start-card"><h2 id="gl-voice-help-title">صوت المتحدث</h2><div id="gl-voice-help-text"></div><button type="button" class="btn" id="gl-voice-help-close">حسنًا</button></div></div>
   <aside class="gl-drawer" id="gl-drawer" aria-label="الخطوة والطلاب والنتائج" hidden>
    <div class="gl-drawer-head"><h2>الخطوة والطلاب</h2><button type="button" class="quiet" id="gl-drawer-close" aria-label="إغلاق">✕</button></div>
@@ -256,10 +257,10 @@ export function displayPage(code, title) {
  </section><script type="module" src="/group-student.js?v=3"></script>`;
 }
 
-export function studentPage(code, name, title) {
+export function studentPage(code, name, title, simple = false) {
   // Nothing but the board: it pops up over everything. A slim bar holds the microphone, «كتابة» (answers and
   // homework open in a sheet over the board) and ✕ to leave, which asks first. The teacher controls the rest.
-  return `${css}<link rel="stylesheet" href="/classroom-features.css"><section class="gl-wrap gl-student gl-solo" dir="rtl" id="gl-app" data-code="${e(code)}" data-role="student">
+  return `${css}<link rel="stylesheet" href="/classroom-features.css"><section class="gl-wrap gl-student gl-solo${simple ? ' gl-simple-seat' : ''}" dir="rtl" id="gl-app" data-code="${e(code)}" data-role="student">
   <div class="gl-entry" id="gl-start" role="dialog" aria-modal="true" aria-labelledby="gl-start-title"><div class="gl-start-card"><p class="gl-hello">مرحبًا ${e(name)}</p><h1 id="gl-start-title">${e(title)}</h1>
    <button type="button" class="btn" id="gl-enter" disabled>ادخل الحصة</button><p class="gl-hint">تفتح السبورة على الشاشة كلها، ويُسمع صوت المعلم.</p></div></div>
   ${boardShell({extra:'<div id="gl-student-ink" class="gl-student-ink" role="group" aria-label="كتابة الطالب" hidden><span>سمح لك المعلم بالكتابة</span><button type="button" class="gl-tool" data-tool="pen" aria-pressed="true">قلم</button><button type="button" class="gl-tool" data-tool="hand" aria-pressed="false">تحريك</button></div>', follow:true, camera:'<video class="gl-cam" id="gl-teachercam" playsinline autoplay muted hidden aria-label="المعلم"></video>'})}<p id="gl-wait" class="gl-wait" hidden></p>

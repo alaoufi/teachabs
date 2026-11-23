@@ -57,10 +57,17 @@ async function openDocument(file) {
   throw new Error('اختر فيديو MP4 أو WebM، أو PDF، أو PowerPoint بصيغة PPTX، أو صورة.');
 }
 
-export function filePicker({base, getContext, media, post}) {
+export function filePicker({base, getContext, media, post, videoOnly = false}) {
   const input = byId('gl-file-input'), tools = byId('gl-material-tools'), note = byId('gl-file-note');
   const prev = byId('gl-file-prev'), next = byId('gl-file-next'), play = byId('gl-file-play');
   const close = byId('gl-file-close'), back = byId('gl-file-restart'), page = byId('gl-file-number');
+  const pick = byId('gl-file-pick');
+  if (videoOnly) {
+    input.accept = 'video/mp4,video/webm,.mp4,.webm';
+    pick.textContent = 'تشغيل مقطع';
+    pick.title = 'اختر مقطع فيديو من جهازك';
+    close.textContent = 'إغلاق المقطع';
+  }
   let doc = null, localId = '', busy = false, lastControls = '';
   const say = text => { note.textContent = text; note.hidden = !text; };
   function update() {
@@ -69,16 +76,18 @@ export function filePicker({base, getContext, media, post}) {
     if (controls === lastControls) return;
     lastControls = controls;
     tools.hidden = !enabled;
-    byId('gl-file-pick').disabled = busy;
+    pick.disabled = busy;
+    pick.hidden = videoOnly && video;
     close.hidden = !m; close.disabled = busy;
     page.hidden = !m || m.count < 2;
     page.textContent = m ? new Intl.NumberFormat('ar-SA').format(m.page) + ' / ' + new Intl.NumberFormat('ar-SA').format(m.count) : '';
-    prev.hidden = next.hidden = page.hidden;
+    prev.hidden = next.hidden = page.hidden || videoOnly;
+    if (videoOnly) page.hidden = true;
     prev.disabled = busy || localId !== m?.id || m.page <= 1;
     next.disabled = busy || localId !== m?.id || m.page >= m.count;
-    play.hidden = back.hidden = !video;
+    play.hidden = !video; back.hidden = videoOnly || !video;
     play.disabled = back.disabled = busy;
-    play.textContent = m?.playing ? 'إيقاف مؤقت' : 'تشغيل الفيديو';
+    play.textContent = m?.playing ? 'إيقاف مؤقت' : videoOnly ? 'تشغيل المقطع' : 'تشغيل الفيديو';
     if (m?.count > 1 && localId !== m.id && !busy) say('أعد اختيار الملف من جهازك لتقليب صفحاته.');
   }
   async function act(fn) {
@@ -98,6 +107,7 @@ export function filePicker({base, getContext, media, post}) {
   input.onchange = () => {
     const file = input.files[0]; input.value = ''; if (!file) return;
     act(async () => {
+      if (videoOnly && !['video/mp4','video/webm'].includes(file.type) && !/\.(mp4|webm)$/i.test(file.name)) throw new Error('اختر مقطع MP4 أو WebM.');
       if (file.size > limit) throw new Error('الحد الأقصى للملف ٣٢ ميغابايت.');
       const context = getContext();
       say('جارٍ تجهيز الملف…');
@@ -109,6 +119,7 @@ export function filePicker({base, getContext, media, post}) {
       try { await publish(source,id,1,context); }
       catch (e) { await source.dispose?.(); throw e; }
       await doc?.dispose?.(); doc = source; localId = id; say('');
+      if (videoOnly) await control({id,page:1},{op:'playback',playing:true,position:0});
     });
   };
   for (const [button,by] of [[prev,-1],[next,1]]) button.onclick = () => act(async () => {

@@ -324,7 +324,7 @@ export function attachBoardTools({mode, enabled = () => true, send = () => {}, i
       if (e.key === ' ' && !typing()) { spaceDown = true; board.classList.add('is-space'); if (e.target === document.body) e.preventDefault(); }
       if (typing()) return;
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') { e.preventDefault(); onUndo?.(); return; }
-      if (e.ctrlKey || e.metaKey || e.altKey) return;
+      if (e.ctrlKey || e.metaKey || e.altKey || board.closest('.gl-simple')) return;
       const key = e.key.toLowerCase();
       const tools = {v: 'select', h: 'hand', p: 'pen', b: 'brush', m: 'marker', r: 'rect', o: 'ellipse', l: 'line', a: 'arrow', k: 'laser', t: 'text', e: 'eraser'};
       if (tools[key]) { setTool(tools[key]); return; }
