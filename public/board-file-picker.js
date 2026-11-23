@@ -61,10 +61,13 @@ export function filePicker({base, getContext, media, post}) {
   const input = byId('gl-file-input'), tools = byId('gl-material-tools'), note = byId('gl-file-note');
   const prev = byId('gl-file-prev'), next = byId('gl-file-next'), play = byId('gl-file-play');
   const close = byId('gl-file-close'), back = byId('gl-file-restart'), page = byId('gl-file-number');
-  let doc = null, localId = '', busy = false;
+  let doc = null, localId = '', busy = false, lastControls = '';
   const say = text => { note.textContent = text; note.hidden = !text; };
   function update() {
     const {material:m, enabled} = getContext(), video = m?.mime.startsWith('video/');
+    const controls = [enabled,busy,localId,m?.id,m?.page,m?.count,m?.playing].join('|');
+    if (controls === lastControls) return;
+    lastControls = controls;
     tools.hidden = !enabled;
     byId('gl-file-pick').disabled = busy;
     close.hidden = !m; close.disabled = busy;

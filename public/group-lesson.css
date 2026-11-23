@@ -1120,11 +1120,11 @@ html{font-family:var(--gl-font)}
  #gl-app.gl-present .gl-stage:has(>.gl-narrator)>.gl-sections{grid-column:1/-1;grid-row:2}
 }
 /* A book on the display route follows its natural orientation too. */
-.gl-show:has(.gl-book-surface) .gl-stage{position:relative!important;inset:auto!important;width:100%!important;height:auto!important;transform:none!important;container-type:size}
-.gl-show:has(.gl-book-surface){height:100dvh;grid-template-rows:auto minmax(0,1fr)}
-.gl-show:has(.gl-book-surface){inset:0;width:100vw;transform:none;grid-template-columns:minmax(0,1fr);padding:6px}
-.gl-show:has(.gl-book-surface)>.gl-show-bar{grid-column:1;grid-row:1;flex-direction:row;flex-wrap:wrap;max-width:none;text-align:start}
-.gl-show:has(.gl-book-surface)>.gl-stage{grid-column:1;grid-row:2}
+.gl-show:has(:is(.gl-book-surface,.gl-has-material)) .gl-stage{position:relative!important;inset:auto!important;width:100%!important;height:auto!important;transform:none!important;container-type:size}
+.gl-show:has(:is(.gl-book-surface,.gl-has-material)){height:100dvh;grid-template-rows:auto minmax(0,1fr)}
+.gl-show:has(:is(.gl-book-surface,.gl-has-material)){inset:0;width:100vw;transform:none;grid-template-columns:minmax(0,1fr);padding:6px}
+.gl-show:has(:is(.gl-book-surface,.gl-has-material))>.gl-show-bar{grid-column:1;grid-row:1;flex-direction:row;flex-wrap:wrap;max-width:none;text-align:start}
+.gl-show:has(:is(.gl-book-surface,.gl-has-material))>.gl-stage{grid-column:1;grid-row:2}
 
 #gl-material-tools{display:inline-flex;align-items:center;gap:4px;flex:none}
 #gl-material-tools button,#gl-file-sound{min-height:44px;min-width:44px;white-space:nowrap}

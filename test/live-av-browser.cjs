@@ -46,6 +46,13 @@ const assert = require('node:assert/strict'), fs = require('node:fs'), path = re
     await until(s, async () => ((await window.__voice.stats())?.bytesIn || 0) > 2000);
     await until(s, () => { const v = document.querySelector('#gl-teachercam'); return v && !v.hidden && v.videoWidth > 0; });
     await until(s, async () => ((await window.__voice.stats())?.videoIn || 0) > 20000);
+    for (const [page,selector] of [[t,'#gl-selfcam'],[s,'#gl-teachercam']]) {
+      assert.ok(await page.locator(selector).evaluate(cam => {
+        const board = cam.closest('#gl-board')?.getBoundingClientRect(), r = cam.getBoundingClientRect();
+        return board && r.width > 0 && r.left >= board.left - 1 && r.right <= board.right + 1 &&
+          r.top >= board.top - 1 && r.bottom <= board.bottom + 1;
+      }), 'camera picture stays inside the board on both devices');
+    }
     await s.waitForTimeout(800); await s.screenshot({path: path.join(out, 'live-av-student.png')});
     results.push('🎙 the teacher\'s voice is heard and 📷 the teacher\'s picture is seen on the student\'s phone');
 
