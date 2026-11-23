@@ -60,7 +60,8 @@ export function adminService(store, {onClassroomChange = () => {}} = {}) {
           return html('إضافة طلاب الصف إلى فصل',ui.adminSchoolEnrollment(profile,school,selection));
         }
         const classTeachers=subject?admin.schoolClassTeachers(u.id,{classId:selection.classId,subject}):null;
-        return html('الصفوف والفصول',ui.adminSchool(profile,school,selection,classTeachers));
+        const annualMembers=selection.classId&&profile.permissions.includes('school.students')?admin.classRoster(u.id,selection.classId):[];
+        return html('الصفوف والفصول',ui.adminSchool(profile,school,selection,classTeachers,annualMembers));
       }
       if(path==='/admin/accounts')return html('أعضاء الإدارة',ui.adminAccounts(profile,admin.members(u.id)));
       if(path==='/admin/agents')return html('وكلاء التسجيل',ui.adminRegistrationAgents(profile,store.registration.agents(u.id)));
@@ -191,7 +192,7 @@ export function adminService(store, {onClassroomChange = () => {}} = {}) {
       }
       if(path==='/admin/school/tracks/initialize'){const track=admin.initializeSchoolLegacyTrack(u.id);return redirect('/admin/school?'+new URLSearchParams({trackId:track.id}));}
       if(path==='/admin/school/tracks'){const trackId=admin.addSchoolTrack(u.id,data);return redirect('/admin/school?'+new URLSearchParams({trackId}));}
-      if(path==='/admin/school/grades'){admin.addSchoolGrade(u.id,{...data,grade:Number(data.grade)});return redirect('/admin/school');}
+      if(path==='/admin/school/grades'){admin.addSchoolGrade(u.id,{...data,grade:Number(data.grade)});return redirect(data.trackId?'/admin/school?'+new URLSearchParams({trackId:data.trackId,stage:data.stage||'primary',grade:data.grade}):'/admin/school');}
       if(path==='/admin/school/classes'){
         if(data.stage!==undefined||data.grade!==undefined){
           if(data.gradeId!==undefined||data.levelKey!==undefined||!validSchoolLevel(data.stage,Number(data.grade)))throw new UserError('اختر المسار والمرحلة والصف الثابت دون حقول متعارضة.');

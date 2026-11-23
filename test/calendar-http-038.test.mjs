@@ -20,6 +20,11 @@ test('a supervisor registers a new pupil directly in the class, atomically enfor
  const students=a.school(actor).students.length;
  assert.equal((await f.post(path,{...form,name:'طالب آخر',request:randomUUID()})).status,409);
  assert.equal(a.school(actor).students.length,students);
+ const grade=a.school(actor).grades.find(x=>x.id===gradeId);
+ const classPage=await f.get('/admin/school?'+new URLSearchParams({trackId:grade.track_id,stage:grade.stage,grade:grade.grade,classId}));
+ const markup=await classPage.text();
+ assert.match(markup,/طالب تجريبي/);
+ assert.doesNotMatch(markup,/لا يوجد طلاب داخل هذا الفصل بعد/);
  assert.equal(a.school(actor).classes.find(x=>x.id===classId).studentCount,1);
  assert.equal(a.calendarSchool(actor).enrollments.filter(x=>x.classId===classId).length,1);
 });
