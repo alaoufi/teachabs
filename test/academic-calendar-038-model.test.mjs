@@ -11,6 +11,7 @@ function setup(){
  CREATE TABLE academic_subjects(id TEXT PRIMARY KEY,scope TEXT,name TEXT,active INTEGER);CREATE TABLE academic_lessons(id TEXT PRIMARY KEY,scope TEXT,subject_id TEXT,title TEXT,active INTEGER);
  CREATE TABLE academic_class_subjects(id TEXT PRIMARY KEY,scope TEXT,class_id TEXT,subject_id TEXT);CREATE TABLE academic_teacher_coverage(id TEXT PRIMARY KEY,scope TEXT,teacher_id TEXT,grade_id TEXT,subject_id TEXT);
  CREATE TABLE academic_timetable(id TEXT PRIMARY KEY,class_id TEXT,teacher_id TEXT,start INTEGER,end INTEGER,state TEXT);CREATE TABLE slots(id TEXT PRIMARY KEY,teacher TEXT,start INTEGER,minutes INTEGER,active INTEGER);
+ CREATE TABLE school_student_assignments(class_id TEXT,child TEXT); CREATE TABLE academic_enrollments(class_id TEXT,student_id TEXT);
  CREATE TABLE bookings(id TEXT PRIMARY KEY,child TEXT,slot TEXT,status TEXT);
  CREATE TABLE audit(id INTEGER PRIMARY KEY,actor TEXT,action TEXT,target TEXT);
  INSERT INTO users VALUES('a','s','admin','Admin'),('t','s','teacher','Teacher'),('t2','s','teacher','Second'),('p','s','parent','Parent'),('p2','s','parent','Other'),('foreign','other','teacher','Foreign');

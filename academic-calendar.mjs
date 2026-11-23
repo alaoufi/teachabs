@@ -74,7 +74,7 @@ export function createAcademicCalendar({db,one,all,run,transaction,requireAccess
   const field=i.profileType==='school'?'school_student_id':'child_id';
   const existing=one('SELECT id FROM student_enrollments WHERE actor=? AND request=?',a.id,i.request);
   if(!existing){
-   check(Number.isSafeInteger(c.capacity)&&one('SELECT COUNT(*) n FROM student_enrollments WHERE class_id=? AND year_id=? AND active=1',c.id,y.id).n<c.capacity,'اكتمل عدد طلاب الفصل.',409);
+   check(Number.isSafeInteger(c.capacity)&&calendarClassOccupancy(c.id,y.id,i.profileType+':'+s.id)<=c.capacity,'اكتمل عدد طلاب الفصل.',409);
    const otherMemberships=all(`SELECT class_id,year_id FROM student_enrollments WHERE ${field}=? AND active=1 AND class_id<>?`,s.id,c.id);
    if(otherMemberships.length){
     const periods=all(`SELECT p.*,t.start_date,t.end_date FROM class_periods p JOIN academic_terms t ON t.id=p.term_id
@@ -135,7 +135,22 @@ export function createAcademicCalendar({db,one,all,run,transaction,requireAccess
  function archiveCalendarRecord(actor,i){check(Object.hasOwn(kinds,i.kind),'نوع سجل غير صالح.');const [table,permission]=kinds[i.kind];return write(actor,permission,a=>{const r=scoped(table,a,i.id);check(Number.isInteger(i.revision)&&r.revision===i.revision,'تغير السجل. حدّث الصفحة.',409);run(`UPDATE ${table} SET active=0,revision=revision+1 WHERE id=?`,r.id);audit(a,'calendar.'+table+'.archived',r.id,{revision:r.revision+1});return {id:r.id,revision:r.revision+1};});}
  function assertCalendarSlotAvailable(i){return assertCalendarTimeAvailable(i);}
  function calendarClassDependencies(classId){return !!one('SELECT id FROM student_enrollments WHERE class_id=? AND active=1 UNION ALL SELECT id FROM teacher_assignments WHERE class_id=? AND active=1 UNION ALL SELECT id FROM class_periods WHERE class_id=? AND active=1 LIMIT 1',classId,classId,classId);}
- function calendarClassOccupancy(classId){return one('SELECT COALESCE(MAX(n),0) n FROM (SELECT COUNT(*) n FROM student_enrollments WHERE class_id=? AND active=1 GROUP BY year_id)',classId).n;}
+ // Undated memberships from earlier versions occupy a seat in each year. Count
+ // the same pupil once when their old membership gains a year-specific record.
+ function calendarClassOccupancy(classId,yearId=null,extra=null){
+  const fixed=all(`SELECT 'legacy:'||child AS pupil FROM school_student_assignments WHERE class_id=?
+    UNION SELECT 'school:'||student_id FROM academic_enrollments WHERE class_id=?`,classId,classId);
+  const permanent=new Set(fixed.map(row=>row.pupil));
+  if(extra)permanent.add(extra);
+  const yearly=new Map();
+  for(const row of all(`SELECT year_id,child_id,school_student_id FROM student_enrollments
+    WHERE class_id=? AND active=1 AND (? IS NULL OR year_id=?)`,classId,yearId,yearId)){
+   const pupil=row.child_id?'legacy:'+row.child_id:'school:'+row.school_student_id;
+   if(!permanent.has(pupil))yearly.set(row.year_id,(yearly.get(row.year_id)||0)+1);
+  }
+  return permanent.size+Math.max(0,...yearly.values());
+ }
+
  function assertCalendarCatalogChange(kind,id){const queries={subject:['SELECT id FROM academic_curricula WHERE subject_id=? AND active=1',id],lesson:['SELECT id FROM academic_curriculum_lessons WHERE lesson_id=? AND active=1',id],classSubject:[`SELECT a.id FROM teacher_assignments a JOIN academic_class_subjects c ON c.class_id=a.class_id AND c.subject_id=a.subject_id WHERE c.id=? AND a.active=1`,id],coverage:[`SELECT a.id FROM teacher_assignments a JOIN school_classes c ON c.id=a.class_id JOIN academic_teacher_coverage v ON v.teacher_id=a.teacher_id AND v.subject_id=a.subject_id AND v.grade_id=c.grade_id WHERE v.id=? AND a.active=1`,id],class:['SELECT id FROM teacher_assignments WHERE class_id=? AND active=1 UNION ALL SELECT id FROM student_enrollments WHERE class_id=? AND active=1',id,id]};check(Object.hasOwn(queries,kind),'نوع سجل غير صالح.');check(!one(...queries[kind]),'توجد إسنادات أو مناهج مرتبطة بالتقويم. أرشفها أولًا.',409);}
  function calendarSchool(actor){const a=requireAccess(actor,'school.read'),has=p=>a.permissions.includes(p),rows=t=>all(`SELECT * FROM ${t} WHERE scope=?`,a.scope).map(aliases);return {years:rows('academic_years'),terms:rows('academic_terms'),curricula:rows('academic_curricula'),curriculumLessons:rows('academic_curriculum_lessons'),enrollments:has('school.students')?rows('student_enrollments').map(r=>({...r,studentId:r.schoolStudentId||r.childId,profileType:r.schoolStudentId?'school':'legacy'})):[],teacherAssignments:has('education.read')||has('school.teachers')?rows('teacher_assignments'):[],periods:rows('class_periods'),sessions:has('education.read')?rows('lesson_sessions'):[],timezone:'Asia/Riyadh',legacyAdoptionRequired:true};}
  function ownedChild(a,i){let id=i.childId,type=i.profileType;if(!id){const children=[...all("SELECT id,'school' profileType FROM registration_school_students WHERE parent=? AND status='active'",a.id),...all("SELECT c.id,'legacy' profileType FROM children c LEFT JOIN child_status s ON s.child=c.id WHERE c.parent=? AND COALESCE(s.status,'active')='active'",a.id)];check(children.length===1,'اختر ملف الطالب التابع لحسابك.',403);id=children[0].id;type=children[0].profileType;}const s=student(a,id,type);check(s.parent===a.id,'ملف الطالب غير متاح.',403);return {s,field:type==='school'?'school_student_id':'child_id'};}

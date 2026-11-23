@@ -23,3 +23,15 @@ test('a supervisor registers a new pupil directly in the class, atomically enfor
  assert.equal(a.school(actor).classes.find(x=>x.id===classId).studentCount,1);
  assert.equal(a.calendarSchool(actor).enrollments.filter(x=>x.classId===classId).length,1);
 });
+
+test('undated and annual memberships share the same seats and the same child counts once',async t=>{
+ const {store,ids}=await fixture(t),a=store.admin,actor=ids.supervisor;
+ const gradeId=a.addSchoolGrade(actor,{grade:4}),classId=a.addSchoolClass(actor,{gradeId,name:'مشترك',capacity:1});
+ const yearId=a.addAcademicYear(actor,{name:'عام تجريبي',startDate:'2030-01-01',endDate:'2030-12-31',request:randomUUID()});
+ const parentId=a.school(actor).parents[0].id;
+ const first=store.child(parentId,{name:'أول',grade:4,curriculum:'sa',language:'ar'});
+ a.assignSchoolStudent(actor,{classId,childId:first});
+ assert.throws(()=>a.registerClassStudent(actor,{classId,yearId,parentId,name:'ثان',request:randomUUID()}),/اكتمل/);
+ a.enrollCalendarStudent(actor,{classId,yearId,studentId:first,profileType:'legacy',request:randomUUID()});
+ assert.equal(a.school(actor).classes.find(c=>c.id===classId).studentCount,1);
+});
