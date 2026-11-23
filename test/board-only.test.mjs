@@ -1,0 +1,32 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {openStore} from '../store.mjs';
+import {createApp} from '../server.mjs';
+
+test('board entry resumes one private teacher board and never reopens the old planner', async t => {
+  const store = openStore(':memory:');
+  const app = createApp(store, {simpleBoard:true});
+  await new Promise(resolve => app.listen(0,'127.0.0.1',resolve));
+  t.after(async () => { app.closeAllConnections(); await new Promise(r => app.close(r)); store.close(); });
+  const base = 'http://127.0.0.1:' + app.address().port;
+  const teacher = store.tour().teacher, other = store.tour();
+  const cookie = 'ks=' + store.session(teacher);
+  const get = (path,session=cookie) => fetch(base+path,{headers:{cookie:session},redirect:'manual'});
+  const start = (session=cookie,origin=base) => fetch(base+'/teach/board',{method:'POST',body:new URLSearchParams(),headers:{cookie:session,origin},redirect:'manual'});
+  assert.equal((await get('/start/teacher')).headers.get('location'),'/teach/board');
+  assert.equal((await get('/teach/plans')).headers.get('location'),'/teach/board');
+  assert.equal((await get('/teach/board')).status,200);
+  assert.equal((await start(cookie,'https://example.invalid')).status,403);
+  assert.equal((await start('ks='+store.session(other.parent))).status,403);
+  const rooms = await Promise.all([start(),start()]);
+  const location = rooms[0].headers.get('location');
+  assert.match(location,/^\/teach\/live\/[A-Z0-9]{6}$/);
+  assert.equal(rooms[1].headers.get('location'),location);
+  assert.equal((await get('/teach/board')).headers.get('location'),location);
+  assert.notEqual((await start('ks='+store.session(other.teacher))).headers.get('location'),location);
+  const page = await (await get(location+'?layout=full')).text();
+  assert.match(page,/id="gl-simple-dock"/);
+  assert.doesNotMatch(page,/href="\?layout=full"|أقسام التجربة/);
+  const plan = await (await get(location+'/plan')).json();
+  assert.deepEqual(plan.steps.map(s=>[s.type,s.items]),[['board',[]]]);
+});

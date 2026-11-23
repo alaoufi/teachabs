@@ -53,7 +53,7 @@ const step = () => plan.steps[view.state.index];
 const media = boardMedia(base,status,simple ? (clip,position) => {
   post('/material-control',{op:'playback',id:clip.id,page:clip.page,position,playing:false}).catch(e => status(e.message,true));
 } : undefined);
-const picker = filePicker({base,post,media,videoOnly:simple,getContext:() => ({
+const picker = filePicker({base,post,media,autoPlayVideo:simple,getContext:() => ({
   step:step().id, version:view.state.pageVer || 0, material:view.material,
   enabled:view.features?.files !== false && view.features?.board !== false && INKABLE.includes(step().type) && view.features?.[step().type === 'board' ? 'notes' : step().type] !== false
 })});
@@ -158,16 +158,16 @@ function renderBoard() {
   const places = view.state.places?.[s.id] || {};
   const actView = s.type === 'interactive' ? {id: s.activity, ...view.act} : null;
   const key = JSON.stringify([s.id, revealed, actView, display, places, view.state.pageVer || 0]);
-  if (key !== contentKey) {
+  if (!simple && key !== contentKey) {
     contentKey = key; renderStep($('gl-content'), content, {teacher: true, revealed, shadow: actView, display, places});
     if (s.id !== lastStep) { $('gl-content').classList.remove('gl-enter'); void $('gl-content').offsetWidth; $('gl-content').classList.add('gl-enter'); }
   }
   const canvasKey = `${s.id}:${view.state.pageVer || 0}`;
   if (canvasKey !== lastCanvas) { tools.resetForStep(); lastCanvas = canvasKey; }
-  if (s.id !== lastStep) { lastStep = s.id; renderSnippets(s); }
+  if (s.id !== lastStep) { lastStep = s.id; if (!simple) renderSnippets(s); }
   renderInk($('gl-ink'), view.state.strokes[s.id] || []);
   tools.remoteCamera(view.state.camera?.[s.id]);
-  renderTeacherNarrator(s);
+  if (!simple) renderTeacherNarrator(s);
   const show = $('gl-show');
   show.textContent = view.state.shown ? 'إخفاء عن الطلاب' : 'إظهار للطلاب'; show.setAttribute('aria-pressed', String(view.state.shown));
   $('gl-vis').textContent = !view.state.live ? 'انتهى العرض للطلاب' : view.state.shown ? 'الطلاب يرون هذه الخطوة' : 'الطلاب لا يرون هذه الخطوة الآن';
@@ -380,7 +380,7 @@ function render() {
   }
   if (simple) {
     renderBoard();
-    renderExtras($('gl-board'),view,{teacher:true});
+
     $('gl-simple-dock').querySelector('[data-tool=pen]').disabled = !enabled || view.features?.drawing === false || !INKABLE.includes(cur.type);
     return;
   }
@@ -494,7 +494,9 @@ if (simple) {
   pen.lastElementChild.textContent = 'كتابة وتخطيط';
   pen.title = 'الكتابة والرسم بالقلم';
   dock.append($('gl-material-tools'),pen);
-  menu.prepend($('gl-code'),$('gl-voice'),$('gl-cam'),$('gl-show'),$('gl-undo'),$('gl-file-sound'),$('gl-file-close'));
+  $('gl-file-pick').textContent='استيراد ملف';
+  dock.append($('gl-voice'),$('gl-cam'));
+  menu.prepend($('gl-code'));
   menu.append($('gl-live'));
   $('gl-code').setAttribute('aria-label','نسخ رابط الحصة');
   $('gl-simple-settings').addEventListener('keydown', event => {

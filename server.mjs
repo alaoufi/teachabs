@@ -70,7 +70,7 @@ export function createApp(store,{origin=process.env.APP_ORIGIN,directory=null,no
     res.setHeader('Content-Security-Policy',"default-src 'self'; script-src 'none'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'; object-src 'none'");
     const cookie=(req.headers.cookie||'').match(/(?:^|;\s*)ks=([a-f0-9]{64})(?:;|$)/)?.[1];
     let u=null,back='/app',data=null,route='';
-    const html=(title,body,status=200)=>{res.writeHead(status,{'Content-Type':'text/html; charset=utf-8'});res.end(stampHtml(ui.page(title,body,u),files,BUILD));};
+    const html=(title,body,status=200)=>{res.writeHead(status,{'Content-Type':'text/html; charset=utf-8'});res.end(stampHtml(ui.page(title,body,u,simpleBoard && (['/','/teach/board','/join','/school'].includes(route)||route.startsWith('/class/')||route.startsWith('/teach/live/'))),files,BUILD));};
     const redirect=(to)=>{res.writeHead(303,{Location:to});res.end();};
     const setCookie=(value,age)=>{
       const secure=origin?.startsWith('https://')?'; Secure':'';
@@ -111,10 +111,11 @@ export function createApp(store,{origin=process.env.APP_ORIGIN,directory=null,no
           return html('إدارة الفصول','<section class="panel"><h1>إدارة الفصول</h1><p>ادخل بحساب الإدارة لإدارة الفصول والطلاب وجدول الحصص.</p><a class="btn" href="/login">دخول الإدارة</a><form method="post" action="/demo/start"><input type="hidden" name="role" value="admin"><input type="hidden" name="next" value="/admin/school"><button>تجربة ببيانات مؤقتة</button></form></section>');
         }
         if(route==='/start/teacher'){
-          if(u?.role==='teacher')return redirect('/teach/plans');
+          const destination=simpleBoard?'/teach/board':'/teach/plans';
+          if(u?.role==='teacher')return redirect(destination);
           if(u&&!u.scope)return redirect('/app');
           limit(req,'demo',15);
-          return enter(u?.role==='parent'?store.switchTour(u.id):store.tour().teacher,'/teach/plans');
+          return enter(u?.role==='parent'?store.switchTour(u.id):store.tour().teacher,destination);
         }
         if(/^\/board-assets\/[A-Za-z0-9_./-]+$/.test(route)&&!route.includes('..')){
           const ext=route.split('.').pop();const type={js:'text/javascript',css:'text/css',woff2:'font/woff2',png:'image/png'}[ext];if(!type)throw new UserError('Not found',404);
@@ -125,12 +126,15 @@ export function createApp(store,{origin=process.env.APP_ORIGIN,directory=null,no
           if(files[route].startsWith('text/javascript'))asset=Buffer.from(stampModule(asset.toString('utf8'),files,BUILD));
           return await serveAsset(req,res,asset,files[route],q.b===BUILD); // the current stamp never changes: keep it for a year
         }
+        if(simpleBoard && route==='/' && !u)return html('دخول الفصل','<section class="panel"><h1>دخول الفصل</h1><div class="actions"><a class="btn" href="/start/teacher">أنا المعلم</a><a class="btn" href="/start/student">أنا الطالب</a><a href="/start/administration">إدارة الفصول</a></div></section>');
         if(route==='/')return u?redirect('/app'):html('التعليم الفردي',ui.landing());
         if(['/login','/register','/activate'].includes(route))return html('الحساب',ui.auth(route.slice(1),q.code||''));
         if(!u)return redirect('/login');
                 if(route==='/registration'||(route==='/app'&&u.role==='registration_agent')){role('registration_agent');const demo=store.admin.isDemoAgent(uid);try{return html('وكيل التسجيل',registrationDashboard(store.registration.dashboard(uid),demo));}catch(err){if(!demo||err.status!==403)throw err;return html('وكيل التسجيل',registrationDashboard({permissions:{},parents:[],children:[]},true));}}
         if(route==='/admin/registration-agents'){role('admin');return html('صلاحيات التسجيل',registrationAdmin(store.registration.agents(uid)));}
         if(route==='/app'&&u.role==='admin')return redirect('/admin');
+        if(simpleBoard && route==='/app' && u.role==='teacher')return redirect('/teach/board');
+        if(simpleBoard && route==='/app' && u.role==='parent')return redirect('/start/student');
         if(route==='/app')return html('لوحتي',ui.home(u,store));
         if(route==='/bookings')return html('الحجوزات',ui.bookingsList(store.bookings(uid)));
         if(route==='/progress'){

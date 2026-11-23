@@ -131,6 +131,7 @@ async function narrator(n) {
   } catch (e) { status(e.message, true); }
 }
 
+const boardOnly=document.getElementById('gl-app').classList.contains('gl-simple-seat');
 async function render() {
   media.update(view.attention || (student && !entered) ? null : view.material,view.cameraFocus);
   const inkContext = `${view.step?.id}:${view.pageVer}:${view.canDraw}`;
@@ -144,25 +145,27 @@ async function render() {
   if (!view.live || !view.step) {
     renderNarrator(board, null); stopNarration();
     board.hidden = true; wait.hidden = false; content = null; contentKey = null;
-    wait.textContent = !view.live ? (view.homework?.status === 'open' ? 'انتهت الحصة. الواجب متاح أدناه.' : 'انتهت الحصة. شكرًا لك!') : 'المعلم يجهز الخطوة… انتبه لشرحه.';
+    wait.textContent = !view.live ? (!boardOnly && view.homework?.status === 'open' ? 'انتهت الحصة. الواجب متاح أدناه.' : 'انتهت الحصة. شكرًا لك!') : 'المعلم يجهز الخطوة… انتبه لشرحه.';
   } else {
     board.hidden = false; wait.hidden = true;
-    if (view.step.key !== contentKey) { contentKey = view.step.key; content = await stepContent(view.step.id, view.step.key).catch(e => { status(e.message, true); return null; }); }
-    if (student && view.step.type === 'interactive' && view.explore) { renderExplore(); renderKey = ''; }
-    else {
-      // Redraw content only when it changed, so camera moves and ink stay smooth.
-      const key = JSON.stringify([contentKey, view.activity, view.display, view.places, content ? 1 : 0]);
-      if (key !== renderKey) { renderKey = key; renderStep($('gl-content'), content, {shadow: view.activity, display: view.display, places: view.places}); }
-      if (view.step.id !== shownStep) { shownStep = view.step.id; const c = $('gl-content'); c.classList.remove('gl-enter'); void c.offsetWidth; c.classList.add('gl-enter'); tools.resetForStep(); }
+    if (!boardOnly) {
+      if (view.step.key !== contentKey) { contentKey = view.step.key; content = await stepContent(view.step.id, view.step.key).catch(e => { status(e.message, true); return null; }); }
+      if (student && view.step.type === 'interactive' && view.explore) { renderExplore(); renderKey = ''; }
+      else {
+        // Redraw content only when it changed, so camera moves and ink stay smooth.
+        const key = JSON.stringify([contentKey, view.activity, view.display, view.places, content ? 1 : 0]);
+        if (key !== renderKey) { renderKey = key; renderStep($('gl-content'), content, {shadow: view.activity, display: view.display, places: view.places}); }
+        if (view.step.id !== shownStep) { shownStep = view.step.id; const c = $('gl-content'); c.classList.remove('gl-enter'); void c.offsetWidth; c.classList.add('gl-enter'); tools.resetForStep(); }
+      }
     }
     renderInk($('gl-ink'), view.strokes || [], {fade: true}); // tools and text from the teacher fade in here
-    renderExtras($('gl-board'), view);
+    if(!boardOnly)renderExtras($('gl-board'), view);
     tools.remoteCamera(view.camera);
-    await narrator(view.material ? null : view.narrator);
+    if(!boardOnly)await narrator(view.material ? null : view.narrator);
   }
-  renderAnswers(); await renderHomework(); renderEvaluation();
+  if(!boardOnly){renderAnswers(); await renderHomework(); renderEvaluation();}
   if (student) studentChrome();
-  if (view.narrate && view.narrate.seq > lastNarration) {
+  if (!boardOnly && view.narrate && view.narrate.seq > lastNarration) {
     lastNarration = view.narrate.seq;
     try {
       const n = withVoice(student ? await getJSON(`${classBase}/narration?step=${encodeURIComponent(view.narrate.step)}`) : plan.steps.find(s => s.id === view.narrate.step).narration, view.narrate.step, null);
@@ -186,10 +189,10 @@ function studentChrome() {
   const writable = [$('gl-answer'), $('gl-hw'), $('gl-eval')].filter(b => b && !b.hidden);
   $('gl-sheet-empty').hidden = writable.length > 0;
   // A new thing to write (questions opened, homework assigned, evaluation published) opens the sheet once.
-  const key = [view.step?.type === 'questions' && view.open ? view.step.id : '', view.homework?.status === 'open' ? view.homework.step : '', view.evaluation ? 'e' : ''].join('|');
+  const key = [view.step?.type === 'questions' && view.open ? view.step.id : '', !boardOnly && view.homework?.status === 'open' ? view.homework.step : '', view.evaluation ? 'e' : ''].join('|');
   const fresh = key !== sheetKey && key.replace(/\|/g, '') !== ''; sheetKey = key;
   $('gl-write-dot').hidden = !writable.length;
-  if (fresh && entered) openSheet(true);
+  if (!boardOnly && fresh && entered) openSheet(true);
   const v = view.voice || {mics: true};
   if (!v.mics && voice.on) voice.setMic(false).catch(() => {});
   $('gl-mic').disabled = !v.mics || !view.live;
@@ -210,7 +213,7 @@ function studentChrome() {
   if (view.starSeq && view.starSeq !== lastStar) { if (lastStar !== null) { const p = $('gl-star-pop'); p.hidden = false; p.classList.remove('is-pop'); void p.offsetWidth; p.classList.add('is-pop'); clearTimeout(starTimer); starTimer = setTimeout(() => { p.hidden = true; }, 2200); } lastStar = view.starSeq; }
   else if (lastStar === null) lastStar = view.starSeq || 0;
   $('gl-ended').hidden = view.live || !entered;
-  if (!view.live) $('gl-ended-text').textContent = view.homework?.status === 'open' ? 'شكرًا لك! الواجب متاح في «كتابة».' : 'شكرًا لك!';
+  if (!view.live) $('gl-ended-text').textContent = !boardOnly && view.homework?.status === 'open' ? 'شكرًا لك! الواجب متاح في «كتابة».' : 'شكرًا لك!';
 }
 if (student) {
   $('gl-enter').addEventListener('click', () => {
@@ -233,7 +236,7 @@ if (student) {
   $('gl-sheet-close').addEventListener('click', () => openSheet(false));
   const leave = () => { voice.setMic(false).catch(() => {}); location.href = '/join'; };
   $('gl-leave').addEventListener('click', () => { if (confirm(view?.live ? 'هل تريد مغادرة الحصة؟ ستغلق السبورة.' : 'إغلاق الحصة؟')) leave(); });
-  $('gl-ended-close').addEventListener('click', () => { if (view?.homework?.status === 'open') { $('gl-ended').hidden = true; openSheet(true); } else if (confirm('إغلاق الحصة؟')) leave(); });
+  $('gl-ended-close').addEventListener('click', () => { if (!boardOnly && view?.homework?.status === 'open') { $('gl-ended').hidden = true; openSheet(true); } else if (confirm('إغلاق الحصة؟')) leave(); });
 }
 
 $('gl-audio')?.addEventListener('click', async () => {

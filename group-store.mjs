@@ -30,6 +30,8 @@ export function createGroupStore({db, one, all, run, transaction}) {
   CREATE TABLE IF NOT EXISTS book_lessons(lesson TEXT PRIMARY KEY,book TEXT NOT NULL REFERENCES school_books(id),page INTEGER NOT NULL);`);
   db.exec('CREATE TABLE IF NOT EXISTS group_board_media(code TEXT PRIMARY KEY REFERENCES group_sessions(code) ON DELETE CASCADE, data BLOB NOT NULL)');
   const parse = row => row && {...row, plan: JSON.parse(row.plan), ...(row.state ? {state: JSON.parse(row.state)} : {})};
+  const openWhiteboard=teacher=>one(`SELECT code FROM group_sessions WHERE teacher=? AND period_id IS NULL
+    AND json_extract(plan,'$.whiteboard')=1 AND json_extract(state,'$.live')=1 ORDER BY created DESC LIMIT 1`,teacher)?.code;
   return {
     /** Keep the catalogue in the database in step with book-catalog.js (upsert; nothing is downloaded). */
     seedBooks(books, lessonPage) {
@@ -63,9 +65,11 @@ export function createGroupStore({db, one, all, run, transaction}) {
     savePlan: (teacher, id, plan) => run('UPDATE group_plans SET title=?,plan=?,updated=? WHERE id=? AND teacher=?', plan.title, JSON.stringify(plan), Date.now(), id, teacher).changes === 1,
     deletePlan: (teacher, id) => run('DELETE FROM group_plans WHERE id=? AND teacher=?', id, teacher).changes === 1,
     /** A new class room; `link` ({periodId, date, classId}) ties it to one scheduled occurrence (one room per occurrence). */
+    openWhiteboard,
     startSession(teacher, plan, state, link = null) {
       return transaction(() => {
         if (link) { const had = one('SELECT code FROM group_sessions WHERE period_id=? AND occurrence_date=?', link.periodId, link.date); if (had) return had.code; }
+        if(plan.whiteboard && !link){const existing=openWhiteboard(teacher);if(existing)return existing;}
         let code;
         do { code = Array.from(randomBytes(6), b => CODE_ALPHABET[b % CODE_ALPHABET.length]).join(''); } while (one('SELECT 1 FROM group_sessions WHERE code=?', code));
         run('INSERT INTO group_sessions(code,teacher,plan,state,created,updated,period_id,occurrence_date,class_id) VALUES(?,?,?,?,?,?,?,?,?)', code, teacher, JSON.stringify(plan), JSON.stringify(state), Date.now(), Date.now(),

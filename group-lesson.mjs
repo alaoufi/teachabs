@@ -380,6 +380,18 @@ export function groupService(store, {directory = null, now = Date.now, recheckMs
       // ---------- teacher ----------
       if (!u && method === 'GET' && !/events$/.test(path)) return redirect('/login');
       const teacher = teacherOnly(u);
+      if(simpleBoard && (path==='/teach/board'||path==='/teach/plans'&&method==='GET')){
+        if(directory)return redirect('/teach/today');
+        if(path==='/teach/plans')return redirect('/teach/board');
+        if(method==='GET'){
+          const code=g.openWhiteboard(teacher.id);
+          return code?redirect('/teach/live/'+code):html('السبورة','<section class="panel" dir="rtl"><h1>السبورة</h1><form method="post" action="/teach/board"><button class="btn">فتح السبورة</button></form></section>');
+        }
+        need(method==='POST'&&req.headers.origin===base,'طلب فتح السبورة غير معتمد.',403);
+        await fields(req);
+        const plan={version:1,whiteboard:true,title:'السبورة',tools:[],steps:[{id:'whiteboard',type:'board',title:'السبورة',items:[],snippets:[],narration:{mode:'live'}}]};
+        return redirect('/teach/live/'+g.startSession(teacher.id,plan,initialState(plan)));
+      }
       if (path === '/teach' || path === '/teach/plans') {
         need(method === 'GET', 'إجراء غير متاح.', 405);
         const grade = /^[1-6]$/.test(url.searchParams.get('grade') || '') ? Number(url.searchParams.get('grade')) : 4;
@@ -454,7 +466,7 @@ export function groupService(store, {directory = null, now = Date.now, recheckMs
       const lm = path.match(/^\/teach\/live\/([A-Z0-9]{6})(?:\/(events|plan|command|evaluate|remove|display|display-events|rtc|page-image|book-page|speech|laser|rtc-config|material|material-control))?$/);
       if (lm) {
         const [, code, action] = lm, s = ownSession(teacher, code); await schoolTeacher(s, teacher);
-        if (!action && method === 'GET') return page(res, html, 'إدارة الحصة', v.teacherPage(code, s.plan.title, base, simpleBoard && url.searchParams.get('layout') !== 'full', simpleBoard), true, true); // the teacher's microphone and camera
+        if (!action && method === 'GET') return page(res, html, 'إدارة الحصة', v.teacherPage(code, s.plan.title, base, simpleBoard), true, true); // the teacher's microphone and camera
         if (action === 'display' && method === 'GET') { feature(s,'display'); return page(res, html, 'شاشة العرض', v.displayPage(code, s.plan.title, base)); }
         if (action === 'plan' && method === 'GET') return send(res, {...withBook(s.plan, code), booksShown: relayOn()}); // booksShown: the teacher's «📖 الكتاب» button
         if (action === 'material' || action === 'material-control') {

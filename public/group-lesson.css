@@ -1177,3 +1177,23 @@ html{font-family:var(--gl-font)}
 .gl-simple-seat .gl-stage>.gl-zoom{display:none}
 
 #gl-simple-menu #gl-file-sound{position:static}
+
+/* The live board keeps file navigation beside the file and media controls within thumb reach. */
+#gl-app.gl-simple #gl-content,#gl-app.gl-simple-seat #gl-content,
+.gl-simple-seat #gl-mic,.gl-simple-seat #gl-hand,.gl-simple-seat #gl-write,
+.gl-simple-seat #gl-stars,.gl-simple-seat #gl-sheet,
+.gl-simple-seat #gl-status:not(.is-error),.gl-simple #gl-file-restart{display:none!important}
+#gl-simple-dock{gap:4px}
+#gl-simple-dock button{min-width:44px;min-height:44px;padding-inline:9px!important}
+#gl-simple-dock #gl-material-tools{display:contents}
+#gl-simple-dock #gl-material-tools[hidden]{display:none}
+#gl-simple-dock #gl-file-note:not([hidden]){order:10;flex-basis:100%;text-align:center}
+.gl-simple-seat .gl-sbar{justify-content:flex-end}
+@media (max-width:600px){
+ #gl-simple-dock button{font-size:.875rem}
+ #gl-simple-dock .gl-avs{position:absolute;clip-path:inset(50%);width:1px;height:1px;overflow:hidden}
+}
+
+#gl-app.gl-simple-seat{grid-template: minmax(0,1fr) / minmax(0,1fr)}
+#gl-app.gl-simple-seat>.gl-stage{grid-area:1/1}
+#gl-app.gl-simple-seat>.gl-sbar{position:absolute;inset-inline-start:max(8px,env(safe-area-inset-right));bottom:max(8px,env(safe-area-inset-bottom));grid-area:auto;width:auto;max-width:90%;padding:0;border:0;box-shadow:none;background:transparent;z-index:3}
