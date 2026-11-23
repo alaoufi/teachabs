@@ -176,7 +176,7 @@ export function plannerPage(id, title) {
 
 const zoomBar = (follow = false) => `<div class="gl-zoom" role="group" aria-label="تكبير السبورة"><button type="button" data-zoom="in" aria-label="تكبير" title="تكبير (+)">＋</button><button type="button" data-zoom="out" aria-label="تصغير" title="تصغير (−)">－</button><button type="button" data-zoom="fit" title="ملاءمة (0)">ملاءمة</button><button type="button" data-zoom="width" title="تكبير الكتاب لعرض القراءة">عرض الصفحة</button>${follow ? '<button type="button" data-zoom="follow" hidden>اتبع المعلم</button><button type="button" data-zoom="max" aria-pressed="false" title="السبورة بملء الشاشة">⛶</button>' : ''}</div>`;
 // Students get the zoom controls under the board so they never cover the lesson on a small phone.
-const boardShell = (extra = '', follow = false, under = '', zoom = true) => `<div class="gl-stage"><div class="gl-board" id="gl-board" aria-live="polite"><div class="gl-camera" id="gl-camera"><div class="gl-content" id="gl-content"></div><svg class="gl-ink" id="gl-ink" viewBox="0 0 1000 600" preserveAspectRatio="none" aria-hidden="true"></svg></div></div>${under}${zoom ? zoomBar(follow) : ''}${extra}</div>`; // zoom sits under the board, never on it
+const boardShell = (extra = '', follow = false, under = '', zoom = true, camera = '') => `<div class="gl-stage"><div class="gl-board" id="gl-board" aria-live="polite"><div class="gl-camera" id="gl-camera"><div class="gl-content" id="gl-content"></div><div id="gl-material-layer" hidden></div><svg class="gl-ink" id="gl-ink" viewBox="0 0 1000 600" preserveAspectRatio="none" aria-hidden="true"></svg></div>${camera}<button type="button" id="gl-file-sound" class="gl-mini" hidden>تشغيل صوت الفيديو</button></div>${under}${zoom ? zoomBar(follow) : ''}${extra}</div>`; // zoom sits under the board, never on it
 
 export function teacherPage(code, title, base) {
   // Presentation mode: one screen, no page scroll. The raised board fills the middle; lesson controls sit above it,
@@ -213,11 +213,18 @@ export function teacherPage(code, title, base) {
    <button type="button" id="gl-show" class="gl-mini" aria-pressed="true">إخفاء عن الطلاب</button><span class="gl-vis" id="gl-vis"></span>
    <div class="gl-quick" id="gl-quick" role="group" aria-label="أزرار الخطوة الحالية"></div>
   </nav>
-  ${boardShell('<video class="gl-cam gl-selfcam" id="gl-selfcam" muted playsinline autoplay hidden aria-label="صورتك كما يراها الطلاب"></video><div class="gl-textbox" id="gl-textbox" hidden><input id="gl-textinput" maxlength="200" aria-label="اكتب على السبورة" placeholder="اكتب ثم Enter" dir="auto"><button type="button" id="gl-textok" class="btn">ضع</button><button type="button" id="gl-textcancel" class="quiet">إلغاء</button></div>', false, `<nav class="gl-sections" aria-label="فقرات الدرس: التنقل، وإخفاء أي فقرة عن الطلاب أو إظهارها">
+  ${boardShell('<div class="gl-textbox" id="gl-textbox" hidden><input id="gl-textinput" maxlength="200" aria-label="اكتب على السبورة" placeholder="اكتب ثم Enter" dir="auto"><button type="button" id="gl-textok" class="btn">ضع</button><button type="button" id="gl-textcancel" class="quiet">إلغاء</button></div>', false, `<nav class="gl-sections" aria-label="فقرات الدرس: التنقل، وإخفاء أي فقرة عن الطلاب أو إظهارها">
+   <div id="gl-material-tools" role="group" aria-label="ملف الشرح" hidden>
+    <input type="file" id="gl-file-input" hidden accept="image/jpeg,image/png,image/webp,image/gif,image/avif,application/pdf,application/vnd.openxmlformats-officedocument.presentationml.presentation,video/mp4,video/webm,.pptx">
+    <button type="button" class="btn gl-mini" id="gl-file-pick" title="صورة أو فيديو أو PDF أو PowerPoint">عرض ملف</button>
+    <button type="button" class="gl-mini" id="gl-file-prev" aria-label="الصفحة السابقة" hidden>→</button><output id="gl-file-number" hidden></output><button type="button" class="gl-mini" id="gl-file-next" aria-label="الصفحة التالية" hidden>←</button>
+    <button type="button" class="gl-mini" id="gl-file-play" hidden>تشغيل الفيديو</button><button type="button" class="gl-mini" id="gl-file-restart" hidden>من البداية</button>
+    <button type="button" class="quiet gl-mini" id="gl-file-close" hidden>إغلاق الملف</button><span role="status" id="gl-file-note" hidden></span>
+   </div>
    <button type="button" id="gl-prev" class="gl-mini" title="السابق (PageUp)" aria-label="الفقرة السابقة">→</button>
    <ol id="gl-steps" class="gl-steps-strip"></ol>
    <button type="button" id="gl-next" class="btn gl-mini" title="التالي (PageDown)" aria-label="الفقرة التالية">←</button>
-  </nav>`, false)}
+  </nav>`, false, '<video class="gl-cam gl-selfcam" id="gl-selfcam" muted playsinline autoplay hidden aria-label="صورتك كما يراها الطلاب"></video>')}
   <footer class="gl-bar gl-bar-bottom"><div class="gl-av" id="gl-av" role="group" aria-label="الصوت والكاميرا — تحكم سريع">
    <button type="button" id="gl-voice" class="gl-avbtn" aria-pressed="false" title="صوتك يصل إلى أجهزة الطلاب"><span class="gl-avl">🎙 صوتي</span><span class="gl-avs">: مغلق</span></button>
    <button type="button" id="gl-cam" class="gl-avbtn" aria-pressed="false" title="صورتك تظهر للطلاب"><span class="gl-avl">📷 الكاميرا</span><span class="gl-avs">: مغلقة</span></button>
@@ -254,8 +261,8 @@ export function studentPage(code, name, title) {
   // homework open in a sheet over the board) and ✕ to leave, which asks first. The teacher controls the rest.
   return `${css}<link rel="stylesheet" href="/classroom-features.css"><section class="gl-wrap gl-student gl-solo" dir="rtl" id="gl-app" data-code="${e(code)}" data-role="student">
   <div class="gl-entry" id="gl-start" role="dialog" aria-modal="true" aria-labelledby="gl-start-title"><div class="gl-start-card"><p class="gl-hello">مرحبًا ${e(name)}</p><h1 id="gl-start-title">${e(title)}</h1>
-   <button type="button" class="btn" id="gl-enter">ادخل الحصة</button><p class="gl-hint">تفتح السبورة على الشاشة كلها، ويُسمع صوت المعلم.</p></div></div>
-  ${boardShell('<div id="gl-student-ink" class="gl-student-ink" role="group" aria-label="كتابة الطالب" hidden><span>سمح لك المعلم بالكتابة</span><button type="button" class="gl-tool" data-tool="pen" aria-pressed="true">قلم</button><button type="button" class="gl-tool" data-tool="hand" aria-pressed="false">تحريك</button></div><video class="gl-cam" id="gl-teachercam" playsinline autoplay muted hidden aria-label="المعلم"></video>', true)}<p id="gl-wait" class="gl-wait" hidden></p>
+   <button type="button" class="btn" id="gl-enter" disabled>ادخل الحصة</button><p class="gl-hint">تفتح السبورة على الشاشة كلها، ويُسمع صوت المعلم.</p></div></div>
+  ${boardShell('<div id="gl-student-ink" class="gl-student-ink" role="group" aria-label="كتابة الطالب" hidden><span>سمح لك المعلم بالكتابة</span><button type="button" class="gl-tool" data-tool="pen" aria-pressed="true">قلم</button><button type="button" class="gl-tool" data-tool="hand" aria-pressed="false">تحريك</button></div>', true, '<video class="gl-cam" id="gl-teachercam" playsinline autoplay muted hidden aria-label="المعلم"></video>')}<p id="gl-wait" class="gl-wait" hidden></p>
   <nav class="gl-sbar" aria-label="أدوات الطالب">
    <button type="button" class="gl-sbtn" id="gl-mic" aria-pressed="false">🎤 <span>المايك</span></button>
    <button type="button" class="gl-sbtn" id="gl-hand" aria-pressed="false">✋ <span>ارفع يدك</span></button>

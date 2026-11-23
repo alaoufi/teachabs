@@ -269,10 +269,13 @@ export async function playNarration(n, {onEnd = () => {}} = {}) {
 // Board content is laid out at 1000×600 (like the ink) and scaled to the board, so a lesson looks the same on a
 // phone, a laptop and a smart board, and nothing is cut off on small screens.
 const boardEl = typeof document !== 'undefined' && document.getElementById('gl-board');
-function fitBoard() {
+export function fitBoard() {
   if (!boardEl) return;
   const camera = boardEl.querySelector('.gl-camera');
   if (!camera) return;
+  if (boardEl.classList.contains('gl-has-material')) {
+    camera.style.width = '100%'; camera.style.height = '100%'; camera.style.left = '0'; camera.style.top = '0'; return;
+  }
   const w = boardEl.classList.contains('gl-book-surface') ? boardEl.clientHeight * 5 / 3 : Math.min(boardEl.clientWidth, boardEl.clientHeight * 5 / 3);
   if (!w) return;
   boardEl.style.setProperty('--k', String(w / 1000));

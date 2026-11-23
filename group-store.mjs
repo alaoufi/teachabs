@@ -28,6 +28,7 @@ export function createGroupStore({db, one, all, run, transaction}) {
   // «مكتبة الكتب المدرسية»: book metadata and source links only (no book files); the printed page of each lesson
   db.exec(`CREATE TABLE IF NOT EXISTS school_books(id TEXT PRIMARY KEY,track TEXT NOT NULL,stage TEXT NOT NULL,grade INTEGER NOT NULL,term INTEGER NOT NULL,subject TEXT NOT NULL,title TEXT NOT NULL,edition TEXT NOT NULL,pages INTEGER NOT NULL,page_offset INTEGER NOT NULL,offset_checked INTEGER NOT NULL,source TEXT NOT NULL,pdf TEXT NOT NULL,checked TEXT NOT NULL,stored INTEGER NOT NULL DEFAULT 0 CHECK(stored=0));
   CREATE TABLE IF NOT EXISTS book_lessons(lesson TEXT PRIMARY KEY,book TEXT NOT NULL REFERENCES school_books(id),page INTEGER NOT NULL);`);
+  db.exec('CREATE TABLE IF NOT EXISTS group_board_media(code TEXT PRIMARY KEY REFERENCES group_sessions(code) ON DELETE CASCADE, data BLOB NOT NULL)');
   const parse = row => row && {...row, plan: JSON.parse(row.plan), ...(row.state ? {state: JSON.parse(row.state)} : {})};
   return {
     /** Keep the catalogue in the database in step with book-catalog.js (upsert; nothing is downloaded). */
@@ -85,6 +86,15 @@ export function createGroupStore({db, one, all, run, transaction}) {
     latestTrialLive: since => one("SELECT s.code FROM group_sessions s JOIN users u ON u.id=s.teacher WHERE u.scope<>'' AND json_extract(s.state,'$.live')=1 AND s.updated>? ORDER BY s.updated DESC LIMIT 1", since)?.code || null,
     saveSessionPlan: (code, plan) => run('UPDATE group_sessions SET plan=?,updated=? WHERE code=?', JSON.stringify(plan), Date.now(), code),
     saveState: (code, state) => run('UPDATE group_sessions SET state=?,updated=? WHERE code=?', JSON.stringify(state), Date.now(), code),
+    sharedMediaSizeExcept: code => one('SELECT coalesce(sum(length(data)),0) AS size FROM group_board_media WHERE code<>?',code).size,
+    materialBytes: (code, start, length) => one('SELECT substr(data,?,?) AS bytes FROM group_board_media WHERE code=?', start + 1, length, code)?.bytes,
+    saveMaterial(code, state, bytes) {
+      transaction(() => {
+        if (bytes) run('INSERT INTO group_board_media(code,data) VALUES(?,?) ON CONFLICT(code) DO UPDATE SET data=excluded.data', code, bytes);
+        else run('DELETE FROM group_board_media WHERE code=?', code);
+        this.saveState(code, state);
+      });
+    },
     join(code, name, max, child = null, parent = null, studentRef = null) {
       return transaction(() => {
         // the same child entering again (another device, a new tab) keeps their place and answers

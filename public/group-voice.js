@@ -5,7 +5,11 @@
 // Signalling goes through the class server (/rtc) and is never stored. Without a TURN server some networks
 // may block the audio; the board and everything else keep working.
 
-const ICE = [{urls: 'stun:stun.l.google.com:19302'}];
+async function connection(base) {
+  const response = await fetch(base + '/rtc-config', {cache:'no-store'});
+  if (!response.ok) throw new Error('تعذر إعداد الاتصال بالفصل.');
+  return new RTCPeerConnection(await response.json());
+}
 
 async function post(url, body) {
   const r = await fetch(url, {method: 'POST', headers: {'content-type': 'application/json'}, body: JSON.stringify(body)});
@@ -54,7 +58,7 @@ export function teacherVoice({base, onChange = () => {}}) {
   function close(id) { const p = peers.get(id); if (!p) return; p.pc.close(); p.audio?.remove(); peers.delete(id); speaking.delete(id); onChange(); }
   async function connect(id) {
     close(id);
-    const pc = new RTCPeerConnection({iceServers: ICE}), tr = pc.addTransceiver('audio', {direction: 'sendrecv'}), vt = pc.addTransceiver('video', {direction: 'sendonly'}), cid = Math.random().toString(36).slice(2, 12), p = {pc, tr, vt, cid, audio: null, ice: candidates(pc)};
+    const pc = await connection(base), tr = pc.addTransceiver('audio', {direction: 'sendrecv'}), vt = pc.addTransceiver('video', {direction: 'sendonly'}), cid = Math.random().toString(36).slice(2, 12), p = {pc, tr, vt, cid, audio: null, ice: candidates(pc)};
     peers.set(id, p);
     if (track) await tr.sender.replaceTrack(track);
     if (cam) await vt.sender.replaceTrack(cam);
@@ -106,7 +110,7 @@ export function studentVoice({base, onChange = () => {}, onVideo = () => {}}) {
     if (m.type === 'offer') {
       pc?.close(); audio?.remove(); audio = null; cid = m.cid || null;
       early = early.filter(c => c.cid === cid).map(c => c.data);
-      pc = new RTCPeerConnection({iceServers: ICE}); ice = candidates(pc); const mine = cid;
+      pc = await connection(base); ice = candidates(pc); const mine = cid;
       pc.onicecandidate = e => { if (e.candidate) send('ice', e.candidate.toJSON(), mine).catch(() => {}); };
       pc.ontrack = e => {
         if (e.track.kind === 'video') { video = new MediaStream([e.track]); onVideo(video); return; }

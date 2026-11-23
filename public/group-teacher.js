@@ -1,3 +1,5 @@
+import {boardMedia} from './board-media.js';
+import {filePicker} from './board-file-picker.js';
 import {applyClassroomFeatures} from './classroom-features.js';
 // Teacher console for the live group lesson: sequence, visibility, board ink, activity, results, homework, evaluation.
 import {STEP_TYPES, NARRATION, RATING, publicStep} from './group-plan.js';
@@ -32,6 +34,7 @@ const spoken = s => s.narration.mode === 'speech' && view?.natural ? {...s.narra
 const INKABLE = ['title', 'page', 'board', 'interactive', 'questions'];
 
 async function command(body) {
+  if (view && ['stroke','shape','text','erase','stamp'].includes(body.op)) body = {...body,step:step().id,pageVer:view.state.pageVer || 0};
   if(['narrate','narrator','speaker'].includes(body.op) && view?.features?.narration===false) return;
   if (busy && body.op !== 'stroke') return;
   try {
@@ -46,6 +49,11 @@ async function post(path, body) {
 }
 
 const step = () => plan.steps[view.state.index];
+const media = boardMedia(base,status);
+const picker = filePicker({base,post,media,getContext:() => ({
+  step:step().id, version:view.state.pageVer || 0, material:view.material,
+  enabled:view.features?.files !== false && view.features?.board !== false && INKABLE.includes(step().type) && view.features?.[step().type === 'board' ? 'notes' : step().type] !== false
+})});
 const nameOf = id => view.students.find(s => s.id === id)?.name || 'طالب';
 
 /** Whether the students see a step: the current one as the class has it now, the others as the teacher left them. */
@@ -170,7 +178,7 @@ function renderBoard() {
 
 // The teacher sees the narrator exactly as the class does, and leads it: play, next, mute, hide, automatic advance.
 function renderTeacherNarrator(s) {
-  if(view.features?.narration===false) { renderNarrator($('gl-board'),null); return; }
+  if(view.features?.narration===false || view.material) { renderNarrator($('gl-board'),null); return; }
   const n = view.state.narrator, g = s.type === 'interactive' ? s.narrator?.segments[n?.segment] : null;
   const info = g && n.visible ? {segment: n.segment, total: s.narrator.segments.length, text: g.text, muted: n.muted} : null;
   renderNarrator($('gl-board'), info);
@@ -356,6 +364,7 @@ function renderSide() {
 function render() {
   if (!plan || !view) return;
   applyClassroomFeatures(view.features);
+  media.update(view.material,view.cameraFocus); picker.update();
   if(view.features?.narration===false) { stopNarration(); clearTimeout(advanceTimer); clearTimeout(speakTimer); }
   if(view.features?.teacherMic===false && voice.on) voice.setMic(false).catch(()=>{});
   if(view.features?.camera===false && voice.camera) voice.setCamera(false).catch(()=>{});
@@ -363,7 +372,7 @@ function render() {
   const enabled=view.features?.board!==false && view.features?.[cur?.type==='board'?'notes':cur?.type]!==false;
   app.classList.toggle('gl-section-disabled',!enabled); // opening an interactive step starts its prepared explanation once
   if (cur?.id !== lastStepId) { if (lastStepId) { clearTimeout(advanceTimer); clearTimeout(speakTimer); stopNarration(); } lastStepId = cur?.id; } // leaving a step ends its explanation here
-  if (view.features?.narration !== false && view.features?.interactive !== false && view.features?.board !== false && cur?.type === 'interactive' && cur.narrator?.segments.length && view.state.narrator?.segment === -1 && view.state.live && autoStart && !autoStarted.has(cur.id)) {
+  if (view.features?.narration !== false && view.features?.interactive !== false && view.features?.board !== false && cur?.type === 'interactive' && cur.narrator?.segments.length && view.state.narrator?.segment === -1 && view.state.live && autoStart && !autoStarted.has(cur.id) && !view.material) {
     autoStarted.add(cur.id); command({op: 'narrator', action: 'start'});
   }
   renderSequence(); renderBoard(); renderQuick(step()); renderExtras($('gl-board'), view, {teacher: true}); renderClassTools();
@@ -451,6 +460,11 @@ function renderVoice() {
   label('gl-mics', v.mics ? '🎤 مايك الطلاب' : '🔇 مايك الطلاب', (v.mics ? ': مسموح' : ': مغلق') + (talking ? ` (${formatNumber(talking)} يتحدث)` : ''));
   $('gl-mics').setAttribute('aria-pressed', String(v.mics)); $('gl-mics').classList.toggle('is-off', !v.mics);
 }
+$('gl-board').addEventListener('pointerdown', e => {
+  if (view?.cameraFocus && !e.target.closest('button,video.gl-cam')) {
+    $('gl-board').classList.remove('gl-camera-focus'); command({op:'camera-focus',on:false});
+  }
+},true);
 $('gl-voice').addEventListener('click', async () => {
   if(view?.features?.teacherMic===false)return;
   try { await voice.setMic(!voice.on); await command({op: 'voice', teacher: voice.on}); } catch (e) { status(e.message || 'تعذّر فتح المايك.', true); }

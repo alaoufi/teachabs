@@ -1,6 +1,7 @@
 // Shared, fixed allowlist. These switches never grant room admission or change schedules.
 export const CLASSROOM_FEATURES = Object.freeze([
   ['board', 'مساحة السبورة', 'السبورة', '#gl-board,.gl-zoom'],
+  ['files', 'عرض الملفات على السبورة', 'السبورة', '#gl-material-tools'],
   ['drawing', 'الأقلام والأشكال والممحاة', 'السبورة', '[data-fly="pens"],[data-fly="shapes"],[data-tool="select"],[data-tool="eraser"],.gl-look,#gl-undo,#gl-clear,#gl-textbox'],
   ['texts', 'مكتبة النصوص', 'السبورة', '#gl-library,#gl-snippets,.gl-dialog.tl-dialog'],
   ['tools', 'مكتبة الوسائل وأدوات القياس', 'السبورة', '.gl-lesson-tools,.gl-stamp-btn,.tl-dialog:not(.gl-dialog)'],

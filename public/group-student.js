@@ -1,3 +1,4 @@
+import {boardMedia} from './board-media.js';
 import {applyClassroomFeatures} from './classroom-features.js';
 // Student seat and classroom display screen: shows only what the teacher has made visible.
 import {publicStep, WORK_MODES} from './group-plan.js';
@@ -13,6 +14,7 @@ const app = document.getElementById('gl-app'), code = app.dataset.code, role = a
 const $ = x => document.getElementById(x);
 const status = (text, bad = false) => { $('gl-status').textContent = text; $('gl-status').classList.toggle('is-error', bad); };
 const classBase = '/class/' + code;
+const media = boardMedia(student ? classBase : '/teach/live/' + code,status);
 let renderKey = '', shownStep = null, lastSegment = 0, speakTimer = 0, wasMuted = false;
 let view = null, content = null, contentKey = null, homework = null, lastNarration = 0, pendingNarration = null, plan = null;
 const tools = attachBoardTools({mode: student ? 'student' : 'viewer', enabled: key => view?.features?.[key] !== false,
@@ -130,6 +132,7 @@ async function narrator(n) {
 }
 
 async function render() {
+  media.update(view.attention || (student && !entered) ? null : view.material,view.cameraFocus);
   const inkContext = `${view.step?.id}:${view.pageVer}:${view.canDraw}`;
   if (inkContext !== lastInkContext) { tools.resetForStep(); lastInkContext = inkContext; }
   applyClassroomFeatures(view.features);
@@ -155,7 +158,7 @@ async function render() {
     renderInk($('gl-ink'), view.strokes || [], {fade: true}); // tools and text from the teacher fade in here
     renderExtras($('gl-board'), view);
     tools.remoteCamera(view.camera);
-    await narrator(view.narrator);
+    await narrator(view.material ? null : view.narrator);
   }
   renderAnswers(); await renderHomework(); renderEvaluation();
   if (student) studentChrome();
@@ -214,7 +217,9 @@ if (student) {
     entered = true; $('gl-start').hidden = true; app.classList.add('is-in');
     if ('speechSynthesis' in window) speechSynthesis.speak(new SpeechSynthesisUtterance('')); // unlock speech on this tap
     voice.resume(); voice.hello(); studentChrome();
+    if (view) media.update(view.attention ? null : view.material,view.cameraFocus);
   });
+  $('gl-enter').disabled = false;
   $('gl-mic').addEventListener('click', async () => {
     try { await voice.setMic(!voice.on); status(voice.on ? 'المايك مفتوح: المعلم يسمعك.' : 'أُغلق المايك.'); }
     catch (e) { status(e.message || 'لم يُسمح بالمايك.', true); }
@@ -247,8 +252,8 @@ events.addEventListener('view', ev => {
   const next = JSON.parse(ev.data);
   queue = queue.then(() => ready).then(async () => { view = next; status(student ? 'متصل بالحصة.' : 'شاشة العرض متصلة.'); await render(); }).catch(e => status(e.message, true));
 });
-events.addEventListener('revoked', () => { events.close(); status('لم يعد دخولك لهذه الحصة متاحًا (انتهى وقتها أو تغيّر فصلك). عد إلى «حصتي الآن».', true); $('gl-board').hidden = true; if (student) voice.setMic(false).catch(() => {}); });
-events.addEventListener('removed', () => { events.close(); status('أخرجك المعلم من الحصة.', true); $('gl-board').hidden = true; if (student) voice.setMic(false).catch(() => {}); });
+events.addEventListener('revoked', () => { events.close(); media.update(null,false); status('لم يعد دخولك لهذه الحصة متاحًا (انتهى وقتها أو تغيّر فصلك). عد إلى «حصتي الآن».', true); $('gl-board').hidden = true; if (student) voice.setMic(false).catch(() => {}); });
+events.addEventListener('removed', () => { events.close(); media.update(null,false); status('أخرجك المعلم من الحصة.', true); $('gl-board').hidden = true; if (student) voice.setMic(false).catch(() => {}); });
 events.onerror = async () => {
   status('انقطع الاتصال. تجري إعادة المحاولة…', true);
   // After a server restart the trial forgets its classes: say so clearly instead of retrying forever.
@@ -263,6 +268,10 @@ function classGone() {
 }
 if (student) {
   events.addEventListener('rtc', ev => voice.message(JSON.parse(ev.data)).catch(() => {}));
+  const reconnect = setInterval(() => {
+    if (entered && view?.live && ['new','failed','disconnected'].includes(voice.state) && events.readyState === EventSource.OPEN) voice.hello();
+  }, 12000);
+  window.addEventListener('pagehide', () => clearInterval(reconnect), {once:true});
   events.onopen = () => { if (entered) voice.hello(); }; // after a reconnect the teacher rebuilds the audio link
   window.__voice = voice; // read by the browser tests
 }

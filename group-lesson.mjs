@@ -1,3 +1,5 @@
+import {createHmac, randomUUID} from 'node:crypto';
+import {attachMaterial, closeMaterial, readMaterial, sendMaterial} from './board-material.mjs';
 import {classroomState,checkClassroomCommand,stepEnabled} from './classroom-policy.mjs';
 // Group lesson service: planner, live teacher console, display screen and student seats.
 import {TOOLS, colorAllowed} from './public/group-ink.js';
@@ -36,10 +38,21 @@ export function groupService(store, {directory = null, now = Date.now, recheckMs
     const features=featuresFor(d.s), state=classroomState(d.s.state,d.s.plan,features);
     if(kind==='display'&&!features.display) state.shown=false;
     const data={...(kind==='teacher'?teacherView(state,d.s.plan,d.students,d.responses):publicView(state,d.s.plan,kind==='student'?id:null,d.responses,d.names)),...(state.live?classExtras(state,d.s.plan):{}),natural:ttsReady(),features};
+    data.cameraFocus = Boolean(state.cameraFocus && features.camera && state.live);
+    const m = state.material;
+    if (m && m.step === d.s.plan.steps[state.index].id && features.files !== false && features.board && stepEnabled(features,d.s.plan.steps[state.index]) && (kind === 'teacher' || (data.step && !state.attention))) {
+      data.material = {id:m.id, page:m.page, count:m.count, mime:m.mime, playing:m.playing, position:m.position + (m.playing ? Math.max(0, Date.now() - m.updated) / 1000 : 0)};
+    }
     return data;
   }
   g.seedBooks(BOOKS, Object.fromEntries(allLessons().map(l => [l.id, lessonBookPage(l.id)]).filter(([, at]) => at)));
   // a ministry book page shown in a class: kept in memory for that class only, never saved
+  let uploads = 0;
+  async function receiveMaterial(req,url,base) {
+    need(uploads < 3, 'يجري تجهيز ملفات أخرى. أعد المحاولة بعد قليل.',429);
+    uploads++;
+    try { return await readMaterial(req,url,base); } finally { uploads--; }
+  }
   const bookPages = new Map();
   const withBook = (plan, code) => { const b = bookPages.get(code); if (!b) return plan; return {...plan, steps: plan.steps.map(s => s.id === b.step ? {...s, source: 'upload', image: b.image, rights: true, book: {id: b.book, page: b.page}} : s)}; };
   /** Teachers, and administration with academic affairs or libraries permissions, may open the books. */
@@ -60,6 +73,18 @@ export function groupService(store, {directory = null, now = Date.now, recheckMs
     for (const k of ['content-length', 'content-range']) if (r.headers.get(k)) h[k] = r.headers.get(k);
     res.writeHead(r.status, h);
     Readable.fromWeb(r.body).on('error', () => res.destroy()).pipe(res);
+  }
+
+  // Coturn REST credentials expire and contain no student or teacher identifier.
+  function rtcConfig(res) {
+    const servers = [{urls:'stun:stun.l.google.com:19302'}];
+    const urls = (process.env.CLASSROOM_TURN_URLS || '').split(',').map(x=>x.trim()).filter(x=>/^turns?:[^\s]+$/i.test(x));
+    const secret = process.env.CLASSROOM_TURN_SECRET;
+    if (urls.length && secret) {
+      const username = Math.floor(Date.now()/1000 + 4*3600) + ':' + randomUUID();
+      servers.push({urls, username, credential:createHmac('sha1',secret).update(username).digest('base64')});
+    }
+    return send(res,{iceServers:servers});
   }
 
   async function json(req, base, max) {
@@ -188,7 +213,7 @@ export function groupService(store, {directory = null, now = Date.now, recheckMs
     matches: path => path === '/join' || path === '/start/student' || path === '/school' || path.startsWith('/school/') || path.startsWith('/teach/') || path === '/teach' || path.startsWith('/class/'),
     async handle(ctx) {
       const {req, res, url} = ctx, path = url.pathname;
-      const api = /\/(events|content|narration|answer|hand|speech|laser|command|evaluate|remove|plan|display-events|texts|delete|import|rtc|page-image|book-page|file)$/.test(path) || /^\/teach\/texts\//.test(path) || path.endsWith('.json') || req.headers['content-type']?.startsWith('application/json');
+      const api = /\/(events|content|narration|answer|hand|speech|laser|command|evaluate|remove|plan|display-events|texts|delete|import|rtc|page-image|book-page|rtc-config|material|material-control|file)$/.test(path) || /^\/teach\/texts\//.test(path) || path.endsWith('.json') || req.headers['content-type']?.startsWith('application/json');
       try { return await route(ctx); } catch (err) {
         if (api && err instanceof UserError && !res.headersSent) return send(res, {error: err.message}, err.status);
         throw err;
@@ -254,7 +279,7 @@ export function groupService(store, {directory = null, now = Date.now, recheckMs
         const joined = g.join(room.code, name, MAX_STUDENTS, null, u.id, e.studentId); need(joined, 'اكتمل عدد الطلاب في هذه الحصة.', 409);
         setStudentCookie(res, base, room.code, joined.token); broadcast(room.code); return redirect('/class/' + room.code);
       }
-      const cls = path.match(/^\/class\/([A-Z0-9]{6})(?:\/(events|content|narration|answer|rtc|hand|speech|ink))?$/);
+      const cls = path.match(/^\/class\/([A-Z0-9]{6})(?:\/(events|content|narration|answer|rtc|hand|speech|ink|rtc-config|material))?$/);
       if (cls) {
         const [, code, action] = cls; need(CODE.test(code), 'رمز الحصة غير صالح.', 404);
         const raw = g.session(code), s = raw && effective(raw), me = s && g.student(code, studentToken(req, code));
@@ -262,6 +287,9 @@ export function groupService(store, {directory = null, now = Date.now, recheckMs
         await schoolAdmit(s, me);
         if (!action && method === 'GET') return page(res, html, 'الحصة', v.studentPage(code, me.name, s.plan.title), true); // the student may open the microphone
         if (action === 'events' && method === 'GET') { subscribe(req, res, code, 'student', me.id); if (s.period_id) watchAdmission(res, code, me); return; }
+        if (action === 'rtc-config' && method === 'GET') {
+          need(s.state.live, 'انتهت الحصة.',409); return rtcConfig(res);
+        }
         if (action === 'rtc' && method === 'POST') {
           const m = await rtcMessage(req, base);
           need(s.state.live, 'انتهت الحصة.', 409);
@@ -273,6 +301,11 @@ export function groupService(store, {directory = null, now = Date.now, recheckMs
           const step = url.searchParams.get('step') || '', seg = url.searchParams.get('segment');
           const n = seg === null ? narrationFor(s.state, s.plan, step) : segmentAudio(s.state, s.plan, step, Number(seg));
           return sendSpeech(res, n.mode === 'speech' ? n.text : null, speakerOf(s.state));
+        }
+        if (action === 'material' && method === 'GET') {
+          feature(s,'files'); feature(s,'board'); allowedStep(s,s.plan.steps[s.state.index].id);
+          need(s.state.live && s.state.shown && !s.state.attention, 'هذا الملف غير معروض.', 403);
+          return sendMaterial(req,res,url,g,code,s.state,s.plan.steps[s.state.index].id);
         }
         if (action === 'ink' && method === 'POST') {
           feature(raw, 'drawing'); feature(raw, 'board'); allowedStep(raw, raw.plan.steps[raw.state.index].id);
@@ -418,17 +451,49 @@ export function groupService(store, {directory = null, now = Date.now, recheckMs
         if (action === '/start' && method === 'POST') { await fields(req); const clean = classPlan(validatePlan(plan.plan)); return redirect('/teach/live/' + g.startSession(teacher.id, clean, initialState(clean))); }
         throw new UserError('إجراء غير متاح.', 405);
       }
-      const lm = path.match(/^\/teach\/live\/([A-Z0-9]{6})(?:\/(events|plan|command|evaluate|remove|display|display-events|rtc|page-image|book-page|speech|laser))?$/);
+      const lm = path.match(/^\/teach\/live\/([A-Z0-9]{6})(?:\/(events|plan|command|evaluate|remove|display|display-events|rtc|page-image|book-page|speech|laser|rtc-config|material|material-control))?$/);
       if (lm) {
         const [, code, action] = lm, s = ownSession(teacher, code); await schoolTeacher(s, teacher);
         if (!action && method === 'GET') return page(res, html, 'إدارة الحصة', v.teacherPage(code, s.plan.title, base), true, true); // the teacher's microphone and camera
         if (action === 'display' && method === 'GET') { feature(s,'display'); return page(res, html, 'شاشة العرض', v.displayPage(code, s.plan.title, base)); }
         if (action === 'plan' && method === 'GET') return send(res, {...withBook(s.plan, code), booksShown: relayOn()}); // booksShown: the teacher's «📖 الكتاب» button
+        if (action === 'material' || action === 'material-control') {
+          feature(s,'files'); feature(s,'board');
+          const cur = s.plan.steps[s.state.index];
+          allowedStep(s,cur.id);
+          if (action === 'material' && method === 'GET') return sendMaterial(req,res,url,g,code,s.state,cur.id);
+          need(method === 'POST', 'إجراء غير متاح.', 405);
+          const upload = action === 'material' ? await receiveMaterial(req,url,base) : null;
+          const body = upload ? null : await json(req,base,1024);
+          const latest = ownSession(teacher,code), state = latest.state, step = latest.plan.steps[state.index];
+          await schoolTeacher(latest,teacher);
+          // Re-read after asynchronous admission and upload so a stale request cannot replace a newer page.
+          const fresh = ownSession(teacher,code);
+          need(fresh.state.seq === state.seq, 'تغيّرت الحصة. أعد المحاولة.', 409);
+          feature(fresh,'files'); feature(fresh,'board'); allowedStep(fresh,step.id);
+          need(['title','page','board','interactive','questions'].includes(step.type), 'اختر فقرة تقبل الكتابة.',409);
+          if (upload) {
+            need(url.searchParams.has('version') && upload.meta.step === step.id && Number(url.searchParams.get('version')) === (state.pageVer || 0), 'تغيّرت صفحة السبورة.',409);
+            need(g.sharedMediaSizeExcept(code) + upload.bytes.length <= 256*1024*1024, 'امتلأت مساحة ملفات الحصص. أغلق ملفًا معروضًا ثم أعد المحاولة.',507);
+            g.saveMaterial(code,attachMaterial(state,upload.meta),upload.bytes);
+          } else {
+            const m = state.material;
+            need(m && m.id === body.id && m.step === step.id && m.page === body.page, 'تغيّر الملف المعروض.',409);
+            if (body.op === 'close') g.saveMaterial(code,closeMaterial(state),null);
+            else {
+              need(body.op === 'playback' && m.mime.startsWith('video/') && typeof body.playing === 'boolean' && Number.isFinite(body.position) && body.position >= 0 && body.position <= 86400,'موضع الفيديو غير صالح.');
+              Object.assign(m,{playing:body.playing,position:body.position,updated:Date.now()});
+              state.seq++; g.saveState(code,state);
+            }
+          }
+          broadcast(code); return send(res,{ok:true});
+        }
         if (action === 'book-page' && method === 'POST') { feature(s,'page'); feature(s,'board'); // a page of the ministry book, rendered on the teacher's device: this class only, in memory
           const body = await json(req, base, 1_000_000), step = s.plan.steps.find(x => x.id === body.step && x.type === 'page'), book = bookOf(body.book);
           need(relayOn(), RELAY_OFF, 403); need(step, 'خطوة المنهج غير موجودة.', 404); need(book && Number.isInteger(body.page) && body.page >= 1 && body.page <= book.pages, 'صفحة غير صالحة.'); need(validImage(body.image), 'صورة الصفحة غير صالحة.');
-          const next = switchBookPage(ownSession(teacher, code).state, step.id, book.id, body.page);
-          bookPages.set(code, {step: step.id, book: book.id, page: body.page, image: body.image}); g.saveState(code, next); broadcast(code);
+          const latest = ownSession(teacher, code).state;
+          const next = switchBookPage(latest.material?.step === step.id ? closeMaterial(latest) : latest, step.id, book.id, body.page);
+          bookPages.set(code, {step: step.id, book: book.id, page: body.page, image: body.image}); if (latest.material && !next.material) g.saveMaterial(code,next,null); else g.saveState(code,next); broadcast(code);
           return send(res, {ok: true});
         }
         if (action === 'laser' && method === 'POST') {
@@ -457,8 +522,14 @@ export function groupService(store, {directory = null, now = Date.now, recheckMs
           need(validImage(body.image), 'الصورة يجب أن تكون PNG أو JPEG أو WebP صغيرة.');
           Object.assign(step, {source: 'upload', image: body.image, rights: true}); bookPages.delete(code); // a photographed page replaces a book page
           g.saveSessionPlan(code, s.plan);
-          const next = {...s.state, pageVer: (s.state.pageVer || 0) + 1, seq: s.state.seq + 1}; g.saveState(code, next); broadcast(code);
+          const latest = ownSession(teacher,code).state, replacing = latest.material?.step === step.id;
+          const next = replacing ? closeMaterial(latest) : latest;
+          next.pageVer = (next.pageVer || 0) + 1; next.seq++;
+          if (replacing) g.saveMaterial(code,next,null); else g.saveState(code,next); broadcast(code);
           return send(res, {ok: true});
+        }
+        if (action === 'rtc-config' && method === 'GET') {
+          need(s.state.live, 'انتهت الحصة.',409); return rtcConfig(res);
         }
         if (action === 'rtc' && method === 'POST') {
           const m = await rtcMessage(req, base);
@@ -469,7 +540,13 @@ export function groupService(store, {directory = null, now = Date.now, recheckMs
           const body = await json(req, base, 65536);
           if (body.op === 'draw-permission') need(g.students(code).some(st => st.id === body.student), 'الطالب غير موجود في الحصة.', 404);
           const latest = ownSession(teacher, code);
-          const next = teacherCommand(latest.state, latest.plan, checkClassroomCommand(featuresFor(latest),latest.state,latest.plan,body,need)); g.saveState(code, next); broadcast(code);
+          if (body.pageVer !== undefined) need(body.step === latest.plan.steps[latest.state.index].id && body.pageVer === (latest.state.pageVer || 0),'تغيّرت صفحة السبورة.',409);
+          const next = teacherCommand(latest.state, latest.plan, checkClassroomCommand(featuresFor(latest),latest.state,latest.plan,body,need));
+          const clip = next.material;
+          if (clip?.playing && (!next.live || !next.shown || next.attention || latest.plan.steps[next.index].id !== clip.step)) {
+            clip.position += Math.max(0,Date.now() - clip.updated)/1000; clip.playing = false; clip.updated = Date.now();
+          }
+          g.saveState(code, next); broadcast(code);
           return send(res, {ok: true, seq: next.seq});
         }
         if (action === 'evaluate' && method === 'POST') { feature(s,'evaluation');

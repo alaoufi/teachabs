@@ -46,10 +46,10 @@ import java.util.Locale;
  * lesson import), the microphone for recorded explanations, downloads of lesson files, and the back button.
  */
 public class MainActivity extends Activity {
-    static final String HOME = "https://teachabs-board-preview-082.onrender.com/";
-    static final String HOST = "teachabs-board-preview-082.onrender.com";
+    static final String HOME = "https://teachabs-media-board-084.onrender.com/";
+    static final String HOST = "teachabs-media-board-084.onrender.com";
     static final int FILE_REQUEST = 41, MIC_REQUEST = 42;
-    static final String VERSION = "1.8";
+    static final String VERSION = "1.9";
 
     WebView web;
     ProgressBar progress;
@@ -140,6 +140,11 @@ public class MainActivity extends Activity {
                 pendingFiles = callback;
                 Intent pick = params.createIntent();
                 pick.addCategory(Intent.CATEGORY_OPENABLE);
+                String[] accept = params.getAcceptTypes();
+                if (accept.length > 1) {
+                    pick.setType("*/*");
+                    pick.putExtra(Intent.EXTRA_MIME_TYPES, accept);
+                }
                 try { startActivityForResult(pick, FILE_REQUEST); }
                 catch (ActivityNotFoundException e) { pendingFiles = null; Toast.makeText(MainActivity.this, "لا يوجد تطبيق لاختيار الملفات", Toast.LENGTH_LONG).show(); return false; }
                 return true;

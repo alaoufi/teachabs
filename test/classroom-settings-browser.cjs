@@ -5,6 +5,7 @@ const fs=require('node:fs'), path=require('node:path');
 (async()=>{
  const {openStore}=await import('../store.mjs'),{createApp}=await import('../server.mjs');
  const {defaultPlan,validatePlan}=await import('../public/group-plan.js'),{initialState}=await import('../group-session.mjs');
+ const {CLASSROOM_FEATURES}=await import('../public/classroom-features.js');
  const store=openStore(':memory:'),ids=store.admin.demo(),teacher=store.group.colleagues(store.user(ids.supervisor).scope)[0].id;
  const plan=validatePlan(defaultPlan()),code=store.group.startSession(teacher,plan,initialState(plan));
  const joined=store.group.join(code,'طالب تجريبي',30),app=createApp(store);
@@ -20,7 +21,7 @@ const fs=require('node:fs'), path=require('node:path');
   await admin.goto(base+'/admin/classroom');await t.goto(base+'/teach/live/'+code);await student.goto(base+'/class/'+code);
   await t.waitForFunction(()=>document.querySelector('#gl-status').textContent.includes('متصل'));
   await student.waitForFunction(()=>document.querySelector('#gl-status').textContent.includes('متصل'));
-  assert.equal(await admin.locator('input[type=checkbox]').count(),26);
+  assert.equal(await admin.locator('input[type=checkbox]').count(),CLASSROOM_FEATURES.length);
   const saved=JSON.stringify(store.group.session(code));
   for(const box of await admin.locator('input[type=checkbox]').all())await box.uncheck();
   await admin.getByRole('button',{name:'حفظ إعدادات الفصل والسبورة'}).click();await admin.waitForURL(/saved=1/);
@@ -50,6 +51,6 @@ const fs=require('node:fs'), path=require('node:path');
   const out=process.env.SCIENCE_ARTIFACTS||'/workspace/classroom-preview';fs.mkdirSync(out,{recursive:true});
   await admin.screenshot({path:path.join(out,'classroom-administration.png'),fullPage:true});
   assert.deepEqual(errors,[]);
-  console.log('PASS: administrative permissions UI, 26 switches, live teacher/student updates, direct-call denial, restored state, reload persistence and mobile layout');
+  console.log('PASS: administrative permissions UI, all component switches, live teacher/student updates, direct-call denial, restored state, reload persistence and mobile layout');
  }finally{await browser.close();app.closeAllConnections();await new Promise(r=>app.close(r));store.close();}
 })().catch(e=>{console.error(e);process.exitCode=1;});

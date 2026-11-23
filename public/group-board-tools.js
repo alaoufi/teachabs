@@ -212,7 +212,7 @@ export function attachBoardTools({mode, enabled = () => true, send = () => {}, i
   const queueDraw = () => { if (!frame) frame = requestAnimationFrame(drawLive); };
   // ---- pointer handling ----
   board.addEventListener('pointerdown', e => {
-    if (e.target.closest('.gl-zoom, .gl-textbox') || !enabled('board')) return;
+    if (e.target.closest('.gl-zoom, .gl-textbox, #gl-file-sound, .gl-cam') || !enabled('board')) return;
     pointers.set(e.pointerId, {x: e.clientX, y: e.clientY});
     if (pointers.size === 2) { if(enabled('zoom'))startPinch(); return; }
     if (pointers.size > 2) return;

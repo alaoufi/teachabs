@@ -6,6 +6,7 @@ export function stepEnabled(features, step) { return !!step && (features.board !
 export function classroomState(state, plan, features) {
   const s = structuredClone(state);
   if (!stepEnabled(features, plan.steps[s.index])) s.shown = false;
+  if (features.files === false && s.material?.step === plan.steps[s.index].id) s.shown = false;
   s.voice = {...s.voice};
   if (!features.teacherMic) s.voice.teacher = false;
   if (!features.studentMic) s.voice.mics = false;
@@ -28,7 +29,7 @@ export function classroomState(state, plan, features) {
 
 export function checkClassroomCommand(features, state, plan, command, need) {
   const check = key => need(features[key] !== false, 'أوقفت الإدارة هذا المكوّن.', 403);
-  const map = {'draw-permission':'drawing',stroke:'drawing',text:'drawing',move:'drawing',erase:'drawing','undo-stroke':'drawing','clear-strokes':'drawing',place:'notes',reveal:'notes',camera:'zoom',activity:'interactive',shadow:'interactive',explore:'interactive',narrator:'narration',narrate:'narration',speaker:'narration',homework:'homework','publish-evaluation':'evaluation',pick:'pick','pick-reset':'pick',attention:'attention','work-mode':'workMode',timer:'timer',curtain:'curtain',stamp:'tools','hand-down':'hands',star:'stars',open:'questions',display:'questions'};
+  const map = {'camera-focus':'camera','draw-permission':'drawing',stroke:'drawing',text:'drawing',move:'drawing',erase:'drawing','undo-stroke':'drawing','clear-strokes':'drawing',place:'notes',reveal:'notes',camera:'zoom',activity:'interactive',shadow:'interactive',explore:'interactive',narrator:'narration',narrate:'narration',speaker:'narration',homework:'homework','publish-evaluation':'evaluation',pick:'pick','pick-reset':'pick',attention:'attention','work-mode':'workMode',timer:'timer',curtain:'curtain',stamp:'tools','hand-down':'hands',star:'stars',open:'questions',display:'questions'};
   if (Object.hasOwn(map,command?.op)) check(map[command.op]);
   if (['stroke','text','move','erase','undo-stroke','clear-strokes','place','reveal','camera','activity','shadow','explore','stamp','open','display','narrator','narrate'].includes(command?.op)) need(stepEnabled(features,plan.steps[state.index]),'أخفت الإدارة هذه الفقرة.',403);
   if (command?.op === 'voice') {

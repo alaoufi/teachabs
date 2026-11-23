@@ -44,13 +44,17 @@ function addInk(s, step, item) {
 }
 
 export function switchBookPage(state, step, book, page) {
-  const s = structuredClone(state), key = `${book}:${page}`;
+  return switchBoardScene(state, step, `${book}:${page}`);
+}
+
+export function switchBoardScene(state, step, key, restoring = false) {
+  const s = structuredClone(state);
   s.bookScenes ||= {}; s.bookActive ||= {};
   const scenes = s.bookScenes[step] ||= {};
   const previous = s.bookActive[step] || 'original';
   scenes[previous] = {strokes: s.strokes[step] || [], camera: s.camera?.[step] || {z: 1, x: 0, y: 0}};
   // Bound metadata/ink memory independently of book images (which are never persisted).
-  need(Object.hasOwn(scenes, key) || Object.keys(scenes).length < 250, 'بلغت الحصة حد صفحات الكتاب.', 409);
+  need(restoring || Object.hasOwn(scenes, key) || Object.keys(scenes).length < 250, 'بلغت الحصة حد صفحات الكتاب.', 409);
   const restored = scenes[key] || {strokes: [], camera: {z: 1, x: 0, y: 0}};
   s.strokes[step] = restored.strokes; s.camera ||= {}; s.camera[step] = restored.camera;
   s.bookActive[step] = key; s.drawGrants = {}; s.pageVer = (s.pageVer || 0) + 1; s.seq++;
@@ -73,6 +77,8 @@ export function teacherCommand(state, plan, cmd) {
   const s = structuredClone(state), step = current(s, plan);
   s.seq++; s.camera ||= {}; s.strokes ||= {}; s.narrator ||= initialNarrator(); s.acts ||= {};
   switch (cmd.op) {
+    case 'camera-focus':
+      need(typeof cmd.on === 'boolean', 'قيمة غير صالحة.'); s.cameraFocus = cmd.on; return s;
     case 'draw-permission':
       need(typeof cmd.student === 'string' && typeof cmd.allow === 'boolean', 'صلاحية غير صالحة.');
       s.drawGrants ||= {};
@@ -112,6 +118,7 @@ export function teacherCommand(state, plan, cmd) {
       s.display[step.id] = {mode: 'spotlight', question: q.id, student: cmd.student, named: cmd.named}; return s;
     }
     case 'stroke': {
+      s.cameraFocus = false;
       need(INKABLE.includes(step.type), 'الكتابة متاحة على المنهج والشرح والسبورة والأسئلة.');
       need(Array.isArray(cmd.points) && cmd.points.length >= 2 && cmd.points.length <= MAX_POINTS && cmd.points.every(p => Array.isArray(p) && p.length === 2 && p.every(Number.isFinite) && p[0] >= 0 && p[0] <= 1000 && p[1] >= 0 && p[1] <= 600), 'خط غير صالح.');
       need(colorAllowed(cmd.color), 'لون غير متاح.');
@@ -233,7 +240,9 @@ export function teacherCommand(state, plan, cmd) {
       s.stars = {...(s.stars || {})}; s.stars[cmd.student] = Math.min(99, (s.stars[cmd.student] || 0) + 1);
       s.lastStar = {student: cmd.student, seq: s.seq}; return s;
     }
-    case 'voice': { // live voice: the teacher's own microphone and camera, and whether students may use their microphones
+    case 'voice': {
+      if (typeof cmd.camera === 'boolean') s.cameraFocus = cmd.camera && !s.material && !s.strokes[step.id]?.length;
+      // live voice: the teacher's own microphone and camera, and whether students may use their microphones
       s.voice ||= voiceOf(state);
       if (Object.hasOwn(cmd, 'teacher')) { need(typeof cmd.teacher === 'boolean', 'قيمة غير صالحة.'); s.voice.teacher = cmd.teacher; }
       if (Object.hasOwn(cmd, 'mics')) { need(typeof cmd.mics === 'boolean', 'قيمة غير صالحة.'); s.voice.mics = cmd.mics; }

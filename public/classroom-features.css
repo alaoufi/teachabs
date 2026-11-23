@@ -29,3 +29,5 @@
 .gl-section-disabled #gl-content,.gl-section-disabled #gl-quick,.gl-section-disabled #gl-panel,.gl-section-disabled #gl-ink,.gl-section-disabled #gl-show,.gl-off-display .gl-display .gl-stage{display:none!important}
 .gl-section-disabled .gl-stage::after{content:"هذه الفقرة مخفية بقرار الإدارة. اختر فقرة أخرى.";position:absolute;inset:40% 1rem auto;text-align:center;pointer-events:none}
 .gl-off-questions.gl-off-homework.gl-off-evaluation #gl-write,.gl-off-questions.gl-off-homework.gl-off-evaluation #gl-sheet{display:none!important}
+
+.gl-off-files #gl-material-tools,.gl-off-board #gl-material-tools{display:none!important}
